@@ -3,6 +3,7 @@
 #include "antlr4-runtime/antlr4-runtime.h"
 #include "antlr4-runtime/SmallLexer.h"
 #include "antlr4-runtime/SmallParser.h"
+#include "ImageVisitor.h"
 
 using namespace std;
 using namespace antlr4;
@@ -18,11 +19,10 @@ int main(int argc, const char* argv[]) {
 
     SmallParser::FileContext* tree = parser.file();
 
-/*    ImageVisitor visitor;
-    Scene scene = visitor.visitFile(tree);
-    scene.draw();
-*/
+    ImageVisitor visitor;
+    int a = visitor.visitFile(tree);
 
-    std::cout << "got here" << std::endl;
+
+    std::cout << "got here" << a << std::endl;
     return 0;
 }

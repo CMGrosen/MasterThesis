@@ -11,11 +11,11 @@ decls
     ;
 
 decl
-    : SIMPLE_IDENTIFIER ('=' expr)?
-    | 'arr' SIMPLE_IDENTIFIER ('=' '[' values ']')?
+    : SIMPLE_IDENTIFIER (ASSIGN expr);/*?
+    | ARR SIMPLE_IDENTIFIER (ASSIGN BRACKET_START values BRACKET_END)?
     ;
 
 values
-    : INT (',' INT)*;
-
+    : INT (COMMA INT)*;
+*/
 expr: INT;

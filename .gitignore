@@ -34,4 +34,5 @@
 .idea
 build
 cmake-build*
-
+tokens.tokens
+antlr4-runtime/Small*
