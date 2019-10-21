@@ -20,14 +20,15 @@ int main(int argc, const char* argv[]) {
 
     SmallParser::FileContext* tree = parser.file();
 
-    //ImageVisitor visitor;
+    ImageVisitor visitor;
     //int a = visitor.visitFile(tree);
+    visitor.visitFile(tree);
 
-    lexer.reset();
+    /*lexer.reset();
     tokens.reset();
     SmallBaseVisitor visitor;
     visitor.visitFile(tree);
-
+*/
     std::cout << "got here" << std::endl;//a << std::endl;
     return 0;
 }

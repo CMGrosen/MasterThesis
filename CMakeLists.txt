@@ -50,7 +50,7 @@ set(visitor_SRC
         ${PROJECT_SOURCE_DIR}/main.cpp
         ${PROJECT_SOURCE_DIR}/ImageVisitor.cpp
         ${visitor-GENERATED_SRC}
-        )
+        scope.hpp symbol.hpp nodetype.hpp)
 
 if (NOT CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     set (flags_1 "-Wno-overloaded-virtual")
