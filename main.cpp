@@ -11,7 +11,7 @@ using namespace antlr4;
 
 int main(int argc, const char* argv[]) {
     std::ifstream stream;
-    stream.open("code.small");
+    stream.open("../code.small");
 
     ANTLRInputStream input(stream);
     SmallLexer lexer(&input);
@@ -23,8 +23,8 @@ int main(int argc, const char* argv[]) {
     //ImageVisitor visitor;
     //int a = visitor.visitFile(tree);
 
-    //lexer.reset();
-    //tokens.reset();
+    lexer.reset();
+    tokens.reset();
     SmallBaseVisitor visitor;
     visitor.visitFile(tree);
 

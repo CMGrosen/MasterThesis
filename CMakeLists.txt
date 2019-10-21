@@ -107,11 +107,11 @@ if(APPLE)
 endif()
 
 # copy the input file next to the generated executable
-add_custom_command(TARGET visitor POST_BUILD
+#[[add_custom_command(TARGET visitor POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${PROJECT_SOURCE_DIR}/code.small"
         $<TARGET_FILE_DIR:visitor>)
-
+]]
 # necessary because the default working directory of Visual Studio
 # is not the same as the one in which the binary is created
 # so we copy the input file twice:
