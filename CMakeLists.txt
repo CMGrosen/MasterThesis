@@ -12,7 +12,7 @@ if (NOT WIN32)
 endif()
 
 if (APPLE)
-    set(CMAKE_CXX_FLAGS "-Wdeprecated -std=c++11" )
+    set(CMAKE_CXX_FLAGS "-Wdeprecated -std=c++14" )
 endif()
 
 if (MSVC)
@@ -102,7 +102,7 @@ endif()
 if(APPLE)
     add_custom_command(TARGET visitor POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${PROJECT_SOURCE_DIR}/libs/antlr4-runtime.dylib"
+            "${PROJECT_SOURCE_DIR}/libs/libantlr4-runtime.dylib"
             $<TARGET_FILE_DIR:visitor>)
 endif()
 
