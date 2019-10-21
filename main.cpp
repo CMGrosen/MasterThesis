@@ -1,9 +1,10 @@
 #include <iostream>
 
-#include "antlr4-runtime/antlr4-runtime.h"
+//#include "antlr4-runtime/antlr4-runtime.h"
 #include "antlr4-runtime/SmallLexer.h"
 #include "antlr4-runtime/SmallParser.h"
 #include "ImageVisitor.h"
+#include <antlr4-runtime.h>
 
 using namespace std;
 using namespace antlr4;

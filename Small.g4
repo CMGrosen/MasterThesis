@@ -30,6 +30,7 @@ stmt :
     | expr
     | iter
     | ifs
+    | RETURN expr
     ;
 
 iter :

@@ -15,6 +15,7 @@ END 	: '}';
 
 ASSIGN	: ':=';
 COMMA	: ',';
+RETURN  : 'return';
 
 TYPE	: ('int' | 'bool');
 
