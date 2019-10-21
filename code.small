@@ -1,23 +1,28 @@
-int c(int a, int b) {
-    return c(a, b);
+int b(int a, int c) {
+    if (a < 10) {
+        return a+c;
+    } else {
+        return b(a-1, c+1);
+    }
 }
 
 main {
     int a = 10;
-    b(a);
+    int b = 0;
+    write << (b(a, 0));
 
     while (a > 10) {
         when a > 20 do {
             write << (a < 20);
-            read >> var;
+            read >> b;
             a = 0;
         }
         a = a+1;
     }
 
     fork {
-        b(a);
+        write << (b(3, 10));
     } par {
-        b(a);
+        write << (b(4, 10));
     }
 }
