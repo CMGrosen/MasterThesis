@@ -14,6 +14,10 @@ DO      : 'do';
 PAR     : 'par';
 IF      : 'if';
 ELSE    : 'else';
+READ    : 'read';
+WRITE   : 'write';
+IN      : '>>';
+OUT     : '<<';
 
 SQUARE_BRACKET_BEGIN: '[';
 SQUARE_BRACKET_END: ']';

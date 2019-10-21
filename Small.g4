@@ -38,6 +38,8 @@ stmts :
 
 stmt :
     NAME assign DELIMETER
+    | read
+    | write
     | expr DELIMETER
     | iter
     | ifs
@@ -74,6 +76,19 @@ event :
     WHEN expr DO scope;
 
 scope : BEGIN dcls stmts END;
+
+read :
+    READ IN NAME DELIMETER
+    ;
+
+write :
+    WRITE output DELIMETER
+    ;
+
+output :
+    OUT LPAREN expr RPAREN output
+    | OUT LPAREN expr RPAREN
+    ;
 
 expr: orexpr;
 
