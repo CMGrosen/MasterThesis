@@ -1,1 +1,1 @@
-det=10
+main { int a := 10; }
