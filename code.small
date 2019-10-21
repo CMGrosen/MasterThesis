@@ -3,7 +3,20 @@ int c(int a, int b) {
 }
 
 main {
-    int a := 10;
+    int a = 10;
     b(a);
+
+    while (a > 10) {
+        when a > 20 do {
+            write();
+            a = 0;
+        }
+        a = a+1;
+    }
+
+    fork {
+        b(a);
+    } par {
+        b(a);
+    }
 }
-fhauifhaiufha

@@ -7,7 +7,7 @@ file :
     ;
 
 main :
-    MAIN BEGIN dcls stmts END
+    MAIN scope
     ;
 
 funcs :
@@ -16,47 +16,66 @@ funcs :
     ;
 
 func :
-    TYPE NAME LPAREN params RPAREN BEGIN dcls stmts END
-    | TYPE NAME LPAREN RPAREN BEGIN dcls stmts END
+    TYPE NAME LPAREN params RPAREN scope
+    | TYPE NAME LPAREN RPAREN scope
     ;
 
-stmts :
-    stmt DELIMETER stmts
-    |
-    ;
-
-stmt :
-    assign
-    | expr
-    | iter
-    | ifs
-    | RETURN expr
-    ;
-
-iter :
-    WHILE LPAREN expr RPAREN BEGIN dcls stmts END
-    ;
-
-ifs :
-    IF LPAREN expr RPAREN BEGIN dcls stmts END ELSE BEGIN dcls stmts END
-    ;
 
 dcls :
     dcl DELIMETER dcls
     |
     ;
-
+    
 dcl :
     TYPE NAME (assign)?
     | TYPE SQUARE_BRACKET_BEGIN literal SQUARE_BRACKET_END NAME (assign)?
     ;
 
+stmts :
+    stmt stmts
+    |
+    ;    
+
+stmt :
+    NAME assign DELIMETER
+    | expr DELIMETER
+    | iter
+    | ifs
+    | returnStmt DELIMETER
+    | FORK thread
+    | event
+    ;
+    
 assign :
     ASSIGN expr;
-
-expr
-    : orexpr
+    
+iter :
+    WHILE LPAREN expr RPAREN scope
     ;
+
+ifs :
+    IF LPAREN expr RPAREN scope ELSE scope
+    ;
+
+returnStmt :
+    RETURN expr
+    ;
+
+thread :
+    scope PAR threads
+    ;
+    
+threads :
+    scope PAR threads 
+    | scope
+    ; 
+    
+event :
+    WHEN expr DO scope;
+
+scope : BEGIN dcls stmts END;
+
+expr: orexpr;
 
 orexpr
     : orexpr OP_OR andexpr

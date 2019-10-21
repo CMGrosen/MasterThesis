@@ -5,6 +5,15 @@ RPAREN 	: ')';
 
 MAIN    : 'main';
 
+WHILE   : 'while';
+
+FORK    : 'fork';
+
+WHEN    : 'when';
+DO      : 'do';
+PAR     : 'par';
+IF      : 'if';
+ELSE    : 'else';
 
 SQUARE_BRACKET_BEGIN: '[';
 SQUARE_BRACKET_END: ']';
@@ -13,7 +22,7 @@ BEGIN 	: '{';
 END 	: '}';
 
 
-ASSIGN	: ':=';
+ASSIGN	: '=';
 COMMA	: ',';
 RETURN  : 'return';
 
@@ -36,9 +45,6 @@ OP_DIV : '/' ;
 OP_MOD : '%';
 OP_NOT : '!' ;
 
-WHILE   : 'while';
-IF      : 'if';
-ELSE    : 'else';
 
 INT_LITERAL: '0' | [1-9] [0-9]*; // no leading zeros
 BOOL_LITERAL: 'true' | 'false';
