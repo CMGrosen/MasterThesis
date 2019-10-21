@@ -16,8 +16,8 @@ funcs :
     ;
 
 func :
-    NAME LPAREN params RPAREN BEGIN dcls stmts END
-    | NAME LPAREN RPAREN BEGIN dcls stmts END
+    TYPE NAME LPAREN params RPAREN BEGIN dcls stmts END
+    | TYPE NAME LPAREN RPAREN BEGIN dcls stmts END
     ;
 
 stmts :
