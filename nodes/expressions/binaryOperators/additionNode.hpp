@@ -5,7 +5,7 @@
 #ifndef ANTLR_CPP_TUTORIAL_ADDITIONNODE_HPP
 #define ANTLR_CPP_TUTORIAL_ADDITIONNODE_HPP
 
-#include "expressionNode.hpp"
+#include "nodes/expressions/expressionNode.hpp"
 
 class additionNode : expressionNode {
     expressionNode right;

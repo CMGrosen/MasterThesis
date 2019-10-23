@@ -6,7 +6,7 @@
 #define ANTLR_CPP_TUTORIAL_MULTIPLICATIONNODE_HPP
 
 
-#include "expressionNode.hpp"
+#include "nodes/expressions/expressionNode.hpp"
 
 class multiplicationNode : expressionNode {
 

@@ -6,7 +6,7 @@
 #define ANTLR_CPP_TUTORIAL_LITERALNODE_HPP
 
 
-#include "expressionNode.hpp"
+#include "nodes/expressions/expressionNode.hpp"
 class literalNode : public node {
 public:
     literalNode(int a) : value{a} {};

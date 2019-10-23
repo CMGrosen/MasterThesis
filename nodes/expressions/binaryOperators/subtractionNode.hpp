@@ -5,7 +5,7 @@
 #ifndef ANTLR_CPP_TUTORIAL_SUBTRACTIONNODE_HPP
 #define ANTLR_CPP_TUTORIAL_SUBTRACTIONNODE_HPP
 
-#include "expressionNode.hpp"
+#include "nodes/expressions/expressionNode.hpp"
 
 class subtractionNode : public expressionNode {
 public:

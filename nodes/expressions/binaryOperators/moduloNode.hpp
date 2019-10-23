@@ -6,7 +6,7 @@
 #define ANTLR_CPP_TUTORIAL_MODULONODE_HPP
 
 
-#include "expressionNode.hpp"
+#include "nodes/expressions/expressionNode.hpp"
 
 class moduloNode : expressionNode {
 //    moduloNode(expressionNode l, expressionNode r) : left{l}, right{r} {};

@@ -9,9 +9,9 @@
 #define ANTLR_CPP_TUTORIAL_NAMENODE_HPP
 
 
-class nameNode : public node {
+class variableNode : public node {
 public:
-    nameNode(std::string n) : name{n} {};
+    variableNode(std::string n) : name{n} {};
     std::string name;
 };
 #endif //ANTLR_CPP_TUTORIAL_NAMENODE_HPP

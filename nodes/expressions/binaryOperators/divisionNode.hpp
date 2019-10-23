@@ -6,7 +6,7 @@
 #define ANTLR_CPP_TUTORIAL_DIVISIONNODE_HPP
 
 
-#include "expressionNode.hpp"
+#include "nodes/expressions/expressionNode.hpp"
 
 class divisionNode : expressionNode {
 
