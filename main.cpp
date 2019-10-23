@@ -3,7 +3,7 @@
 //#include "antlr4-runtime/antlr4-runtime.h"
 #include "antlr4-runtime/SmallLexer.h"
 #include "antlr4-runtime/SmallParser.h"
-#include "ImageVisitor.h"
+#include "DST.h"
 #include <antlr4-runtime.h>
 
 using namespace std;
@@ -20,7 +20,7 @@ int main(int argc, const char* argv[]) {
 
     SmallParser::FileContext* tree = parser.file();
 
-    ImageVisitor visitor;
+    DST visitor;
     //int a = visitor.visitFile(tree);
     visitor.visitFile(tree);
 

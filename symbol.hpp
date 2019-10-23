@@ -5,10 +5,8 @@
 #ifndef ANTLR_CPP_TUTORIAL_SYMBOL_HPP
 #define ANTLR_CPP_TUTORIAL_SYMBOL_HPP
 
-#endif //ANTLR_CPP_TUTORIAL_SYMBOL_HPP
-
 #include <string>
-#include "nodetype.hpp"
+#include "nodes/nodes.hpp"
 
 class symbol {
 public:
@@ -19,3 +17,5 @@ public:
     bool operator<(const symbol& other) const {return name < other.name;}
     bool operator==(const symbol& other) const {return name == other.name;}
 };
+
+#endif //ANTLR_CPP_TUTORIAL_SYMBOL_HPP

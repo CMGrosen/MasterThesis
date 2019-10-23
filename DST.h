@@ -1,22 +1,21 @@
 #include "antlr4-runtime.h"
 #include "SmallVisitor.h"
 #include <nodes/nodes.hpp>
+#include "symbol.hpp"
 
 
 /**
  * This class provides an empty implementation of SmallVisitor, which can be
  * extended to create a visitor which only needs to handle a subset of the available methods.
  */
-class  ImageVisitor : public SmallVisitor {
+class  DST : public SmallVisitor {
 private:
     int scopelvl = 0;
     int nnnn = 0;
 public:
-    //std::vector<std::unordered_map<std::string, symbol>> symboltables;
+    std::vector<std::unordered_map<std::string, symbol>> symboltables;
 
     virtual antlrcpp::Any visitFile(SmallParser::FileContext *ctx) override {
-        std::cout << "file" << ctx->depth() << "\n";
-        std::cout << ctx->getAltNumber();
         return visitChildren(ctx);
     }
 

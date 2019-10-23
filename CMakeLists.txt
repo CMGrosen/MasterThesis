@@ -48,7 +48,7 @@ include_directories(
 
 set(visitor_SRC
         ${PROJECT_SOURCE_DIR}/main.cpp
-        ${PROJECT_SOURCE_DIR}/ImageVisitor.cpp
+        ${PROJECT_SOURCE_DIR}/DST.cpp
         ${visitor-GENERATED_SRC}
         scope.hpp symbol.hpp nodes/nodes.hpp)
 
