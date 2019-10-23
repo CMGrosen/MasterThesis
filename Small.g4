@@ -90,45 +90,19 @@ output :
     | OUT LPAREN expr RPAREN
     ;
 
-expr: orexpr;
-
-orexpr
-    : orexpr OP_OR andexpr
-    | andexpr
-    ;
-
-andexpr
-    : andexpr OP_AND bexpr
-    | bexpr
-    ;
-
-bexpr
-    : bexpr op=(OP_EQ | OP_NEQ | OP_LT | OP_GT | OP_LEQ | OP_GEQ) aexpr1
-    | aexpr1
-    ;
-
-
-aexpr1
-    : aexpr1 op=(OP_ADD | OP_SUB) aexpr2
-    | aexpr2
-    ;
-
-aexpr2
-    : aexpr2 op=(OP_MUL | OP_DIV | OP_MOD) term
-    | term
-    ;
-
-term
-    : (OP_SUB | OP_NOT)? value
-    ;
-
-value
-    : literal
-    | NAME
+expr :
+    LPAREN expr RPAREN
+    | (OP_SUB | OP_NOT) expr
+    | left=expr op=(OP_MUL | OP_DIV | OP_MOD) expr
+    | left=expr op=(OP_ADD | OP_SUB) right=expr
+    | left=expr (OP_EQ | OP_NEQ | OP_LT | OP_GT | OP_LEQ | OP_GEQ) right=expr
+    | left=expr OP_AND right=expr
+    | left=expr OP_OR right=expr
     | functionCall
+    | literal
+    | NAME
     | arrayAccess
-    | LPAREN expr RPAREN
-    | (SQUARE_BRACKET_BEGIN (aexpr1 (COMMA aexpr1)*)? SQUARE_BRACKET_END)
+    | (SQUARE_BRACKET_BEGIN (expr (COMMA expr)*)? SQUARE_BRACKET_END)
     ;
 
 arrayAccess

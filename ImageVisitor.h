@@ -1,6 +1,6 @@
 #include "antlr4-runtime.h"
 #include "SmallVisitor.h"
-#include "scope.hpp"
+#include <nodes/nodes.hpp>
 
 
 /**
@@ -12,10 +12,11 @@ private:
     int scopelvl = 0;
     int nnnn = 0;
 public:
-    std::vector<std::unordered_map<std::string, symbol>> symboltables;
+    //std::vector<std::unordered_map<std::string, symbol>> symboltables;
 
     virtual antlrcpp::Any visitFile(SmallParser::FileContext *ctx) override {
         std::cout << "file" << ctx->depth() << "\n";
+        std::cout << ctx->getAltNumber();
         return visitChildren(ctx);
     }
 
@@ -97,34 +98,22 @@ public:
     }
 
     virtual antlrcpp::Any visitExpr(SmallParser::ExprContext *ctx) override {
-        return visitChildren(ctx);
-    }
+        if (ctx->OP_SUB()) {
+            node left = ctx->left->accept(this);
+            node right = ctx->right->accept(this);
 
-    virtual antlrcpp::Any visitOrexpr(SmallParser::OrexprContext *ctx) override {
-        return visitChildren(ctx);
-    }
+            if (left.getType() == right.getType()) {
+                return subtractionNode(left, right);
+            } else {
+                std::cout << "Incorrect types at " << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
+                << ".\n Expected: " << left.getType() << ", was: " << right.getType() << "\n";
+                return subtractionNode(left, right);
+            }
+            //literalNode l = literalNode(std::stoi(ctx->right->getText()));
+            //nameNode n = nameNode(ctx->left->getText());
+            //subtractionNode subNode = subtractionNode{n, l};
 
-    virtual antlrcpp::Any visitAndexpr(SmallParser::AndexprContext *ctx) override {
-        return visitChildren(ctx);
-    }
-
-    virtual antlrcpp::Any visitBexpr(SmallParser::BexprContext *ctx) override {
-        return visitChildren(ctx);
-    }
-
-    virtual antlrcpp::Any visitAexpr1(SmallParser::Aexpr1Context *ctx) override {
-        return visitChildren(ctx);
-    }
-
-    virtual antlrcpp::Any visitAexpr2(SmallParser::Aexpr2Context *ctx) override {
-        return visitChildren(ctx);
-    }
-
-    virtual antlrcpp::Any visitTerm(SmallParser::TermContext *ctx) override {
-        return visitChildren(ctx);
-    }
-
-    virtual antlrcpp::Any visitValue(SmallParser::ValueContext *ctx) override {
+        }
         return visitChildren(ctx);
     }
 
