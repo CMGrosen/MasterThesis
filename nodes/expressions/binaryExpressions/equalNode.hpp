@@ -5,4 +5,6 @@
 #ifndef ANTLR_CPP_TUTORIAL_EQUALNODE_H
 #define ANTLR_CPP_TUTORIAL_EQUALNODE_H
 
+#include "binaryExpressionNode.hpp"
+
 #endif //ANTLR_CPP_TUTORIAL_EQUALNODE_H

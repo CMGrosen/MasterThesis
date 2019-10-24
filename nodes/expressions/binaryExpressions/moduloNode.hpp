@@ -6,10 +6,10 @@
 #define ANTLR_CPP_TUTORIAL_MODULONODE_HPP
 
 
-#include "nodes/expressions/expressionNode.hpp"
+#include "binaryExpressionNode.hpp"
 
-class moduloNode : expressionNode {
-//    moduloNode(expressionNode l, expressionNode r) : left{l}, right{r} {};
+class moduloNode : binaryExpressionNode {
+moduloNode(node l, node r) : binaryExpressionNode("%", l, r){};
 
 };
 #endif //ANTLR_CPP_TUTORIAL_MODULONODE_HPP

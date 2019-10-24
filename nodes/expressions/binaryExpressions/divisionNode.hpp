@@ -6,11 +6,11 @@
 #define ANTLR_CPP_TUTORIAL_DIVISIONNODE_HPP
 
 
-#include "nodes/expressions/expressionNode.hpp"
+#include "binaryExpressionNode.hpp"
 
-class divisionNode : expressionNode {
+class divisionNode : binaryExpressionNode {
 
-    //divisionNode(expressionNode l, expressionNode r) : left{l}, right{r} {};
+    divisionNode(node l, node r) : binaryExpressionNode("/", l, r){};
 
 };
 #endif //ANTLR_CPP_TUTORIAL_DIVISIONNODE_HPP

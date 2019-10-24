@@ -13,8 +13,7 @@ public:
     node() {};
     Type getType() {return type;};
     void setType(Type t) {type = t;};
-    virtual ~node() {};
-    virtual node accept() {};
+
 protected:
     Type type;
 };

@@ -5,10 +5,10 @@
 #ifndef ANTLR_CPP_TUTORIAL_SUBTRACTIONNODE_HPP
 #define ANTLR_CPP_TUTORIAL_SUBTRACTIONNODE_HPP
 
-#include "nodes/expressions/expressionNode.hpp"
+#include "binaryExpressionNode.hpp"
 
-class subtractionNode : public expressionNode {
+class subtractionNode : public  binaryExpressionNode{
 public:
-    subtractionNode(node l, node r) : expressionNode(l, r) {};
+    subtractionNode(node l, node r) : binaryExpressionNode("-", l, r){};
 };
 #endif //ANTLR_CPP_TUTORIAL_SUBTRACTIONNODE_HPP

@@ -6,11 +6,11 @@
 #define ANTLR_CPP_TUTORIAL_MULTIPLICATIONNODE_HPP
 
 
-#include "nodes/expressions/expressionNode.hpp"
+#include "binaryExpressionNode.hpp"
 
-class multiplicationNode : expressionNode {
+class multiplicationNode : binaryExpressionNode {
 
-//    multiplicationNode(expressionNode l, expressionNode r) : left{l}, right{r} {};
+    multiplicationNode(node l, node r) : binaryExpressionNode("*", l, r){};
 
 };
 #endif //ANTLR_CPP_TUTORIAL_MULTIPLICATIONNODE_HPP
