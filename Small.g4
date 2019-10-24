@@ -64,13 +64,8 @@ returnStmt :
     ;
 
 thread :
-    scope PAR threads
+    scope (PAR threads+=scope)+
     ;
-    
-threads :
-    scope PAR threads 
-    | scope
-    ; 
     
 event :
     WHEN expr DO scope;

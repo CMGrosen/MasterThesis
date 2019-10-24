@@ -12,6 +12,7 @@ using namespace antlr4;
 int main(int argc, const char* argv[]) {
     std::ifstream stream;
     stream.open("../code.small");
+    //stream.open("../precendenceTest.small");
 
     ANTLRInputStream input(stream);
     SmallLexer lexer(&input);
