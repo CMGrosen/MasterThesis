@@ -25,15 +25,16 @@ public:
     std::vector<std::unordered_map<std::string, symbol>> symboltables;
 
     virtual antlrcpp::Any visitFile(SmallParser::FileContext *ctx) override {
-        auto result = visitChildren(ctx);
-
+        //antlrcpp::Any result = visitChildren(ctx);
+        std::vector<declarationNode> a = visitMain(ctx->main());
+        std::cout << a.size() << std::endl;
         std::cout << "File " << order++ << std::endl;
-        return result;
+ //       return result;
     }
 
     virtual antlrcpp::Any visitMain(SmallParser::MainContext *ctx) override {
         //std::cout << "main" << ctx->depth() << "\n";
-        auto result = visitChildren(ctx);
+        auto result = (visitDcls(ctx->scope()->dcls()));
         node _startNode = node();
         // pointer til gamle startNode
         std::cout << "Main " << order++ << std::endl;
@@ -56,16 +57,34 @@ public:
     }
 
     virtual antlrcpp::Any visitDcls(SmallParser::DclsContext *ctx) override {
-        auto result = visitChildren(ctx);
+        std::vector<declarationNode> nodes;
+        if(ctx->dcls()) {
+            nodes.push_back((declarationNode) visitDcl(ctx->dcl()));
+            std::vector<declarationNode> res = visitDcls(ctx->dcls());
+            for (auto n : res)
+                nodes.emplace_back(std::move(n));
+            return nodes;
+        }
+
+        //auto result = visitChildren(ctx);
         std::cout << "Dcls " << order++ << std::endl;
-        return result;
+        return nodes;
+        //return result;
     }
 
     virtual antlrcpp::Any visitDcl(SmallParser::DclContext *ctx) override {
-        auto result = visitChildren(ctx);
-        // gem symbol i symbol table
-        std::cout << "Dcl " << order++ << " " << ctx->getText() << std::endl;
-        return result;
+        //auto result = visitChildren(ctx);
+        std::string name = ctx->NAME()->getText();
+        if (ctx->assign()) {
+            return declarationNode(name, visit(ctx->assign()));
+            return declarationNode(name, visit(ctx->assign()));
+        } else {
+            // gem symbol i symbol table
+            std::cout << "Dcl " << order++ << " " << ctx->getText() << std::endl;
+            //return declarationNode(result.);
+            return node();
+            //return result;
+        }
     }
 
     virtual antlrcpp::Any visitStmts(SmallParser::StmtsContext *ctx) override {
@@ -83,9 +102,13 @@ public:
 
     virtual antlrcpp::Any visitAssign(SmallParser::AssignContext *ctx) override {
         //std::cout << "assignment" << ctx->depth() << "\n";
-        auto result = visitChildren(ctx);
+        //auto result = visitChildren(ctx);
+
+        additionNode a = visitExpr(ctx->expr());
         std::cout << "Assign " << order++  << std::endl;
-        return result;
+        return expressionNode(a);
+        return expressionNode(visitExpr(ctx->expr()));
+        //return result;
     }
 
     virtual antlrcpp::Any visitIter(SmallParser::IterContext *ctx) override {
@@ -114,13 +137,6 @@ public:
         return result;
     }
 
-    virtual antlrcpp::Any visitThreads(SmallParser::ThreadsContext *ctx) override {
-        threadnumber++;
-        auto result = visitChildren(ctx);
-        threadnumber--;
-        return result;
-    }
-
     virtual antlrcpp::Any visitEvent(SmallParser::EventContext *ctx) override {
         auto result = visitChildren(ctx);
         
@@ -129,7 +145,7 @@ public:
 
     virtual antlrcpp::Any visitScope(SmallParser::ScopeContext *ctx) override {
         auto result = visitChildren(ctx);
-        
+        std::cout << "scope" << std::endl;
         return result;
     }
 
@@ -152,6 +168,16 @@ public:
     }
 
     virtual antlrcpp::Any visitExpr(SmallParser::ExprContext *ctx) override {
+        if(ctx->OP_ADD()) {
+            std::cout << "add " << order++ << " " << ctx->getText() << std::endl;
+            literalNode l = visitExpr(ctx->left);
+            literalNode r = visitExpr(ctx->right);
+            std::cout << "left: " << ctx->left;
+            return additionNode(std::move(l),std::move(r));
+        } else {
+            std::cout << "literal " << order++ << " " << ctx->getText() << std::endl;
+            return literalNode(std::stoi(ctx->literal()->getText()));
+        }
         /*
         if (ctx->OP_SUB()) {
             node left = ctx->left->accept(this);
@@ -202,6 +228,7 @@ public:
     virtual antlrcpp::Any visitLiteral(SmallParser::LiteralContext *ctx) override {
         auto result = visitChildren(ctx);
         std::cout << "lit " << order++ << " " << ctx->getText() << std::endl;
+        //return std::stoi(ctx->getText())
         return result;
     }
 

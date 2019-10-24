@@ -8,8 +8,9 @@
 #include "binaryExpressionNode.hpp"
 
 class additionNode : public binaryExpressionNode {
-
+public:
     additionNode(node l, node r) : binaryExpressionNode("+", l, r){};
+    additionNode(node &l, node &r) : binaryExpressionNode("+", l, r){};
 
 };
 

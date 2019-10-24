@@ -11,6 +11,7 @@
 class expressionNode : public node {
 public:
     expressionNode() {};
+    expressionNode(node &n) {};
     expressionNode(std::string &v) : _operator{v} {};
 
 

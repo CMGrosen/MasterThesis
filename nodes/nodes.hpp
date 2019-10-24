@@ -11,5 +11,6 @@
 #include "literalNode.hpp"
 #include "variableNode.hpp"
 #include "functionDeclarationNode.hpp"
+#include "declarationNode.hpp"
 
 #endif //ANTLR_CPP_TUTORIAL_NODES_HPP

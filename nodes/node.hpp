@@ -10,7 +10,6 @@ enum Type { intType, boolType, arrayType, okType, errorType, ignoreType};
 
 class node {
 public:
-    node() {};
     Type getType() {return type;};
     void setType(Type t) {type = t;};
 
