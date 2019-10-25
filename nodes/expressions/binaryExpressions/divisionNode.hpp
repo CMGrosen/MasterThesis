@@ -7,10 +7,11 @@
 
 
 #include "binaryExpressionNode.hpp"
-
+/*
 class divisionNode : binaryExpressionNode {
 
     divisionNode(node l, node r) : binaryExpressionNode("/", l, r){};
 
 };
+ */
 #endif //ANTLR_CPP_TUTORIAL_DIVISIONNODE_HPP

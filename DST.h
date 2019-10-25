@@ -26,19 +26,34 @@ public:
 
     virtual antlrcpp::Any visitFile(SmallParser::FileContext *ctx) override {
         //antlrcpp::Any result = visitChildren(ctx);
-        std::vector<declarationNode> a = visitMain(ctx->main());
-        std::cout << a.size() << std::endl;
+        scopeNode a = visitMain(ctx->main());
+        //std::cout << a.size() << std::endl;
+        /*
+        if(auto x = dynamic_cast<literalNode*>(dynamic_cast<additionNode*>(a[0]->value)->getLeft())){
+            std::cout << "left literal = " << x->value << std::endl;
+        }
+        if(auto x = dynamic_cast<additionNode*>(a[0]->value)){
+            std::cout << "operator = " << x->getOperator() << std::endl;
+        }
+        if(auto x = dynamic_cast<literalNode*>(dynamic_cast<additionNode*>(a[0]->value)->getRight())){
+            std::cout << "right literal = " << x->value << std::endl;
+        }
+         */
+
+        for(std::shared_ptr<node> x : a.dcls){
+            WriteType(x);
+        }
+        //std::cout << dynamic_cast<literalNode*>(dynamic_cast<additionNode*>(a[0]->value)->getLeft())->value << std::endl;
         std::cout << "File " << order++ << std::endl;
- //       return result;
+        return 0;
     }
 
     virtual antlrcpp::Any visitMain(SmallParser::MainContext *ctx) override {
         //std::cout << "main" << ctx->depth() << "\n";
-        auto result = (visitDcls(ctx->scope()->dcls()));
-        node _startNode = node();
+        scopeNode node = (visitScope(ctx->scope()));
         // pointer til gamle startNode
         std::cout << "Main " << order++ << std::endl;
-        return result;
+        return node;
     }
 
     virtual antlrcpp::Any visitFuncs(SmallParser::FuncsContext *ctx) override {
@@ -57,12 +72,13 @@ public:
     }
 
     virtual antlrcpp::Any visitDcls(SmallParser::DclsContext *ctx) override {
-        std::vector<declarationNode> nodes;
+        std::vector<std::shared_ptr<declarationNode>> nodes;
         if(ctx->dcls()) {
-            nodes.push_back((declarationNode) visitDcl(ctx->dcl()));
-            std::vector<declarationNode> res = visitDcls(ctx->dcls());
+            std::shared_ptr<declarationNode> intermediate = visitDcl(ctx->dcl());
+            nodes.push_back( intermediate);
+            std::vector<std::shared_ptr<declarationNode>> res = visitDcls(ctx->dcls());
             for (auto n : res)
-                nodes.emplace_back(std::move(n));
+                nodes.emplace_back(n);
             return nodes;
         }
 
@@ -76,10 +92,9 @@ public:
         //auto result = visitChildren(ctx);
         std::string name = ctx->NAME()->getText();
         if (ctx->assign()) {
-            expressionNode a =  visit(ctx->assign());
-            additionNode& d = dynamic_cast<additionNode&>(a);
-            return declarationNode(name, a);
-            return declarationNode(name, visit(ctx->assign()));
+            std::shared_ptr<expressionNode> expr =  std::move(visit(ctx->assign()));
+            return std::make_shared<declarationNode>(declarationNode(expr->getType(), name, expr));
+            //return declarationNode(name, visit(ctx->assign()));
         } else {
             // gem symbol i symbol table
             std::cout << "Dcl " << order++ << " " << ctx->getText() << std::endl;
@@ -105,11 +120,8 @@ public:
     virtual antlrcpp::Any visitAssign(SmallParser::AssignContext *ctx) override {
         //std::cout << "assignment" << ctx->depth() << "\n";
         //auto result = visitChildren(ctx);
-
-        additionNode a = visitExpr(ctx->expr());
         std::cout << "Assign " << order++  << std::endl;
-        return expressionNode(a);
-        return expressionNode(visitExpr(ctx->expr()));
+        return visitExpr(ctx->expr());
         //return result;
     }
 
@@ -146,8 +158,10 @@ public:
     }
 
     virtual antlrcpp::Any visitScope(SmallParser::ScopeContext *ctx) override {
-        auto result = visitChildren(ctx);
+        std::vector<std::shared_ptr<declarationNode>> dcls = visitDcls(ctx->dcls());
         std::cout << "scope" << std::endl;
+        scopeNode result = scopeNode(Type::okType);
+        result.dcls = dcls;
         return result;
     }
 
@@ -172,32 +186,17 @@ public:
     virtual antlrcpp::Any visitExpr(SmallParser::ExprContext *ctx) override {
         if(ctx->OP_ADD()) {
             std::cout << "add " << order++ << " " << ctx->getText() << std::endl;
-            literalNode l = visitExpr(ctx->left);
-            literalNode r = visitExpr(ctx->right);
+            std::shared_ptr<expressionNode> l = visitExpr(ctx->left);
+            std::shared_ptr<expressionNode> r = std::move(visitExpr(ctx->right));
             std::cout << "left: " << ctx->left;
-            return additionNode(std::move(l),std::move(r));
-        } else {
+            return std::make_shared<additionNode>(std::move(additionNode(l->getType(), l, r)));
+        } else  if (ctx->OP_SUB()){
+
+        } else if (ctx->literal()){
             std::cout << "literal " << order++ << " " << ctx->getText() << std::endl;
-            return literalNode(std::stoi(ctx->literal()->getText()));
-        }
-        /*
-        if (ctx->OP_SUB()) {
-            node left = ctx->left->accept(this);
-            node right = ctx->right->accept(this);
 
-            if (left.getType() == right.getType()) {
-                return subtractionNode(left, right);
-            } else {
-                std::cout << "Incorrect types at " << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
-                << ".\n Expected: " << left.getType() << ", was: " << right.getType() << "\n";
-                return subtractionNode(left, right);
-            }
-            //literalNode l = literalNode(std::stoi(ctx->right->getText()));
-            //nameNode n = nameNode(ctx->left->getText());
-            //subtractionNode subNode = subtractionNode{n, l};
-
+            return std::make_shared<literalNode>(std::move(literalNode(std::stoi(ctx->literal()->getText()))));
         }
-         */
         auto result = visitChildren(ctx);
         std::cout << "Expression " << order++ << " " << ctx->getText() << std::endl;
         return result;
@@ -228,11 +227,30 @@ public:
     }
 
     virtual antlrcpp::Any visitLiteral(SmallParser::LiteralContext *ctx) override {
-        auto result = visitChildren(ctx);
+        literalNode* result = visitChildren(ctx);
         std::cout << "lit " << order++ << " " << ctx->getText() << std::endl;
         //return std::stoi(ctx->getText())
         return result;
     }
-
-
+    void WriteType(const std::shared_ptr<node> input){
+        WriteType(input.get());
+    }
+    void WriteType(node* input){
+        if(auto dcl = dynamic_cast<declarationNode*>(input)){
+            std::cout << "dcl" << std::endl;
+            WriteType(dcl->value);
+        } else if (auto add = dynamic_cast<additionNode*>(input)) {
+            std::cout << "add" << std::endl;
+            WriteType(add->getLeft());
+            std::cout << add->getOperator() << std::endl;
+            WriteType(add->getLeft());
+        }else if (auto expr = dynamic_cast<expressionNode*>(input)) {
+            std::cout << "expr" << std::endl;
+            WriteType(expr);
+        } else if (auto lit = dynamic_cast<literalNode*>(input)) {
+            std::cout << "lit" << std::endl;
+        } else {
+            std::cout << "failure" << std::endl;
+        }
+    }
 };

@@ -9,8 +9,12 @@
 
 class additionNode : public binaryExpressionNode {
 public:
-    additionNode(node l, node r) : binaryExpressionNode("+", l, r){};
-    additionNode(node &l, node &r) : binaryExpressionNode("+", l, r){};
+    additionNode(Type _type, std::shared_ptr<expressionNode> _l, std::shared_ptr<expressionNode> _r) {
+        type = _type;
+        _operator = "+";
+        left = std::move(_l);
+        right = std::move(_r);
+    };
 
 };
 

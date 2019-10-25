@@ -2,7 +2,7 @@
 // Created by hu on 23/10/2019.
 //
 
-#include "../node.hpp"
+#include <nodes/node.hpp>
 
 #ifndef ANTLR_CPP_TUTORIAL_EXPRESSIONNODE_HPP
 #define ANTLR_CPP_TUTORIAL_EXPRESSIONNODE_HPP
@@ -10,11 +10,7 @@
 
 class expressionNode : public node {
 public:
-    expressionNode() {};
-    expressionNode(node &n) {};
-    expressionNode(std::string &v) : _operator{v} {};
-
-
+    virtual std::string getOperator() { return _operator;}
 
 protected:
     std::string _operator;

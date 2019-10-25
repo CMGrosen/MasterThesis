@@ -11,7 +11,10 @@
 
 class variableNode : public node {
 public:
-    variableNode(std::string n) : name{n} {};
+    variableNode(Type _type, std::string n) {
+        type = _type;
+        name = std::move(n);
+    };
     std::string name;
 };
 #endif //ANTLR_CPP_TUTORIAL_NAMENODE_HPP
