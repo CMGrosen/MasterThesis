@@ -76,7 +76,9 @@ public:
         //auto result = visitChildren(ctx);
         std::string name = ctx->NAME()->getText();
         if (ctx->assign()) {
-            return declarationNode(name, visit(ctx->assign()));
+            expressionNode a =  visit(ctx->assign());
+            additionNode& d = dynamic_cast<additionNode&>(a);
+            return declarationNode(name, a);
             return declarationNode(name, visit(ctx->assign()));
         } else {
             // gem symbol i symbol table
