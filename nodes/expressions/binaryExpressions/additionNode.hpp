@@ -15,7 +15,6 @@ public:
         left = std::move(_l);
         right = std::move(_r);
     };
-
 };
 
 #endif //ANTLR_CPP_TUTORIAL_ADDITIONNODE_HPP

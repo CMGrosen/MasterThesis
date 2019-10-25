@@ -15,14 +15,17 @@ public:
         name = std::move(_name);
         value = std::move(_val);
     };
+
+    /*
     declarationNode(Type _type, std::string _name){
         type = _type;
         name = std::move(_name);
         value = getStartValue();
     };
-
+*/
     std::string name;
     std::shared_ptr<expressionNode> value;
+    /*
 private:
     std::shared_ptr<expressionNode> getStartValue(){
         std::shared_ptr<expressionNode> val;
@@ -36,6 +39,6 @@ private:
         }
         return val;
     }
-
+*/
 };
 #endif //ANTLR_CPP_TUTORIAL_DECLARATIONNODE_H

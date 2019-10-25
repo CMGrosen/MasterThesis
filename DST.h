@@ -10,18 +10,18 @@
  */
 class  DST : public SmallVisitor {
 private:
-    node startNode;
+    //node startNode;
     std::vector<node> currentnodes;
     std::unordered_map<std::string, functionDeclarationNode> functionTable;
     int scopelvl = 0;
     int threadnumber = 0;
     int order = 0;
 public:
-
+/*
     node getStartNode(){
         return startNode;
     }
-
+*/
     std::vector<std::unordered_map<std::string, symbol>> symboltables;
 
     virtual antlrcpp::Any visitFile(SmallParser::FileContext *ctx) override {
@@ -40,6 +40,7 @@ public:
         }
          */
 
+        std::cout << "\n\n\nwriting out what we have:\n";
         for(std::shared_ptr<node> x : a.dcls){
             WriteType(x);
         }
@@ -99,7 +100,7 @@ public:
             // gem symbol i symbol table
             std::cout << "Dcl " << order++ << " " << ctx->getText() << std::endl;
             //return declarationNode(result.);
-            return node();
+            //return node();
             //return result;
         }
     }
@@ -186,20 +187,23 @@ public:
     virtual antlrcpp::Any visitExpr(SmallParser::ExprContext *ctx) override {
         if(ctx->OP_ADD()) {
             std::cout << "add " << order++ << " " << ctx->getText() << std::endl;
-            std::shared_ptr<expressionNode> l = visitExpr(ctx->left);
-            std::shared_ptr<expressionNode> r = std::move(visitExpr(ctx->right));
+            std::shared_ptr<expressionNode> l = (visitExpr(ctx->left));
+            std::shared_ptr<expressionNode> r = (visitExpr(ctx->right));
+
+            //std::shared_ptr<expressionNode> r = visitExpr(ctx->right);
             std::cout << "left: " << ctx->left;
-            return std::make_shared<additionNode>(std::move(additionNode(l->getType(), l, r)));
+            return (std::shared_ptr<expressionNode>)std::make_shared<additionNode>(additionNode(l.get()->getType(),l,r));
+            //return std::make_shared<additionNode>(std::move(additionNode(l->getType(), l, r)));
         } else  if (ctx->OP_SUB()){
 
         } else if (ctx->literal()){
             std::cout << "literal " << order++ << " " << ctx->getText() << std::endl;
-
-            return std::make_shared<literalNode>(std::move(literalNode(std::stoi(ctx->literal()->getText()))));
+            //std::shared_ptr<expressionNode> no = std::make_shared<literalNode>(literalNode(std::stoi(ctx->literal()->getText())));
+            return (std::shared_ptr<expressionNode>)std::make_shared<literalNode>(literalNode(std::stoi(ctx->literal()->getText())));
         }
-        auto result = visitChildren(ctx);
+        //auto result = visitChildren(ctx);
         std::cout << "Expression " << order++ << " " << ctx->getText() << std::endl;
-        return result;
+        //return result;
     }
 
     virtual antlrcpp::Any visitArrayAccess(SmallParser::ArrayAccessContext *ctx) override {
@@ -244,11 +248,11 @@ public:
             WriteType(add->getLeft());
             std::cout << add->getOperator() << std::endl;
             WriteType(add->getLeft());
-        }else if (auto expr = dynamic_cast<expressionNode*>(input)) {
-            std::cout << "expr" << std::endl;
-            WriteType(expr);
         } else if (auto lit = dynamic_cast<literalNode*>(input)) {
             std::cout << "lit" << std::endl;
+        } else if (auto expr = dynamic_cast<expressionNode*>(input)) {
+            std::cout << "expr" << std::endl;
+            WriteType(expr);
         } else {
             std::cout << "failure" << std::endl;
         }
