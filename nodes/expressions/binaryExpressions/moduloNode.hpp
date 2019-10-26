@@ -8,8 +8,14 @@
 
 #include "binaryExpressionNode.hpp"
 
-class moduloNode : binaryExpressionNode {
-moduloNode(node l, node r) : binaryExpressionNode("%", l, r){};
+class moduloNode : public binaryExpressionNode {
+public:
+    moduloNode(Type _type, std::shared_ptr<expressionNode> _l, std::shared_ptr<expressionNode> _r) {
+        type = _type;
+        _operator = "%";
+        left = std::move(_l);
+        right = std::move(_r);
+    };
 
 };
 #endif //ANTLR_CPP_TUTORIAL_MODULONODE_HPP

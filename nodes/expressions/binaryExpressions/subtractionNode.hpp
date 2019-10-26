@@ -9,6 +9,11 @@
 
 class subtractionNode : public  binaryExpressionNode{
 public:
-    subtractionNode(node l, node r) : binaryExpressionNode("-", l, r){};
+    subtractionNode(Type _type, std::shared_ptr<expressionNode> _l, std::shared_ptr<expressionNode> _r) {
+        type = _type;
+        _operator = "-";
+        left = std::move(_l);
+        right = std::move(_r);
+    };
 };
 #endif //ANTLR_CPP_TUTORIAL_SUBTRACTIONNODE_HPP

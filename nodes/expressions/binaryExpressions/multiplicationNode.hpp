@@ -8,9 +8,13 @@
 
 #include "binaryExpressionNode.hpp"
 
-class multiplicationNode : binaryExpressionNode {
-
-    multiplicationNode(node l, node r) : binaryExpressionNode("*", l, r){};
-
+class multiplicationNode : public binaryExpressionNode {
+public:
+    multiplicationNode(Type _type, std::shared_ptr<expressionNode> _l, std::shared_ptr<expressionNode> _r) {
+        type = _type;
+        _operator = "*";
+        left = std::move(_l);
+        right = std::move(_r);
+    };
 };
 #endif //ANTLR_CPP_TUTORIAL_MULTIPLICATIONNODE_HPP

@@ -7,11 +7,15 @@
 
 
 #include "binaryExpressionNode.hpp"
-/*
-class divisionNode : binaryExpressionNode {
 
-    divisionNode(node l, node r) : binaryExpressionNode("/", l, r){};
-
+class divisionNode : public binaryExpressionNode {
+public:
+    divisionNode(Type _type, std::shared_ptr<expressionNode> _l, std::shared_ptr<expressionNode> _r) {
+        type = _type;
+        _operator = "/";
+        left = std::move(_l);
+        right = std::move(_r);
+    };
 };
- */
+
 #endif //ANTLR_CPP_TUTORIAL_DIVISIONNODE_HPP
