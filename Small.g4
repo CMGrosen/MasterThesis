@@ -88,11 +88,11 @@ output :
 expr :
     LPAREN expr RPAREN
     | (OP_SUB | OP_NOT) expr
-    | left=expr op=(OP_MUL | OP_DIV | OP_MOD) expr
+    | left=expr op=(OP_MUL | OP_DIV | OP_MOD) right=expr
     | left=expr op=(OP_ADD | OP_SUB) right=expr
-    | left=expr (OP_EQ | OP_NEQ | OP_LT | OP_GT | OP_LEQ | OP_GEQ) right=expr
-    | left=expr OP_AND right=expr
-    | left=expr OP_OR right=expr
+    | left=expr op=(OP_EQ | OP_NEQ | OP_LT | OP_GT | OP_LEQ | OP_GEQ) right=expr
+    | left=expr op=OP_AND right=expr
+    | left=expr op=OP_OR right=expr
     | functionCall
     | literal
     | NAME
