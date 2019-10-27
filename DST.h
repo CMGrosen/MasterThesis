@@ -16,6 +16,8 @@ private:
     int scopelvl = 0;
     int threadnumber = 0;
     int order = 0;
+    std::shared_ptr<node> firstStatement;
+    std::shared_ptr<node> prevStatement;
 public:
 /*
     node getStartNode(){
@@ -26,7 +28,7 @@ public:
 
     virtual antlrcpp::Any visitFile(SmallParser::FileContext *ctx) override {
         //antlrcpp::Any result = visitChildren(ctx);
-        scopeNode a = visitMain(ctx->main());
+        std::shared_ptr<scopeNode> a = visitMain(ctx->main());
         //std::cout << a.size() << std::endl;
         /*
         if(auto x = dynamic_cast<literalNode*>(dynamic_cast<additionNode*>(a[0]->value)->getLeft())){
@@ -41,18 +43,19 @@ public:
          */
 
         std::cout << "\n\n\nwriting out what we have:\n";
-        for(std::shared_ptr<node> x : a.dcls){
+        for(std::shared_ptr<node> x : a->dcls){
             WriteType(x);
             std::cout << "\nwriting next node:\n";
         }
         //std::cout << dynamic_cast<literalNode*>(dynamic_cast<additionNode*>(a[0]->value)->getLeft())->value << std::endl;
+        a->setNextStatement(firstStatement);
         std::cout << "File " << order++ << std::endl;
         return 0;
     }
 
     virtual antlrcpp::Any visitMain(SmallParser::MainContext *ctx) override {
         //std::cout << "main" << ctx->depth() << "\n";
-        scopeNode node = (visitScope(ctx->scope()));
+        std::shared_ptr<scopeNode> node = (visitScope(ctx->scope()));
         // pointer til gamle startNode
         std::cout << "Main " << order++ << std::endl;
         return node;
@@ -78,6 +81,10 @@ public:
         if(ctx->dcls()) {
             std::shared_ptr<declarationNode> intermediate = visitDcl(ctx->dcl());
             nodes.push_back( intermediate);
+            if (prevStatement) {
+                prevStatement->setNextStatement(intermediate);
+            }
+            prevStatement = intermediate;
             std::vector<std::shared_ptr<declarationNode>> res = visitDcls(ctx->dcls());
             for (auto n : res)
                 nodes.emplace_back(n);
@@ -95,6 +102,10 @@ public:
         std::string name = ctx->NAME()->getText();
         if (ctx->assign()) {
             std::shared_ptr<expressionNode> expr =  std::move(visit(ctx->assign()));
+            if (prevStatement) {
+                prevStatement->setNextStatement(expr);
+            }
+            prevStatement = expr;
             return std::make_shared<declarationNode>(declarationNode(expr->getType(), name, expr));
             //return declarationNode(name, visit(ctx->assign()));
         } else {
@@ -162,8 +173,12 @@ public:
     virtual antlrcpp::Any visitScope(SmallParser::ScopeContext *ctx) override {
         std::vector<std::shared_ptr<declarationNode>> dcls = visitDcls(ctx->dcls());
         std::cout << "scope" << std::endl;
-        scopeNode result = scopeNode(Type::okType);
-        result.dcls = dcls;
+        std::shared_ptr<scopeNode> result = std::make_shared<scopeNode>(scopeNode(Type::okType));
+        result->dcls = dcls;
+        if (prevStatement) {
+            prevStatement->setNextStatement(result);
+        }
+        prevStatement = result;
         return result;
     }
 
@@ -205,7 +220,13 @@ public:
             return binary_expression(ctx, '%');
         } else if (ctx->literal()){
             std::cout << "literal " << order++ << " " << ctx->getText() << std::endl;
-            return (std::shared_ptr<expressionNode>)std::make_shared<literalNode>(literalNode(std::stoi(ctx->literal()->getText())));
+            std::shared_ptr<expressionNode> p = (std::shared_ptr<expressionNode>)std::make_shared<literalNode>(literalNode(std::stoi(ctx->literal()->getText())));
+            if (prevStatement) {
+                prevStatement->setNextStatement(p);
+            }
+            prevStatement = p;
+            if (!firstStatement) firstStatement = p;
+            return p;
         }
         //auto result = visitChildren(ctx);
         std::cout << "Expression " << order++ << " " << ctx->getText() << std::endl;
@@ -285,27 +306,48 @@ public:
     }
     std::shared_ptr<expressionNode> binary_expression (SmallParser::ExprContext *ctx, char expressionType) {
         std::shared_ptr<expressionNode> l = (visitExpr(ctx->left));
+        if (prevStatement) {
+            prevStatement->setNextStatement(l);
+        }
+        prevStatement = l;
         std::shared_ptr<expressionNode> r = (visitExpr(ctx->right));
+        if (prevStatement) {
+            prevStatement->setNextStatement(r);
+        }
+        prevStatement = r;
         Type t;
         if (l->getType() == r->getType()) {
             t = l->getType();
         } else {
             t = errorType;
         }
-
+        std::shared_ptr<expressionNode> p;
         switch (expressionType) {
             case '+':
-                return (std::shared_ptr<expressionNode>)std::make_shared<additionNode>(additionNode(t,l,r));
+                p =  (std::shared_ptr<expressionNode>)std::make_shared<additionNode>(additionNode(t,l,r));
+                break;
             case '-':
-                return (std::shared_ptr<expressionNode>)std::make_shared<subtractionNode>(subtractionNode(t,l,r));
+                p = (std::shared_ptr<expressionNode>)std::make_shared<subtractionNode>(subtractionNode(t,l,r));
+                break;
             case '*':
-                return (std::shared_ptr<expressionNode>)std::make_shared<multiplicationNode>(multiplicationNode(t,l,r));
+                p =  (std::shared_ptr<expressionNode>)std::make_shared<multiplicationNode>(multiplicationNode(t,l,r));
+                break;
             case '/':
-                return (std::shared_ptr<expressionNode>)std::make_shared<divisionNode>(divisionNode(t,l,r));
+                p =  (std::shared_ptr<expressionNode>)std::make_shared<divisionNode>(divisionNode(t,l,r));
+                break;
             case '%':
-                return (std::shared_ptr<expressionNode>)std::make_shared<moduloNode>(moduloNode(t,l,r));
+                p =  (std::shared_ptr<expressionNode>)std::make_shared<moduloNode>(moduloNode(t,l,r));
+                break;
             default:
-                return nullptr;
+                p =  nullptr;
+                break;
         }
+        if (prevStatement) {
+            prevStatement->setNextStatement(p);
+        }
+        prevStatement = p;
+        //p->setNextStatement(nextStatement);
+        //nextStatement = p;
+        return p;
     }
 };
