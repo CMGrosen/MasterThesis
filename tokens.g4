@@ -30,7 +30,11 @@ ASSIGN	: '=';
 COMMA	: ',';
 RETURN  : 'return';
 
-TYPE	: ('int' | 'bool');
+TYPE	: 'int'
+        | 'bool'
+        | 'int[' [1-9] [0-9]* ']'
+        | 'bool['[1-9] [0-9]* ']'
+        ;
 
 NAME 	: [a-zA-Z_][0-9a-zA-Z_]*;
 
