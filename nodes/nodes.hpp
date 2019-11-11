@@ -13,5 +13,7 @@
 #include "functionDeclarationNode.hpp"
 #include "declarationNode.hpp"
 #include "scopeNode.hpp"
+#include "statementNode.hpp"
+#include "assignNode.hpp"
 
 #endif //ANTLR_CPP_TUTORIAL_NODES_HPP
