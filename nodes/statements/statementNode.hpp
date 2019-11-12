@@ -7,9 +7,11 @@
 
 #include <nodes/node.hpp>
 
+enum NodeType { Assign, Concurrent, Sequential, While, If, Write, Read};
+
 class statementNode : public node {
 public:
-    virtual uint getNodeType();
+    virtual NodeType getNodeType() = 0;
 };
 
 #endif //ANTLR_CPP_TUTORIAL_STATEMENTNODE_HPP

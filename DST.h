@@ -12,7 +12,7 @@ class  DST : public SmallVisitor {
 private:
     //node startNode;
     std::vector<node> currentnodes;
-    std::unordered_map<std::string, functionDeclarationNode> functionTable;
+//    std::unordered_map<std::string, functionDeclarationNode> functionTable;
     int scopelvl = 0;
     int threadnumber = 0;
     int order = 0;
@@ -24,96 +24,72 @@ public:
         return startNode;
     }
 */
-    std::vector<std::unordered_map<std::string, symbol>> symboltables;
+    std::unordered_map<std::string, symbol> symboltables;
 
     virtual antlrcpp::Any visitFile(SmallParser::FileContext *ctx) override {
         //antlrcpp::Any result = visitChildren(ctx);
-        std::vector<std::shared_ptr<statementNode>> a = visitStmts(ctx->stmts());
-        //std::cout << a.size() << std::endl;
-        /*
-        if(auto x = dynamic_cast<literalNode*>(dynamic_cast<additionNode*>(a[0]->value)->getLeft())){
-            std::cout << "left literal = " << x->value << std::endl;
-        }
-        if(auto x = dynamic_cast<additionNode*>(a[0]->value)){
-            std::cout << "operator = " << x->getOperator() << std::endl;
-        }
-        if(auto x = dynamic_cast<literalNode*>(dynamic_cast<additionNode*>(a[0]->value)->getRight())){
-            std::cout << "right literal = " << x->value << std::endl;
-        }
-         */
+        std::shared_ptr<statementNode> a = visitStmts(ctx->stmts());
 
         std::cout << "\n\n\nwriting out what we have:\n";
-        for(std::shared_ptr<node> x : a){
-            WriteType(x);
-            std::cout << "\nwriting next node:\n";
-        }
+  //      WriteType(a);
         //std::cout << dynamic_cast<literalNode*>(dynamic_cast<additionNode*>(a[0]->value)->getLeft())->value << std::endl;
         //a->setNextStatement(firstStatement);
         std::cout << "File " << order++ << std::endl;
         return 0;
     }
 
-        virtual antlrcpp::Any visitStmts(SmallParser::StmtsContext *ctx) override {
-            std::vector<std::shared_ptr<statementNode>> nodes;
-            if(ctx->stmts()) {
-                std::shared_ptr<statementNode> intermediate = visitStmt(ctx->stmt());
-                nodes.push_back( intermediate);
-                if (prevStatement) {
-                    prevStatement->setNextStatement(intermediate);
-                }
-                prevStatement = intermediate;
-                std::vector<std::shared_ptr<statementNode>> res = visitStmts(ctx->stmts());
-                for (auto n : res)
-                    nodes.emplace_back(n);
-                return nodes;
-            }
-
-            //auto result = visitChildren(ctx);
-            std::cout << "Stmts " << order++ << std::endl;
-            return nodes;
-            //return result;
-        }
-
-        virtual antlrcpp::Any visitStmt(SmallParser::StmtContext *ctx) override {
-            //auto result = visitChildren(ctx);
-                //std::string name = ctx->NAME()->getText();
-            if (ctx->assign()) {
-                std::shared_ptr<statementNode> stmt =  std::move(visitAssign(ctx->assign()));
-            if (prevStatement) {
-                prevStatement->setNextStatement(stmt);
-            }
-            prevStatement = stmt;
-            return stmt;
-            //return declarationNode(name, visit(ctx->assign()));
-            } else {
-                // gem symbol i symbol table
-                std::cout << "Dcl " << order++ << " " << ctx->getText() << std::endl;
-                //return declarationNode(result.);
-                //return node();
-                //return result;
-            }
-        }
-        /*
     virtual antlrcpp::Any visitStmts(SmallParser::StmtsContext *ctx) override {
-        auto result = visitChildren(ctx);
-        std::cout << "Stmts " << order++ << std::endl;
-        return result;
+        if(ctx->stmts()) {
+            sequentialNode node;
+            std::shared_ptr<statementNode> intermediate = visitStmt(ctx->stmt());
+            node.setBody(intermediate);
+            std::shared_ptr<statementNode> next_seq = visitStmts(ctx->stmts());
+            node.setNext(next_seq);
+            std::shared_ptr<statementNode> result = std::make_shared<sequentialNode>(node);
+            return result;
+        } else {
+            std::shared_ptr<statementNode> result = visitStmt(ctx->stmt());
+            return result;
+        }
     }
 
     virtual antlrcpp::Any visitStmt(SmallParser::StmtContext *ctx) override {
-        auto result = visitChildren(ctx);
-
-        std::cout << "stmt " << order++ << " " << ctx->getText() << std::endl;
-        return result;
+        //auto result = visitChildren(ctx);
+            //std::string name = ctx->NAME()->getText();
+        if (ctx->assign()) {
+            std::shared_ptr<statementNode> stmt =  visitAssign(ctx->assign());
+        if (prevStatement) {
+            prevStatement->setNextStatement(stmt);
+        }
+            prevStatement = stmt;
+            return stmt;
+        } else if (ctx->write()) {
+            std::shared_ptr<statementNode> stmt = visitWrite(ctx->write());
+            return stmt;
+        } else if (ctx->read()) {
+            std::shared_ptr<statementNode> stmt = visitRead(ctx->read());
+            return stmt;
+        } else {
+            // gem symbol i symbol table
+            std::cout << "Dcl " << order++ << " " << ctx->getText() << std::endl;
+            //return declarationNode(result.);
+            //return node();
+            //return result;
+        }
     }
-*/
+
     virtual antlrcpp::Any visitAssign(SmallParser::AssignContext *ctx) override {
         //std::cout << "assignment" << ctx->depth() << "\n";
         //auto result = visitChildren(ctx);
         std::cout << "Assign " << order++  << std::endl;
         std::shared_ptr<expressionNode> node = visitExpr(ctx->expr());
-        std::shared_ptr<assignNode> res = std::make_shared<assignNode>(assignNode(ctx->NAME()->getText(), node));
-        return res;
+        assignNode assNode = assignNode(ctx->NAME()->getText(), node);
+        std::shared_ptr<statementNode> a = std::make_shared<assignNode>(assNode);
+        auto pair = symboltables.insert({ctx->NAME()->getText(), symbol(ctx->NAME()->getText(), node->getType())});
+        if(!pair.second && pair.first->second.type != node->getType())
+            pair.first->second.type = errorType;
+//        std::shared_ptr<assignNode> res = std::make_shared<assignNode>(assignNode(ctx->NAME()->getText(), node));
+        return a;
         //return result;
     }
 
@@ -155,15 +131,24 @@ public:
     }
 
     virtual antlrcpp::Any visitRead(SmallParser::ReadContext *ctx) override {
-        auto result = visitChildren(ctx);
-        std::cout << "read " << order++ << std::endl;
-        return result;
+        auto symbol = symboltables.find(ctx->NAME()->getText());
+        std::string name = ctx->NAME()->getText();
+        Type type = errorType;
+        if (symbol != symboltables.end() && symbol->second.type != errorType) {
+            type = symbol->second.type;
+            name = symbol->second.name;
+        }
+        std::shared_ptr<variableNode> nameNode = std::make_shared<variableNode>(variableNode(type, name));
+        readNode node = readNode(nameNode);
+        std::shared_ptr<statementNode> res = std::make_shared<readNode>(node);
+        return res;
     }
 
     virtual antlrcpp::Any visitWrite(SmallParser::WriteContext *ctx) override {
-        auto result = visitChildren(ctx);
-        std::cout << "write " << order++ << std::endl;
-        return result;
+        std::shared_ptr<expressionNode> expr = visitExpr(ctx->expr());
+        writeNode wNode = writeNode(expr);
+        std::shared_ptr<statementNode> node = std::make_shared<writeNode>(wNode);
+        return node;
     }
 
     virtual antlrcpp::Any visitExpr(SmallParser::ExprContext *ctx) override {
@@ -193,6 +178,14 @@ public:
             prevStatement = p;
             if (!firstStatement) firstStatement = p;
             return p;
+        } else if (ctx->NAME()) {
+            auto pair = symboltables.find(ctx->NAME()->getText());
+            variableNode node = (pair != symboltables.end())
+                ? variableNode(pair->second.type, pair->second.name)
+                : variableNode(errorType, ctx->NAME()->getText())
+                ;
+            std::shared_ptr<expressionNode> res = std::make_shared<variableNode>(node);
+            return res;
         }
         //auto result = visitChildren(ctx);
         std::cout << "Expression " << order++ << " " << ctx->getText() << std::endl;
@@ -224,10 +217,7 @@ public:
         WriteType(input.get());
     }
     void WriteType(node* input){
-        if(auto dcl = dynamic_cast<declarationNode*>(input)){
-            std::cout << "dcl" << std::endl;
-            WriteType(dcl->value);
-        } else if (auto add = dynamic_cast<additionNode*>(input)) {
+        if (auto add = dynamic_cast<additionNode*>(input)) {
             std::cout << "add" << std::endl;
             WriteType(add->getLeft());
             std::cout << add->getOperator() << std::endl;
@@ -257,8 +247,17 @@ public:
         } else if (auto expr = dynamic_cast<expressionNode*>(input)) {
             std::cout << "expr" << std::endl;
             WriteType(expr);
-        } else if (auto stmt = dynamic_cast<statementNode*>(input)) {
+        } else if (auto ass = dynamic_cast<assignNode*>(input)) {
+            std::cout << "assign" << std::endl;
+            std::cout << ass->getName() << std::endl;
+            WriteType(ass->getExpr());
+        }
+
+        else if (auto stmt = dynamic_cast<statementNode*>(input)) {
             std::cout << "stmt" << std::endl;
+            std::cout << stmt->getNodeType() << std::endl;
+            std::cout << Assign;
+            WriteType(stmt);
         }
 
         else {

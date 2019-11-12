@@ -12,7 +12,7 @@ class symbol {
 public:
     Type type;
     std::string name;
-    symbol(const std::string &name) : name(name) {type = ignoreType;};
+    symbol(std::string _name, const Type _type) : name{_name}, type{_type} {};
 
     bool operator<(const symbol& other) const {return name < other.name;}
     bool operator==(const symbol& other) const {return name == other.name;}
