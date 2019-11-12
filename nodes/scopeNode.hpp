@@ -6,7 +6,6 @@
 #define ANTLR_CPP_TUTORIAL_SCOPENODE_H
 
 #include <nodes/node.hpp>
-#include <nodes/declarationNode.hpp>
 
 class scopeNode : public node{
 public:
@@ -15,7 +14,6 @@ public:
     };
 
     std::shared_ptr<node> next_statement;
-    std::vector<std::shared_ptr<declarationNode>> dcls;
 
 };
 

@@ -5,8 +5,8 @@
 #ifndef ANTLR_CPP_TUTORIAL_LITERALNODE_HPP
 #define ANTLR_CPP_TUTORIAL_LITERALNODE_HPP
 
-
 #include <nodes/expressions/expressionNode.hpp>
+
 class literalNode : public expressionNode {
 public:
     literalNode(int a) {

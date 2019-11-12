@@ -7,13 +7,10 @@
 
 
 
-#include "expressions/expressionNodes.hpp"
+#include <nodes/expressions/expressionNodes.hpp>
+#include <nodes/statements/statementNodes.hpp>
 #include "literalNode.hpp"
 #include "variableNode.hpp"
-#include "functionDeclarationNode.hpp"
-#include "declarationNode.hpp"
 #include "scopeNode.hpp"
-#include "statementNode.hpp"
-#include "assignNode.hpp"
 
 #endif //ANTLR_CPP_TUTORIAL_NODES_HPP

@@ -50,7 +50,7 @@ set(visitor_SRC
         ${PROJECT_SOURCE_DIR}/main.cpp
         ${PROJECT_SOURCE_DIR}/DST.cpp
         ${visitor-GENERATED_SRC}
-        scope.hpp symbol.hpp nodes/nodes.hpp decoratedTree.hpp nodes/statementNode.hpp nodes/assignNode.hpp)
+        scope.hpp symbol.hpp nodes/nodes.hpp decoratedTree.hpp nodes/statements/statementNode.hpp nodes/statements/assignNode.hpp)
 
 if (NOT CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     set (flags_1 "-Wno-overloaded-virtual")

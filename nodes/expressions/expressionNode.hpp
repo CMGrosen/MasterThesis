@@ -1,12 +1,10 @@
 //
 // Created by hu on 23/10/2019.
 //
-
-#include <nodes/node.hpp>
-
 #ifndef ANTLR_CPP_TUTORIAL_EXPRESSIONNODE_HPP
 #define ANTLR_CPP_TUTORIAL_EXPRESSIONNODE_HPP
 
+#include <nodes/node.hpp>
 
 class expressionNode : public node {
 public:
