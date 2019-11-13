@@ -7,15 +7,15 @@
 
 #include <string>
 #include "nodes/nodes.hpp"
+#include <symengine/Constraint.hpp>
 
 class symbol {
 public:
     Type type;
-    std::string name;
-    symbol(std::string _name, const Type _type) : name{_name}, type{_type} {};
+    constraint cons = constraint();
 
-    bool operator<(const symbol& other) const {return name < other.name;}
-    bool operator==(const symbol& other) const {return name == other.name;}
+    symbol(const Type _type) : type{_type} {};
+
 };
 
 #endif //ANTLR_CPP_TUTORIAL_SYMBOL_HPP

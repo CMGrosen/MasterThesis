@@ -5,7 +5,7 @@
 #ifndef ANTLR_CPP_TUTORIAL_NODE_HPP
 #define ANTLR_CPP_TUTORIAL_NODE_HPP
 
-enum Type { intType, boolType, arrayType, okType, errorType, ignoreType};
+enum Type { intType, boolType, arrayIntType, arrayBoolType, okType, errorType, ignoreType};
 
 
 class node {

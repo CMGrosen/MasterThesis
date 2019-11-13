@@ -10,6 +10,7 @@
 #include <nodes/expressions/expressionNodes.hpp>
 #include <nodes/statements/statementNodes.hpp>
 #include "literalNode.hpp"
+#include "arrayLiteralNode.hpp"
 #include "variableNode.hpp"
 #include "scopeNode.hpp"
 

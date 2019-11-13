@@ -85,7 +85,30 @@ public:
         std::shared_ptr<expressionNode> node = visitExpr(ctx->expr());
         assignNode assNode = assignNode(ctx->NAME()->getText(), node);
         std::shared_ptr<statementNode> a = std::make_shared<assignNode>(assNode);
-        auto pair = symboltables.insert({ctx->NAME()->getText(), symbol(ctx->NAME()->getText(), node->getType())});
+        auto pair = symboltables.insert({ctx->NAME()->getText(), symbol(node->getType())});
+
+        if (node->getType() == arrayIntType || node->getType() == arrayBoolType){
+            if(auto arrLit = dynamic_cast<arrayLiteralNode*>(node.get())) {
+                Type t = arrLit->value[0]->getType();
+                int count = arrLit->value.size();
+                for (int i = 0; i < count; ++i) {
+                    symbol temp = symbol(t);
+                    auto p = symboltables.insert({ctx->NAME()->getText() + "[" + std::to_string(i) + "]", temp});
+                    if(!p.second && p.first->second.type != t) {
+                        pair.first->second.type = errorType;
+                    }
+                }
+                if(!pair.second) {
+                    auto size = arrLit->value.size();
+                    if (symboltables.find(ctx->NAME()->getText() + "[" + std::to_string(size-1) + "]") == symboltables.end() ||
+                       (symboltables.find(ctx->NAME()->getText() + "[" + std::to_string(size) + "]") != symboltables.end())) {
+                        //If this variable already exists and is assigned to a new arrayLiteral that are not the same size as the one previously assigned:
+                        pair.first->second.type = errorType;
+                    }
+                }
+            }
+        }
+
         if(!pair.second && pair.first->second.type != node->getType())
             pair.first->second.type = errorType;
 //        std::shared_ptr<assignNode> res = std::make_shared<assignNode>(assignNode(ctx->NAME()->getText(), node));
@@ -136,7 +159,6 @@ public:
         Type type = errorType;
         if (symbol != symboltables.end() && symbol->second.type != errorType) {
             type = symbol->second.type;
-            name = symbol->second.name;
         }
         std::shared_ptr<variableNode> nameNode = std::make_shared<variableNode>(variableNode(type, name));
         readNode node = readNode(nameNode);
@@ -171,19 +193,23 @@ public:
             return binary_expression(ctx, '%');
         } else if (ctx->literal()){
             std::cout << "literal " << order++ << " " << ctx->getText() << std::endl;
-            std::shared_ptr<expressionNode> p = (std::shared_ptr<expressionNode>)std::make_shared<literalNode>(literalNode(std::stoi(ctx->literal()->getText())));
+            std::shared_ptr<expressionNode> p = (std::shared_ptr<expressionNode>)std::make_shared<literalNode>(literalNode(ctx->literal()->getText()));
             if (prevStatement) {
                 prevStatement->setNextStatement(p);
             }
             prevStatement = p;
             if (!firstStatement) firstStatement = p;
             return p;
+        } else if (ctx->arrayLiteral()) {
+            std::cout << "arrayliteral";
+            std::shared_ptr<expressionNode> exp = visitArrayLiteral(ctx->arrayLiteral());
+            return exp;
         } else if (ctx->NAME()) {
             auto pair = symboltables.find(ctx->NAME()->getText());
             variableNode node = (pair != symboltables.end())
-                ? variableNode(pair->second.type, pair->second.name)
-                : variableNode(errorType, ctx->NAME()->getText())
-                ;
+                    ? variableNode(pair->second.type, ctx->NAME()->getText())
+                    : variableNode(errorType, ctx->NAME()->getText())
+                    ;
             std::shared_ptr<expressionNode> res = std::make_shared<variableNode>(node);
             return res;
         }
@@ -206,10 +232,12 @@ public:
     }
 
     virtual antlrcpp::Any visitArrayLiteral(SmallParser::ArrayLiteralContext *ctx) override {
-        std::vector<expressionNode*> res;
-        for (int i = 0; i < ctx->expr().size(); ++i) {
-            res.push_back(visitExpr(ctx->expr(i)));
+        std::vector<std::shared_ptr<expressionNode>> inter;
+        auto a = ctx->expr();
+        for (auto i : ctx->expr()) {
+            inter.push_back(visitExpr(i));
         }
+        std::shared_ptr<expressionNode> res = std::make_shared<arrayLiteralNode>(arrayLiteralNode(inter));
         return res;
     }
 
