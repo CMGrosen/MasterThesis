@@ -12,7 +12,7 @@ class moduloNode : public binaryExpressionNode {
 public:
     moduloNode(Type _type, std::shared_ptr<expressionNode> _l, std::shared_ptr<expressionNode> _r) {
         type = _type;
-        _operator = "%";
+        _operator = MOD;
         left = std::move(_l);
         right = std::move(_r);
     };

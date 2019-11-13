@@ -10,20 +10,9 @@
  */
 class  DST : public SmallVisitor {
 private:
-    //node startNode;
-    std::vector<node> currentnodes;
-//    std::unordered_map<std::string, functionDeclarationNode> functionTable;
-    int scopelvl = 0;
     int threadnumber = 0;
     int order = 0;
-    std::shared_ptr<node> firstStatement;
-    std::shared_ptr<node> prevStatement;
 public:
-/*
-    node getStartNode(){
-        return startNode;
-    }
-*/
     std::unordered_map<std::string, symbol> symboltables;
 
     virtual antlrcpp::Any visitFile(SmallParser::FileContext *ctx) override {
@@ -58,10 +47,6 @@ public:
             //std::string name = ctx->NAME()->getText();
         if (ctx->assign()) {
             std::shared_ptr<statementNode> stmt =  visitAssign(ctx->assign());
-        if (prevStatement) {
-            prevStatement->setNextStatement(stmt);
-        }
-            prevStatement = stmt;
             return stmt;
         } else if (ctx->write()) {
             std::shared_ptr<statementNode> stmt = visitWrite(ctx->write());
@@ -146,10 +131,6 @@ public:
         std::vector<std::shared_ptr<node>> dcls = visitStmts(ctx->stmts());
         std::cout << "scope" << std::endl;
         std::shared_ptr<scopeNode> result = std::make_shared<scopeNode>(scopeNode(Type::okType));
-        if (prevStatement) {
-            prevStatement->setNextStatement(result);
-        }
-        prevStatement = result;
         return result;
     }
 
@@ -178,27 +159,22 @@ public:
         << " " << ctx->OP_DIV() << " " << ctx->OP_MOD() << " " << ctx->literal() << "\n";
         if(ctx->OP_ADD()) {
             std::cout << "add " << order++ << " " << ctx->getText() << std::endl;
-            return binary_expression(ctx, '+');
+            return binary_expression(ctx, PLUS);
         } else if (ctx->OP_SUB()){
             std::cout << "sub" << order++ << " " << ctx->getText() << std::endl;
-            return binary_expression(ctx, '-');
+            return binary_expression(ctx, MINUS);
         } else if (ctx->OP_MUL()) {
             std::cout << "mul" << order++ << " " << ctx->getText() << std::endl;
-            return binary_expression(ctx, '*');
+            return binary_expression(ctx, MULT);
         } else if (ctx->OP_DIV()) {
             std::cout << "div" << order++ << " " << ctx->getText() << std::endl;
-            return binary_expression(ctx, '/');
+            return binary_expression(ctx, DIV);
         } else if (ctx->OP_MOD()) {
             std::cout << "mod" << order++ << " " << ctx->getText() << std::endl;
-            return binary_expression(ctx, '%');
+            return binary_expression(ctx, MOD);
         } else if (ctx->literal()){
             std::cout << "literal " << order++ << " " << ctx->getText() << std::endl;
             std::shared_ptr<expressionNode> p = (std::shared_ptr<expressionNode>)std::make_shared<literalNode>(literalNode(ctx->literal()->getText()));
-            if (prevStatement) {
-                prevStatement->setNextStatement(p);
-            }
-            prevStatement = p;
-            if (!firstStatement) firstStatement = p;
             return p;
         } else if (ctx->arrayLiteral()) {
             std::cout << "arrayliteral";
@@ -302,17 +278,10 @@ public:
             std::cout << "failure" << std::endl;
         }
     }
-    std::shared_ptr<expressionNode> binary_expression (SmallParser::ExprContext *ctx, char expressionType) {
+
+    std::shared_ptr<expressionNode> binary_expression (SmallParser::ExprContext *ctx, op expressionType) {
         std::shared_ptr<expressionNode> l = (visitExpr(ctx->left));
-        if (prevStatement) {
-            prevStatement->setNextStatement(l);
-        }
-        prevStatement = l;
         std::shared_ptr<expressionNode> r = (visitExpr(ctx->right));
-        if (prevStatement) {
-            prevStatement->setNextStatement(r);
-        }
-        prevStatement = r;
         Type t;
         if (l->getType() == r->getType()) {
             t = l->getType();
@@ -321,31 +290,25 @@ public:
         }
         std::shared_ptr<expressionNode> p;
         switch (expressionType) {
-            case '+':
+            case PLUS:
                 p =  (std::shared_ptr<expressionNode>)std::make_shared<additionNode>(additionNode(t,l,r));
                 break;
-            case '-':
+            case MINUS:
                 p = (std::shared_ptr<expressionNode>)std::make_shared<subtractionNode>(subtractionNode(t,l,r));
                 break;
-            case '*':
+            case MULT:
                 p =  (std::shared_ptr<expressionNode>)std::make_shared<multiplicationNode>(multiplicationNode(t,l,r));
                 break;
-            case '/':
+            case DIV:
                 p =  (std::shared_ptr<expressionNode>)std::make_shared<divisionNode>(divisionNode(t,l,r));
                 break;
-            case '%':
+            case MOD:
                 p =  (std::shared_ptr<expressionNode>)std::make_shared<moduloNode>(moduloNode(t,l,r));
                 break;
             default:
                 p =  nullptr;
                 break;
         }
-        if (prevStatement) {
-            prevStatement->setNextStatement(p);
-        }
-        prevStatement = p;
-        //p->setNextStatement(nextStatement);
-        //nextStatement = p;
         return p;
     }
 };

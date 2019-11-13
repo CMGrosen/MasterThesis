@@ -6,11 +6,13 @@
 
 #include <nodes/node.hpp>
 
+enum op { PLUS, MINUS, MULT, DIV, MOD, NOT, AND, OR, LE, LEQ, GE, GEQ, EQ, NEQ, NEG};
+
 class expressionNode : public node {
 public:
-    virtual std::string getOperator() { return _operator;}
+    virtual op getOperator() { return _operator;}
 
 protected:
-    std::string _operator;
+    op _operator;
 };
 #endif //ANTLR_CPP_TUTORIAL_EXPRESSIONNODE_HPP

@@ -12,7 +12,7 @@ class multiplicationNode : public binaryExpressionNode {
 public:
     multiplicationNode(Type _type, std::shared_ptr<expressionNode> _l, std::shared_ptr<expressionNode> _r) {
         type = _type;
-        _operator = "*";
+        _operator = MULT;
         left = std::move(_l);
         right = std::move(_r);
     };
