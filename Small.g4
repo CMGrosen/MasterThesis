@@ -11,7 +11,6 @@ stmts :
 
 stmt :
     assign DELIMETER
-    | read
     | write
     | iter
     | ifs
@@ -56,6 +55,7 @@ expr :
     | left=expr op=OP_AND right=expr
     | left=expr op=OP_OR right=expr
     | literal
+    | read
     | NAME
     | arrayAccess
     | arrayLiteral

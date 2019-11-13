@@ -158,20 +158,31 @@ public:
         std::cout << ctx->OP_ADD() << " " << ctx->OP_SUB() << " " << ctx->OP_MUL()
         << " " << ctx->OP_DIV() << " " << ctx->OP_MOD() << " " << ctx->literal() << "\n";
         if(ctx->OP_ADD()) {
-            std::cout << "add " << order++ << " " << ctx->getText() << std::endl;
             return binary_expression(ctx, PLUS);
-        } else if (ctx->OP_SUB()){
-            std::cout << "sub" << order++ << " " << ctx->getText() << std::endl;
+        } else if (ctx->OP_SUB() && ctx->left){
             return binary_expression(ctx, MINUS);
         } else if (ctx->OP_MUL()) {
-            std::cout << "mul" << order++ << " " << ctx->getText() << std::endl;
             return binary_expression(ctx, MULT);
         } else if (ctx->OP_DIV()) {
-            std::cout << "div" << order++ << " " << ctx->getText() << std::endl;
             return binary_expression(ctx, DIV);
         } else if (ctx->OP_MOD()) {
-            std::cout << "mod" << order++ << " " << ctx->getText() << std::endl;
             return binary_expression(ctx, MOD);
+        } else if (ctx->OP_LEQ()) {
+            return binary_expression(ctx, LEQ);
+        } else if (ctx->OP_LT()) {
+            return binary_expression(ctx, LE);
+        }  else if (ctx->OP_GT()) {
+            return binary_expression(ctx, GE);
+        }  else if (ctx->OP_GEQ()) {
+            return binary_expression(ctx, GEQ);
+        }  else if (ctx->OP_EQ()) {
+            return binary_expression(ctx, EQ);
+        }  else if (ctx->OP_NEQ()) {
+            return binary_expression(ctx, NEQ);
+        }  else if (ctx->OP_AND()) {
+            return binary_expression(ctx, AND);
+        }  else if (ctx->OP_OR()) {
+            return binary_expression(ctx, OR);
         } else if (ctx->literal()){
             std::cout << "literal " << order++ << " " << ctx->getText() << std::endl;
             std::shared_ptr<expressionNode> p = (std::shared_ptr<expressionNode>)std::make_shared<literalNode>(literalNode(ctx->literal()->getText()));
@@ -227,6 +238,8 @@ public:
         return res;
     }
 
+
+/*
     void WriteType(const std::shared_ptr<node> input){
         WriteType(input.get());
     }
@@ -278,6 +291,8 @@ public:
             std::cout << "failure" << std::endl;
         }
     }
+*/
+
 
     std::shared_ptr<expressionNode> binary_expression (SmallParser::ExprContext *ctx, op expressionType) {
         std::shared_ptr<expressionNode> l = (visitExpr(ctx->left));
@@ -288,27 +303,50 @@ public:
         } else {
             t = errorType;
         }
-        std::shared_ptr<expressionNode> p;
+
         switch (expressionType) {
             case PLUS:
-                p =  (std::shared_ptr<expressionNode>)std::make_shared<additionNode>(additionNode(t,l,r));
-                break;
             case MINUS:
-                p = (std::shared_ptr<expressionNode>)std::make_shared<subtractionNode>(subtractionNode(t,l,r));
-                break;
             case MULT:
-                p =  (std::shared_ptr<expressionNode>)std::make_shared<multiplicationNode>(multiplicationNode(t,l,r));
-                break;
             case DIV:
-                p =  (std::shared_ptr<expressionNode>)std::make_shared<divisionNode>(divisionNode(t,l,r));
-                break;
             case MOD:
-                p =  (std::shared_ptr<expressionNode>)std::make_shared<moduloNode>(moduloNode(t,l,r));
+                if (l->getType() == r->getType() && l->getType() == intType) {
+                    t = l->getType();
+                } else {
+                    t = errorType;
+                }
                 break;
+            case AND:
+            case OR:
+                if (l->getType() == r->getType() && l->getType() == boolType) {
+                    t = l->getType();
+                } else {
+                    t = errorType;
+                }
+                break;
+            case LE:
+            case LEQ:
+            case GE:
+            case GEQ:
+                if (l->getType() == r->getType() && l->getType() == intType) {
+                    t = boolType;
+                } else {
+                    t = errorType;
+                }
+                break;
+            case EQ:
+            case NEQ:
+                if (l->getType() == r->getType() && (l->getType() == intType || l->getType() == boolType)) {
+                    t = l->getType();
+                } else {
+                    t = errorType;
+                }
+
             default:
-                p =  nullptr;
+                t = errorType;
                 break;
         }
+        std::shared_ptr<expressionNode> p = std::make_shared<binaryExpressionNode>(binaryExpressionNode(t, expressionType, l,r));
         return p;
     }
 };
