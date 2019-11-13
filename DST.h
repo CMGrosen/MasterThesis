@@ -204,6 +204,9 @@ public:
             std::cout << "arrayliteral";
             std::shared_ptr<expressionNode> exp = visitArrayLiteral(ctx->arrayLiteral());
             return exp;
+        } else if (ctx->arrayAccess()) {
+            std::shared_ptr<expressionNode> exp = visitArrayAccess(ctx->arrayAccess());
+            return exp;
         } else if (ctx->NAME()) {
             auto pair = symboltables.find(ctx->NAME()->getText());
             variableNode node = (pair != symboltables.end())
@@ -219,9 +222,16 @@ public:
     }
 
     virtual antlrcpp::Any visitArrayAccess(SmallParser::ArrayAccessContext *ctx) override {
-        auto result = visitChildren(ctx);
-        std::cout << "array " << order++ << std::endl;
-        return result;
+        std::shared_ptr<expressionNode> node = visitExpr(ctx->expr());
+        std::shared_ptr<expressionNode> res = std::make_shared<arrayAccessNode>(arrayAccessNode(node));
+        auto it = symboltables.find(ctx->NAME()->getText() + "[0]");
+        if (node->getType() != intType || it == symboltables.end()) {
+            if (it->second.type == arrayIntType || it->second.type == arrayBoolType) {}
+            else res->setType(errorType);
+        } else {
+            res->setType(it->second.type);
+        }
+        return res;
     }
 
     virtual antlrcpp::Any visitLiteral(SmallParser::LiteralContext *ctx) override {

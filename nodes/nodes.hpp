@@ -11,6 +11,7 @@
 #include <nodes/statements/statementNodes.hpp>
 #include "literalNode.hpp"
 #include "arrayLiteralNode.hpp"
+#include "arrayAccessNode.hpp"
 #include "variableNode.hpp"
 #include "scopeNode.hpp"
 
