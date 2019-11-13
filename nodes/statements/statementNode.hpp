@@ -9,7 +9,7 @@
 
 class statementNode : public node {
 public:
-    virtual uint getNodeType();
+    virtual uint getNodeType() = 0;
 };
 
 #endif //ANTLR_CPP_TUTORIAL_STATEMENTNODE_HPP
