@@ -11,17 +11,18 @@
 
 class sequentialNode : public statementNode {
 public:
-
-    void setBody( std::shared_ptr<statementNode> _body ){ body = _body; }
-    void setNext(std::shared_ptr<statementNode> _next) {next = _next; }
-    std::shared_ptr<statementNode> getBody() { return body; }
-    std::shared_ptr<statementNode> getNext() { return next; }
+    sequentialNode(std::shared_ptr<statementNode> body, std::shared_ptr<statementNode> next) : _body{std::move(body)}, _next{std::move(next)} {
+        if (_body->getType() == okType && _next->getType() == okType) setType(okType);
+        else setType(errorType);
+    };
+    const statementNode* getBody() { return _body.get(); }
+    const statementNode* getNext() { return _next.get(); }
 
     NodeType getNodeType() override { return Sequential; }
 
 private:
-    std::shared_ptr<statementNode> body;
-    std::shared_ptr<statementNode> next;
+    std::shared_ptr<statementNode> _body;
+    std::shared_ptr<statementNode> _next;
 };
 
 #endif //ANTLR_CPP_TUTORIAL_SEQUENTIALNODE_HPP

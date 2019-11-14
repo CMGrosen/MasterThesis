@@ -11,10 +11,14 @@
 
 class assignNode : public statementNode {
 public:
-    assignNode (std::string name, std::shared_ptr<expressionNode> n) : name{std::move(name)}, expr{std::move(n)} {};
+    assignNode (Type t, std::string name, std::shared_ptr<expressionNode> n) : name{std::move(name)}, expr{std::move(n)} {
+        setType(t);
+        setNodeType(Assign);
+    };
     NodeType getNodeType() override { return Assign; }
     std::string getName() {return name;}
     expressionNode* getExpr() {return expr.get();}
+
 private:
     std::string name;
     std::shared_ptr<expressionNode> expr;

@@ -8,6 +8,10 @@
 
 class arrayLiteralNode : public expressionNode {
 public:
+    arrayLiteralNode(Type t, std::vector<std::shared_ptr<expressionNode>> a) : value{std::move(a)} {
+        setType(t);
+        setNodeType(ArrayLiteral);
+    };
     arrayLiteralNode(std::vector<std::shared_ptr<expressionNode>> a) : value{std::move(a)} {
         bool wellTyped = true;
         Type t = value[0]->getType();
@@ -23,6 +27,7 @@ public:
                 else type = arrayBoolType;
             } else type = errorType;
         } else type = errorType;
+        setNodeType(ArrayLiteral);
     };
 
     std::vector<std::shared_ptr<expressionNode>> value;

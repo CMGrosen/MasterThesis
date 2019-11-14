@@ -12,6 +12,7 @@ public:
     variableNode(Type _type, std::string n) {
         type = _type;
         name = std::move(n);
+        setNodeType(Variable);
     };
     std::string name;
 };

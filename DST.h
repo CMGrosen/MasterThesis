@@ -29,12 +29,9 @@ public:
 
     virtual antlrcpp::Any visitStmts(SmallParser::StmtsContext *ctx) override {
         if(ctx->stmts()) {
-            sequentialNode node;
-            std::shared_ptr<statementNode> intermediate = visitStmt(ctx->stmt());
-            node.setBody(intermediate);
-            std::shared_ptr<statementNode> next_seq = visitStmts(ctx->stmts());
-            node.setNext(next_seq);
-            std::shared_ptr<statementNode> result = std::make_shared<sequentialNode>(node);
+            std::shared_ptr<statementNode> body = visitStmt(ctx->stmt());
+            std::shared_ptr<statementNode> next = visitStmts(ctx->stmts());
+            std::shared_ptr<statementNode> result = std::make_shared<sequentialNode>(sequentialNode(body, next));
             return result;
         } else {
             std::shared_ptr<statementNode> result = visitStmt(ctx->stmt());
@@ -61,12 +58,7 @@ public:
     }
 
     virtual antlrcpp::Any visitAssign(SmallParser::AssignContext *ctx) override {
-        //std::cout << "assignment" << ctx->depth() << "\n";
-        //auto result = visitChildren(ctx);
-        std::cout << "Assign " << order++  << std::endl;
         std::shared_ptr<expressionNode> node = visitExpr(ctx->expr());
-        assignNode assNode = assignNode(ctx->NAME()->getText(), node);
-        std::shared_ptr<statementNode> a = std::make_shared<assignNode>(assNode);
         auto pair = symboltables.insert({ctx->NAME()->getText(), constraint(node->getType())});
 
         if (node->getType() == arrayIntType || node->getType() == arrayBoolType){
@@ -94,6 +86,9 @@ public:
         if(!pair.second && pair.first->second.type != node->getType())
             pair.first->second.type = errorType;
 //        std::shared_ptr<assignNode> res = std::make_shared<assignNode>(assignNode(ctx->NAME()->getText(), node));
+
+        assignNode assNode = assignNode(pair.first->second.type == errorType ? errorType : okType, ctx->NAME()->getText(), node);
+        std::shared_ptr<statementNode> a = std::make_shared<assignNode>(assNode);
         return a;
         //return result;
     }
@@ -147,14 +142,17 @@ public:
 
     virtual antlrcpp::Any visitWrite(SmallParser::WriteContext *ctx) override {
         std::shared_ptr<expressionNode> expr = visitExpr(ctx->expr());
-        writeNode wNode = writeNode(expr);
-        std::shared_ptr<statementNode> node = std::make_shared<writeNode>(wNode);
-        return node;
+        auto symbol = symboltables.find(ctx->NAME()->getText());
+        Type t = intType;
+        if (symbol == symboltables.end() || symbol->second.type != intType) {
+            t = errorType;
+        }
+        std::shared_ptr<variableNode> var = std::make_shared<variableNode>(variableNode(t, ctx->NAME()->getText()));
+        std::shared_ptr<statementNode> res = std::make_shared<writeNode>(writeNode(var, expr));
+        return res;
     }
 
     virtual antlrcpp::Any visitExpr(SmallParser::ExprContext *ctx) override {
-        std::cout << ctx->OP_ADD() << " " << ctx->OP_SUB() << " " << ctx->OP_MUL()
-        << " " << ctx->OP_DIV() << " " << ctx->OP_MOD() << " " << ctx->literal() << "\n";
         if (ctx->LPAREN()) {
             return visitExpr(ctx->expr(0));
         } else if (ctx->OP_ADD()) {
@@ -198,7 +196,6 @@ public:
             std::shared_ptr<expressionNode> res = std::make_shared<unaryExpressionNode>(unaryExpressionNode(t, NOT, node));
             return res;
         } else if (ctx->literal()){
-            std::cout << "literal " << order++ << " " << ctx->getText() << std::endl;
             std::shared_ptr<expressionNode> p = (std::shared_ptr<expressionNode>)std::make_shared<literalNode>(literalNode(ctx->literal()->getText()));
             return p;
         } else if (ctx->arrayLiteral()) {
@@ -226,14 +223,16 @@ public:
 
     virtual antlrcpp::Any visitArrayAccess(SmallParser::ArrayAccessContext *ctx) override {
         std::shared_ptr<expressionNode> node = visitExpr(ctx->expr());
-        std::shared_ptr<expressionNode> res = std::make_shared<arrayAccessNode>(arrayAccessNode(node));
-        auto it = symboltables.find(ctx->NAME()->getText() + "[0]");
+        auto it = symboltables.find(ctx->NAME()->getText());
+        Type t;
         if (node->getType() != intType || it == symboltables.end()) {
-            if (it->second.type == arrayIntType || it->second.type == arrayBoolType) {}
-            else res->setType(errorType);
+            t = errorType;
+        } else if (it->second.type == arrayIntType) {
+            t = intType;
         } else {
-            res->setType(it->second.type);
+            t = boolType;
         }
+        std::shared_ptr<expressionNode> res = std::make_shared<arrayAccessNode>(arrayAccessNode(t, node));
         return res;
     }
 
@@ -353,11 +352,11 @@ public:
             case EQ:
             case NEQ:
                 if (l->getType() == r->getType() && (l->getType() == intType || l->getType() == boolType)) {
-                    t = l->getType();
+                    t = boolType;
                 } else {
                     t = errorType;
                 }
-
+                break;
             default:
                 t = errorType;
                 break;

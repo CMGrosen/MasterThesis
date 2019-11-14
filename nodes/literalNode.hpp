@@ -15,7 +15,12 @@ public:
         } else {
             setType(intType);
         }
+        setNodeType(Literal);
     };
+    literalNode(Type t, std::string a) : value{std::move(a)} {
+        setType(t);
+        setNodeType(Literal);
+    }
 
     std::string value;
 };

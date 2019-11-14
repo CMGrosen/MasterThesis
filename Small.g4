@@ -43,7 +43,7 @@ read :
     ;
 
 write :
-    WRITE LPAREN expr RPAREN
+    WRITE LPAREN NAME COMMA expr RPAREN
     ;
 
 expr :

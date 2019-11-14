@@ -9,7 +9,7 @@
 
 class arrayAccessNode : public expressionNode {
 public:
-    arrayAccessNode(std::shared_ptr<expressionNode> a) : value{std::move(a)} {};
+    arrayAccessNode(Type t, std::shared_ptr<expressionNode> a) : value{std::move(a)} {type = t;};
 
     std::shared_ptr<expressionNode> value;
 };

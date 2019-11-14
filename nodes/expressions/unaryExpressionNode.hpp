@@ -8,13 +8,15 @@
 class unaryExpressionNode : public expressionNode {
 public:
     unaryExpressionNode(Type _type, op _op, std::shared_ptr<expressionNode> _n) :
-            expr{std::move(_n)} {
+            expr{std::move(_n)}, _operator{_op} {
         type = _type;
-        _operator = _op;
+        setNodeType(UnaryExpression);
     }
     expressionNode* getExpression() {return expr.get();};
+    op getOperator() {return _operator;};
 private:
     std::shared_ptr<expressionNode> expr;
+    op _operator;
 };
 
 #endif //ANTLR_CPP_TUTORIAL_UNARYEXPRESSIONNODE_HPP
