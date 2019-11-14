@@ -159,8 +159,16 @@ public:
         << " " << ctx->OP_DIV() << " " << ctx->OP_MOD() << " " << ctx->literal() << "\n";
         if(ctx->OP_ADD()) {
             return binary_expression(ctx, PLUS);
-        } else if (ctx->OP_SUB() && ctx->left){
-            return binary_expression(ctx, MINUS);
+        } else if (ctx->OP_SUB()) {
+            if (ctx->left) {
+                return binary_expression(ctx, MINUS);
+            } else {
+                std::shared_ptr<expressionNode> node = visitExpr(ctx->expr(0));
+                Type t = intType;
+                if (node->getType() != intType) t = errorType;
+                std::shared_ptr<expressionNode> res = std::make_shared<unaryExpressionNode>(unaryExpressionNode(t, NEG, node));
+                return res;
+            }
         } else if (ctx->OP_MUL()) {
             return binary_expression(ctx, MULT);
         } else if (ctx->OP_DIV()) {
