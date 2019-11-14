@@ -3,34 +3,45 @@
 //
 #ifndef ANTLR_CPP_TUTORIAL_CONSTRAINT_HPP
 #define ANTLR_CPP_TUTORIAL_CONSTRAINT_HPP
-enum TyPe {boolean, number};
+
+#include <nodes/node.hpp>
+
 class constraint{
 public:
-    constraint( ){
+    constraint(Type _type){
+        type = _type;
         rule  = "";
         value = "";
     }
 
-    void setRule(std::string _rule){
-        if(rule != ""){
-            rule = rule + " && " + _rule;
-        } else {
-            rule = _rule;
-        }
-    }
-    void setValue(std::string val){
+    Type type;
+
+    void updateValue(std::string val){
         if(value != ""){
             value = value + val;
         } else {
             value = val;
         }
     }
-
-    std::string getRule(){
-        return rule;
+    void setValue(std::string val){
+        value = val;
     }
     std::string getValue(){
         return value;
+    }
+
+    void updateRule(std::string _rule){
+        if(rule != ""){
+            rule = rule + " && " + _rule;
+        } else {
+            rule = _rule;
+        }
+    }
+    void setRule(std::string _rule){
+        rule = _rule;
+    }
+    std::string getRule(){
+        return rule;
     }
 
 private:
