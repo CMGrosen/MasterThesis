@@ -6,9 +6,8 @@
 #define ANTLR_CPP_TUTORIAL_READNODE_HPP
 
 #include <nodes/variableNode.hpp>
-#include "statementNode.hpp"
 
-class readNode : public statementNode {
+class readNode : public expressionNode {
 public:
     readNode(std::shared_ptr<variableNode> node) : n{std::move(node)} {}
     NodeType getNodeType() { return Read; }

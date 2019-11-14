@@ -22,7 +22,8 @@ int main(int argc, const char* argv[]) {
     SmallParser parser(&tokens);
 
     SmallParser::FileContext* tree = parser.file();
-
+    if (parser.getNumberOfSyntaxErrors())
+        return 0;
     DST visitor;
     //int a = visitor.visitFile(tree);
     visitor.visitFile(tree);

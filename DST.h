@@ -51,9 +51,6 @@ public:
         } else if (ctx->write()) {
             std::shared_ptr<statementNode> stmt = visitWrite(ctx->write());
             return stmt;
-        } else if (ctx->read()) {
-            std::shared_ptr<statementNode> stmt = visitRead(ctx->read());
-            return stmt;
         } else {
             // gem symbol i symbol table
             std::cout << "Dcl " << order++ << " " << ctx->getText() << std::endl;
@@ -138,12 +135,13 @@ public:
         auto symbol = symboltables.find(ctx->NAME()->getText());
         std::string name = ctx->NAME()->getText();
         Type type = errorType;
-        if (symbol != symboltables.end() && symbol->second.type != errorType) {
-            type = symbol->second.type;
+        if (symbol != symboltables.end() && symbol->second.type == intType) {
+            type = intType;
         }
         std::shared_ptr<variableNode> nameNode = std::make_shared<variableNode>(variableNode(type, name));
         readNode node = readNode(nameNode);
-        std::shared_ptr<statementNode> res = std::make_shared<readNode>(node);
+        node.setType(type);
+        std::shared_ptr<expressionNode> res = std::make_shared<readNode>(node);
         return res;
     }
 
@@ -157,7 +155,9 @@ public:
     virtual antlrcpp::Any visitExpr(SmallParser::ExprContext *ctx) override {
         std::cout << ctx->OP_ADD() << " " << ctx->OP_SUB() << " " << ctx->OP_MUL()
         << " " << ctx->OP_DIV() << " " << ctx->OP_MOD() << " " << ctx->literal() << "\n";
-        if(ctx->OP_ADD()) {
+        if (ctx->LPAREN()) {
+            return visitExpr(ctx->expr(0));
+        } else if (ctx->OP_ADD()) {
             return binary_expression(ctx, PLUS);
         } else if (ctx->OP_SUB()) {
             if (ctx->left) {
@@ -179,18 +179,24 @@ public:
             return binary_expression(ctx, LEQ);
         } else if (ctx->OP_LT()) {
             return binary_expression(ctx, LE);
-        }  else if (ctx->OP_GT()) {
+        } else if (ctx->OP_GT()) {
             return binary_expression(ctx, GE);
-        }  else if (ctx->OP_GEQ()) {
+        } else if (ctx->OP_GEQ()) {
             return binary_expression(ctx, GEQ);
-        }  else if (ctx->OP_EQ()) {
+        } else if (ctx->OP_EQ()) {
             return binary_expression(ctx, EQ);
-        }  else if (ctx->OP_NEQ()) {
+        } else if (ctx->OP_NEQ()) {
             return binary_expression(ctx, NEQ);
-        }  else if (ctx->OP_AND()) {
+        } else if (ctx->OP_AND()) {
             return binary_expression(ctx, AND);
-        }  else if (ctx->OP_OR()) {
+        } else if (ctx->OP_OR()) {
             return binary_expression(ctx, OR);
+        } else if (ctx->OP_NOT()) {
+            std::shared_ptr<expressionNode> node = visitExpr(ctx->expr(0));
+            Type t = boolType;
+            if (node->getType() != boolType) t = errorType;
+            std::shared_ptr<expressionNode> res = std::make_shared<unaryExpressionNode>(unaryExpressionNode(t, NOT, node));
+            return res;
         } else if (ctx->literal()){
             std::cout << "literal " << order++ << " " << ctx->getText() << std::endl;
             std::shared_ptr<expressionNode> p = (std::shared_ptr<expressionNode>)std::make_shared<literalNode>(literalNode(ctx->literal()->getText()));
@@ -210,6 +216,8 @@ public:
                     ;
             std::shared_ptr<expressionNode> res = std::make_shared<variableNode>(node);
             return res;
+        } else if (ctx->read()) {
+            return visitRead(ctx->read());
         }
         //auto result = visitChildren(ctx);
         std::cout << "Expression " << order++ << " " << ctx->getText() << std::endl;

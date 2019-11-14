@@ -11,7 +11,7 @@ stmts :
 
 stmt :
     assign DELIMETER
-    | write
+    | write DELIMETER
     | iter
     | ifs
     | FORK thread
@@ -39,11 +39,11 @@ event :
 scope : BEGIN stmts END;
 
 read :
-    READ LPAREN NAME RPAREN DELIMETER
+    READ LPAREN NAME RPAREN
     ;
 
 write :
-    WRITE LPAREN expr RPAREN DELIMETER
+    WRITE LPAREN expr RPAREN
     ;
 
 expr :
