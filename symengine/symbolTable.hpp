@@ -4,7 +4,7 @@
 
 #ifndef ANTLR_CPP_TUTORIAL_SYMBOLTABLE_HPP
 #define ANTLR_CPP_TUTORIAL_SYMBOLTABLE_HPP
-enum BoolOperators {EQ, LEQ, GEQ, LE, GE, AND, OR, NOT, NEQ, NOTUSED};
+
 #include "Constraint.hpp"
 class SymbolTable{
 public:
@@ -18,9 +18,9 @@ public:
                 symbolicVariables.erase(name);
             }
             if(concreteVariables.find(name)->second.type = intType) {
-                value = evaluateExpression(expression);
+                value = evaluateExpression(expression, intType);
             } else {
-                value = evaluateExpression()
+                value = evaluateExpression(expression, boolType);
             }
             concreteVariables.find(name)->second.setValue(value);
         }
@@ -91,12 +91,12 @@ private:
 
     bool evaluateLogic(const std::vector<std::string>& tokens){
         bool result;
-        BoolOperators op = NOTUSED;
-        BoolOperators prevOp = NOTUSED;
+        op _op = NOTUSED;
+        op prevOp = NOTUSED;
         std::vector<std::string> left;
         std::vector<std::string> right;
         for(auto v : tokens){
-            if(getBoolOp(v,op)){
+            if(getBoolOp(v,_op)){
                 switch(prevOp){
                     case EQ:
                         if(isBool(left[0])){
@@ -146,7 +146,7 @@ private:
                         right.emplace_back(v);
                         break;
                 }
-                prevOp = op;
+                prevOp = _op;
             } else {
                 right.emplace_back(v);
             }
@@ -154,7 +154,7 @@ private:
         return result;
     }
 
-    bool getBoolOp(const std::string& token, BoolOperators& op){
+    bool getBoolOp(const std::string& token, op& op){
         if( token == "&&"){
             op = AND;
             return true;

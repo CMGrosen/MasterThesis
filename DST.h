@@ -1,7 +1,7 @@
 #include "antlr4-runtime.h"
 #include "SmallVisitor.h"
 #include <nodes/nodes.hpp>
-#include "symbol.hpp"
+#include "symengine/Constraint.hpp"
 
 
 /**
@@ -13,7 +13,7 @@ private:
     int threadnumber = 0;
     int order = 0;
 public:
-    std::unordered_map<std::string, symbol> symboltables;
+    std::unordered_map<std::string, constraint> symboltables;
 
     virtual antlrcpp::Any visitFile(SmallParser::FileContext *ctx) override {
         //antlrcpp::Any result = visitChildren(ctx);
@@ -70,14 +70,14 @@ public:
         std::shared_ptr<expressionNode> node = visitExpr(ctx->expr());
         assignNode assNode = assignNode(ctx->NAME()->getText(), node);
         std::shared_ptr<statementNode> a = std::make_shared<assignNode>(assNode);
-        auto pair = symboltables.insert({ctx->NAME()->getText(), symbol(node->getType())});
+        auto pair = symboltables.insert({ctx->NAME()->getText(), constraint(node->getType())});
 
         if (node->getType() == arrayIntType || node->getType() == arrayBoolType){
             if(auto arrLit = dynamic_cast<arrayLiteralNode*>(node.get())) {
                 Type t = arrLit->value[0]->getType();
                 int count = arrLit->value.size();
                 for (int i = 0; i < count; ++i) {
-                    symbol temp = symbol(t);
+                    constraint temp = constraint(t);
                     auto p = symboltables.insert({ctx->NAME()->getText() + "[" + std::to_string(i) + "]", temp});
                     if(!p.second && p.first->second.type != t) {
                         pair.first->second.type = errorType;

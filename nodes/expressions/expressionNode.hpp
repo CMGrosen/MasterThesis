@@ -6,7 +6,7 @@
 
 #include <nodes/node.hpp>
 
-enum op { PLUS, MINUS, MULT, DIV, MOD, NOT, AND, OR, LE, LEQ, GE, GEQ, EQ, NEQ, NEG};
+enum op { PLUS, MINUS, MULT, DIV, MOD, NOT, AND, OR, LE, LEQ, GE, GEQ, EQ, NEQ, NEG, NOTUSED};
 
 class expressionNode : public node {
 public:
