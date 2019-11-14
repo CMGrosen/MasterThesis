@@ -9,11 +9,14 @@
 
 class literalNode : public expressionNode {
 public:
-    literalNode(int a) {
-        value = a;
-        type = Type::intType;
+    literalNode(std::string a) : value{std::move(a)} {
+        if (value == "true" || value == "false") {
+            setType(boolType);
+        } else {
+            setType(intType);
+        }
     };
 
-    int value;
+    std::string value;
 };
 #endif //ANTLR_CPP_TUTORIAL_LITERALNODE_HPP

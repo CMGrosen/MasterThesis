@@ -17,7 +17,7 @@ public:
     std::shared_ptr<statementNode> getBody() { return body; }
     std::shared_ptr<statementNode> getNext() { return next; }
 
-    uint getNodeType() override { return SEQUENTIAL; }
+    NodeType getNodeType() override { return Sequential; }
 
 private:
     std::shared_ptr<statementNode> body;

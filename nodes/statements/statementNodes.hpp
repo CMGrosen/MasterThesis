@@ -10,5 +10,7 @@
 #include "whileNode.hpp"
 #include "sequentialNode.hpp"
 #include "concurrentNode.hpp"
+#include "writeNode.hpp"
+#include "readNode.hpp"
 
 #endif //ANTLR_CPP_TUTORIAL_STATEMENTNODE_H

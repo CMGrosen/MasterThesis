@@ -6,14 +6,12 @@ file : stmts EOF;
 
 stmts :
     stmt stmts
-    |
+    | stmt
     ;    
 
 stmt :
     assign DELIMETER
-    | read
     | write
-    | expr DELIMETER
     | iter
     | ifs
     | FORK thread
@@ -41,11 +39,11 @@ event :
 scope : BEGIN stmts END;
 
 read :
-    READ RPAREN NAME LPAREN DELIMETER
+    READ LPAREN NAME RPAREN DELIMETER
     ;
 
 write :
-    WRITE RPAREN expr LPAREN DELIMETER
+    WRITE LPAREN expr RPAREN DELIMETER
     ;
 
 expr :
@@ -57,6 +55,7 @@ expr :
     | left=expr op=OP_AND right=expr
     | left=expr op=OP_OR right=expr
     | literal
+    | read
     | NAME
     | arrayAccess
     | arrayLiteral

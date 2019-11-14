@@ -16,7 +16,7 @@ public:
         threads.emplace_back(thread);
     }
 
-    uint getNodeType() override { return CONCURRENT; }
+    NodeType getNodeType() override { return Concurrent; }
 };
 
 #endif //ANTLR_CPP_TUTORIAL_CONCURRENTNODE_HPP

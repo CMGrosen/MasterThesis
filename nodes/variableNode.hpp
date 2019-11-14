@@ -7,7 +7,7 @@
 #include "node.hpp"
 #include <string>
 
-class variableNode : public node {
+class variableNode : public expressionNode {
 public:
     variableNode(Type _type, std::string n) {
         type = _type;
