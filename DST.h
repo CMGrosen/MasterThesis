@@ -19,13 +19,12 @@ public:
         //antlrcpp::Any result = visitChildren(ctx);
         std::shared_ptr<statementNode> a = visitStmts(ctx->stmts());
 
-        std::vector<std::shared_ptr<statementNode>> l = a->debug_getAllNodes();
-        std::cout << "\n\n\nwriting out what we have:\n";
+        //std::vector<std::shared_ptr<statementNode>> l = a->debug_getAllNodes();
+        //std::cout << "\n\n\nwriting out what we have:\n";
   //      WriteType(a);
         //std::cout << dynamic_cast<literalNode*>(dynamic_cast<additionNode*>(a[0]->value)->getLeft())->value << std::endl;
         //a->setNextStatement(firstStatement);
-        std::cout << "File " << order++ << std::endl;
-        return 0;
+        return std::pair<std::shared_ptr<statementNode>, std::unordered_map<std::string, constraint>>(a, symboltables);
     }
 
     virtual antlrcpp::Any visitStmts(SmallParser::StmtsContext *ctx) override {
@@ -217,7 +216,6 @@ public:
             std::shared_ptr<expressionNode> p = (std::shared_ptr<expressionNode>)std::make_shared<literalNode>(literalNode(ctx->literal()->getText()));
             return p;
         } else if (ctx->arrayLiteral()) {
-            std::cout << "arrayliteral";
             std::shared_ptr<expressionNode> exp = visitArrayLiteral(ctx->arrayLiteral());
             return exp;
         } else if (ctx->arrayAccess()) {
@@ -330,11 +328,6 @@ public:
         std::shared_ptr<expressionNode> l = (visitExpr(ctx->left));
         std::shared_ptr<expressionNode> r = (visitExpr(ctx->right));
         Type t;
-        if (l->getType() == r->getType()) {
-            t = l->getType();
-        } else {
-            t = errorType;
-        }
 
         switch (expressionType) {
             case PLUS:
@@ -345,6 +338,8 @@ public:
                 if (l->getType() == r->getType() && l->getType() == intType) {
                     t = l->getType();
                 } else {
+                    std::cout << "[" << ctx->start->getLine() << ":" << ctx->start->getCharPositionInLine()
+                    << "] Type mismatch in binary expression. Expected " << info[l->getType()] << " got " << info[r->getType()] << "\n";
                     t = errorType;
                 }
                 break;
@@ -353,6 +348,9 @@ public:
                 if (l->getType() == r->getType() && l->getType() == boolType) {
                     t = l->getType();
                 } else {
+                    std::cout << "[" << ctx->start->getLine() << ":" << ctx->start->getCharPositionInLine()
+                              << "] Type mismatch in binary expression. Expected " << info[boolType] << " got "
+                              << info[r->getType() != boolType ? r->getType() : l->getType()] << "\n";
                     t = errorType;
                 }
                 break;
@@ -363,6 +361,9 @@ public:
                 if (l->getType() == r->getType() && l->getType() == intType) {
                     t = boolType;
                 } else {
+                    std::cout << "[" << ctx->start->getLine() << ":" << ctx->start->getCharPositionInLine()
+                              << "] Type mismatch in binary expression. Expected " << info[intType] << " got "
+                              << info[r->getType() != intType ? r->getType() : l->getType()] << "\n";
                     t = errorType;
                 }
                 break;
@@ -371,6 +372,8 @@ public:
                 if (l->getType() == r->getType() && (l->getType() == intType || l->getType() == boolType)) {
                     t = boolType;
                 } else {
+                    std::cout << "[" << ctx->start->getLine() << ":" << ctx->start->getCharPositionInLine()
+                              << "] Type mismatch in binary expression. Expected " << info[l->getType()] << " got " << info[r->getType()] << "\n";
                     t = errorType;
                 }
                 break;

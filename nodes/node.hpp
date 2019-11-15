@@ -5,9 +5,17 @@
 #ifndef ANTLR_CPP_TUTORIAL_NODE_HPP
 #define ANTLR_CPP_TUTORIAL_NODE_HPP
 
-enum Type { intType, boolType, arrayIntType, arrayBoolType, okType, errorType, ignoreType};
+enum Type { intType, boolType, arrayIntType, arrayBoolType, okType, errorType};
 enum NodeType { Assign, Concurrent, Sequential, While, If, Write, Read, Literal, ArrayLiteral, Variable, BinaryExpression, UnaryExpression};
 
+static std::map< Type, const char * > info = {
+        {intType, "int"},
+        {boolType, "bool"},
+        {arrayIntType, "int array"},
+        {arrayBoolType, "bool array"},
+        {okType, "well-typed"},
+        {errorType, "not well-typed"}
+};
 
 class node {
 public:

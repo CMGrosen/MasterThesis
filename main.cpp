@@ -26,8 +26,10 @@ int main(int argc, const char* argv[]) {
         return 0;
     DST visitor;
     //int a = visitor.visitFile(tree);
-    visitor.visitFile(tree);
+    std::pair<std::shared_ptr<statementNode>, std::unordered_map<std::string, constraint>> treeAndSymbolTable = visitor.visitFile(tree);
 
+    if(treeAndSymbolTable.first->getType() == errorType)
+        return 0;
     /*lexer.reset();
     tokens.reset();
     SmallBaseVisitor visitor;
