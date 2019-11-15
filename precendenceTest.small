@@ -21,3 +21,11 @@ if (a > b) {
 } else {
     b = a;
 }
+
+fork {
+    a=b;
+} par {
+    a=b;
+} par {
+    a=b;
+}

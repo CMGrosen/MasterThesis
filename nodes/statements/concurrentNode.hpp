@@ -9,13 +9,11 @@
 #include "statementNode.hpp"
 
 class concurrentNode : public statementNode{
+    std::vector<std::shared_ptr<statementNode>> _threads;
 public:
-    std::vector<std::shared_ptr<statementNode>> threads;
-
-    void addThread(std::shared_ptr<statementNode> thread){
-        threads.emplace_back(thread);
+    concurrentNode(Type type, std::vector<std::shared_ptr<statementNode>> threads) : _threads{std::move(threads)} {
+        setType(type);
     }
-
     NodeType getNodeType() override { return Concurrent; }
 };
 

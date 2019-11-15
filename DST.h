@@ -55,12 +55,15 @@ public:
         } else if (ctx->ifs()) {
             std::shared_ptr<statementNode> stmt = visitIfs(ctx->ifs());
             return stmt;
+        } else if (ctx->thread()) {
+            std::shared_ptr<statementNode> stmt = visitThread(ctx->thread());
+            return stmt;
         } else {
-                // gem symbol i symbol table
-                std::cout << "Dcl " << order++ << " " << ctx->getText() << std::endl;
-                //return declarationNode(result.);
-                //return node();
-                //return result;
+            // gem symbol i symbol table
+            std::cout << "Dcl " << order++ << " " << ctx->getText() << std::endl;
+            //return declarationNode(result.);
+            //return node();
+            //return result;
         }
     }
 
@@ -120,10 +123,19 @@ public:
     }
 
     virtual antlrcpp::Any visitThread(SmallParser::ThreadContext *ctx) override {
-        threadnumber++;
-        auto result = visitChildren(ctx);
-        threadnumber--;
-        return result;
+        std::vector<std::shared_ptr<statementNode>> statements;
+        for (auto scopeContext : ctx->threads) {
+            statements.push_back(visitStmts(scopeContext->stmts()));
+        }
+        Type t = okType;
+        for (auto &statement : statements) {
+            if (statement->getType() != okType) {
+                t = errorType;
+                break;
+            }
+        }
+        std::shared_ptr<statementNode> res = std::make_shared<concurrentNode>(concurrentNode(t, statements));
+        return res;
     }
 
     virtual antlrcpp::Any visitEvent(SmallParser::EventContext *ctx) override {
@@ -133,10 +145,7 @@ public:
     }
 
     virtual antlrcpp::Any visitScope(SmallParser::ScopeContext *ctx) override {
-        std::vector<std::shared_ptr<node>> dcls = visitStmts(ctx->stmts());
-        std::cout << "scope" << std::endl;
-        std::shared_ptr<scopeNode> result = std::make_shared<scopeNode>(scopeNode(Type::okType));
-        return result;
+        return nullptr; //not used
     }
 
     virtual antlrcpp::Any visitRead(SmallParser::ReadContext *ctx) override {
