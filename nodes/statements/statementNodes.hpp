@@ -12,5 +12,6 @@
 #include "concurrentNode.hpp"
 #include "writeNode.hpp"
 #include "readNode.hpp"
+#include "eventNode.hpp"
 
 #endif //ANTLR_CPP_TUTORIAL_STATEMENTNODE_H

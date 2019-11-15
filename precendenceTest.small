@@ -1,6 +1,7 @@
+tt = true;
 a = 1+2*3;
 d = [1,2,3];
-a = 1+2;
+a = (1+2);
 b = 2-1;
 c = a/b;
 write(a, 2+2);
@@ -29,3 +30,10 @@ fork {
 } par {
     a=b;
 }
+
+tt = true;
+ff = false;
+
+when (true)
+
+b = 10;

@@ -41,8 +41,6 @@ public:
     }
 
     virtual antlrcpp::Any visitStmt(SmallParser::StmtContext *ctx) override {
-        //auto result = visitChildren(ctx);
-            //std::string name = ctx->NAME()->getText();
         if (ctx->assign()) {
             std::shared_ptr<statementNode> stmt =  visitAssign(ctx->assign());
             return stmt;
@@ -58,12 +56,9 @@ public:
         } else if (ctx->thread()) {
             std::shared_ptr<statementNode> stmt = visitThread(ctx->thread());
             return stmt;
-        } else {
-            // gem symbol i symbol table
-            std::cout << "Dcl " << order++ << " " << ctx->getText() << std::endl;
-            //return declarationNode(result.);
-            //return node();
-            //return result;
+        } else { //only event is remaining
+            std::shared_ptr<statementNode> stmt = visitEvent(ctx->event());
+            return stmt;
         }
     }
 
@@ -139,9 +134,10 @@ public:
     }
 
     virtual antlrcpp::Any visitEvent(SmallParser::EventContext *ctx) override {
-        auto result = visitChildren(ctx);
-        
-        return result;
+        std::shared_ptr<expressionNode> condition = visitExpr(ctx->expr());
+        Type t = (condition->getType() == boolType) ? okType : errorType;
+        std::shared_ptr<statementNode> res = std::make_shared<eventNode>(eventNode(t, condition));
+        return res;
     }
 
     virtual antlrcpp::Any visitScope(SmallParser::ScopeContext *ctx) override {
@@ -217,7 +213,7 @@ public:
             if (node->getType() != boolType) t = errorType;
             std::shared_ptr<expressionNode> res = std::make_shared<unaryExpressionNode>(unaryExpressionNode(t, NOT, node));
             return res;
-        } else if (ctx->literal()){
+        } else if (ctx->literal()) {
             std::shared_ptr<expressionNode> p = (std::shared_ptr<expressionNode>)std::make_shared<literalNode>(literalNode(ctx->literal()->getText()));
             return p;
         } else if (ctx->arrayLiteral()) {
@@ -230,9 +226,8 @@ public:
         } else if (ctx->NAME()) {
             auto pair = symboltables.find(ctx->NAME()->getText());
             variableNode node = (pair != symboltables.end())
-                    ? variableNode(pair->second.type, ctx->NAME()->getText())
-                    : variableNode(errorType, ctx->NAME()->getText())
-                    ;
+                                ? variableNode(pair->second.type, ctx->NAME()->getText())
+                                : variableNode(errorType, ctx->NAME()->getText());
             std::shared_ptr<expressionNode> res = std::make_shared<variableNode>(node);
             return res;
         } else if (ctx->read()) {
