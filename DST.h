@@ -19,6 +19,7 @@ public:
         //antlrcpp::Any result = visitChildren(ctx);
         std::shared_ptr<statementNode> a = visitStmts(ctx->stmts());
 
+        std::vector<std::shared_ptr<statementNode>> l = a->debug_getAllNodes();
         std::cout << "\n\n\nwriting out what we have:\n";
   //      WriteType(a);
         //std::cout << dynamic_cast<literalNode*>(dynamic_cast<additionNode*>(a[0]->value)->getLeft())->value << std::endl;

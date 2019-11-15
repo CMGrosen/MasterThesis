@@ -20,6 +20,15 @@ public:
 
     NodeType getNodeType() override { return Sequential; }
 
+    std::vector<std::shared_ptr<statementNode>> debug_getAllNodes() override {
+        std::vector<std::shared_ptr<statementNode>> nexts{_body};
+        if(auto next = dynamic_cast<sequentialNode*>(_next.get())) {
+             for (auto &s : next->debug_getAllNodes())
+                 nexts.push_back(s);
+        }
+        return nexts;
+    }
+
 private:
     std::shared_ptr<statementNode> _body;
     std::shared_ptr<statementNode> _next;
