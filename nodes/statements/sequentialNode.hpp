@@ -25,6 +25,8 @@ public:
         if(auto next = dynamic_cast<sequentialNode*>(_next.get())) {
              for (auto &s : next->debug_getAllNodes())
                  nexts.push_back(s);
+        } else {
+            nexts.push_back(_next);
         }
         return nexts;
     }

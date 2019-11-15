@@ -11,3 +11,7 @@ a = read(b);
 
 arr = [2,3,4];
 var = arr[0];
+
+while (e) {
+    a=a+2;
+}

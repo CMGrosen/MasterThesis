@@ -49,12 +49,15 @@ public:
         } else if (ctx->write()) {
             std::shared_ptr<statementNode> stmt = visitWrite(ctx->write());
             return stmt;
+        } else if (ctx->iter()) {
+            std::shared_ptr<statementNode> stmt = visitIter(ctx->iter());
+            return stmt;
         } else {
-            // gem symbol i symbol table
-            std::cout << "Dcl " << order++ << " " << ctx->getText() << std::endl;
-            //return declarationNode(result.);
-            //return node();
-            //return result;
+                // gem symbol i symbol table
+                std::cout << "Dcl " << order++ << " " << ctx->getText() << std::endl;
+                //return declarationNode(result.);
+                //return node();
+                //return result;
         }
     }
 
@@ -95,10 +98,12 @@ public:
     }
 
     virtual antlrcpp::Any visitIter(SmallParser::IterContext *ctx) override {
-        //std::cout << "while" << ctx->depth() << "\n";
-        auto result = visitChildren(ctx);
-        std::cout << "While " << order++ << " " << ctx->getText() << std::endl;
-        return result;
+        std::shared_ptr<expressionNode> condition = visitExpr(ctx->expr());
+        std::shared_ptr<statementNode> body = visitStmts(ctx->scope()->stmts());
+        Type t = okType;
+        if (condition->getType() != boolType || body->getType() != okType) t = errorType;
+        std::shared_ptr<statementNode> res = std::make_shared<whileNode>(whileNode(t, condition, body));
+        return res;
     }
 
     virtual antlrcpp::Any visitIfs(SmallParser::IfsContext *ctx) override {
