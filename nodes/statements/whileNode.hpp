@@ -12,8 +12,8 @@ public:
     whileNode(Type t, std::shared_ptr<expressionNode> c, std::shared_ptr<statementNode> b) : condition{std::move(c)}, body{std::move(b)} {
         setType(t);
     }
-    expressionNode *getCondition() {return condition.get();}
-    statementNode *getBody() {return body.get();}
+    const expressionNode *getCondition() {return condition.get();}
+    const statementNode *getBody() {return body.get();}
 
 private:
     std::shared_ptr<expressionNode> condition;

@@ -52,6 +52,9 @@ public:
         } else if (ctx->iter()) {
             std::shared_ptr<statementNode> stmt = visitIter(ctx->iter());
             return stmt;
+        } else if (ctx->ifs()) {
+            std::shared_ptr<statementNode> stmt = visitIfs(ctx->ifs());
+            return stmt;
         } else {
                 // gem symbol i symbol table
                 std::cout << "Dcl " << order++ << " " << ctx->getText() << std::endl;
@@ -107,9 +110,13 @@ public:
     }
 
     virtual antlrcpp::Any visitIfs(SmallParser::IfsContext *ctx) override {
-        auto result = visitChildren(ctx);
-        std::cout << "if " << order++  << " " << ctx->getText() << std::endl;
-        return result;
+        std::shared_ptr<expressionNode> condition = visitExpr(ctx->expr());
+        std::shared_ptr<statementNode> trueBranch = visitStmts(ctx->scope(0)->stmts());
+        std::shared_ptr<statementNode> falseBranch = visitStmts(ctx->scope(1)->stmts());
+        Type t = okType;
+        if (condition->getType() != boolType || trueBranch->getType() != okType || falseBranch->getType() != okType) t = errorType;
+        std::shared_ptr<statementNode> res = std::make_shared<ifElseNode>(ifElseNode(t, condition, trueBranch, falseBranch));
+        return res;
     }
 
     virtual antlrcpp::Any visitThread(SmallParser::ThreadContext *ctx) override {

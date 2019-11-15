@@ -15,3 +15,9 @@ var = arr[0];
 while (e) {
     a=a+2;
 }
+
+if (a > b) {
+    a = b;
+} else {
+    b = a;
+}
