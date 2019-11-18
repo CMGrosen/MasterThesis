@@ -12,10 +12,11 @@ public:
     ifElseNode(Type t, std::shared_ptr<expressionNode> c, std::shared_ptr<statementNode> tb, std::shared_ptr<statementNode> fb)
         : condition{std::move(c)}, trueBranch{std::move(tb)}, falseBranch{std::move(fb)} {
         setType(t);
+        setNodeType(If);
     }
-    const expressionNode *getCondition() {return condition.get();}
-    const statementNode *getTrueBranch() {return trueBranch.get();}
-    const statementNode *getFalseBranch() {return falseBranch.get();}
+    const expressionNode *getCondition() const {return condition.get();}
+    const statementNode *getTrueBranch() const {return trueBranch.get();}
+    const statementNode *getFalseBranch() const {return falseBranch.get();}
 
 private:
     std::shared_ptr<expressionNode> condition;

@@ -9,8 +9,7 @@
 
 class readNode : public expressionNode {
 public:
-    readNode(std::shared_ptr<variableNode> node) : n{std::move(node)} {}
-    NodeType getNodeType() { return Read; }
+    readNode(std::shared_ptr<variableNode> node) : n{std::move(node)} {setNodeType(Read);}
 
 private:
     std::shared_ptr<variableNode> n;

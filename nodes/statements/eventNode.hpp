@@ -11,8 +11,9 @@ class eventNode : public statementNode {
 public:
     eventNode(Type t, std::shared_ptr<expressionNode> condition) : _condition{condition} {
         setType(t);
+        setNodeType(Event);
     }
-    const expressionNode *getCondition() {return _condition.get();}
+    const expressionNode *getCondition() const {return _condition.get();}
 private:
     std::shared_ptr<expressionNode> _condition;
 };

@@ -14,11 +14,10 @@ public:
     sequentialNode(std::shared_ptr<statementNode> body, std::shared_ptr<statementNode> next) : _body{std::move(body)}, _next{std::move(next)} {
         if (_body->getType() == okType && _next->getType() == okType) setType(okType);
         else setType(errorType);
+        setNodeType(Sequential);
     };
-    const statementNode* getBody() { return _body.get(); }
-    const statementNode* getNext() { return _next.get(); }
-
-    NodeType getNodeType() override { return Sequential; }
+    const statementNode* getBody() const { return _body.get(); }
+    const statementNode* getNext() const { return _next.get(); }
 
     std::vector<std::shared_ptr<statementNode>> debug_getAllNodes() override {
         std::vector<std::shared_ptr<statementNode>> nexts{_body};

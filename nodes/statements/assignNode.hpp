@@ -15,9 +15,8 @@ public:
         setType(t);
         setNodeType(Assign);
     };
-    NodeType getNodeType() override { return Assign; }
-    std::string getName() {return name;}
-    expressionNode* getExpr() {return expr.get();}
+    std::string getName() const {return name;}
+    expressionNode* getExpr() const {return expr.get();}
 
 private:
     std::string name;

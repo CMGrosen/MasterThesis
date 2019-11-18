@@ -12,8 +12,8 @@ public:
         type = _type;
         setNodeType(UnaryExpression);
     }
-    expressionNode* getExpression() {return expr.get();};
-    op getOperator() {return _operator;};
+    expressionNode* getExpression() const {return expr.get();};
+    op getOperator() const {return _operator;};
 private:
     std::shared_ptr<expressionNode> expr;
     op _operator;

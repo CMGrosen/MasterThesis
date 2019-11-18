@@ -13,8 +13,8 @@ class concurrentNode : public statementNode{
 public:
     concurrentNode(Type type, std::vector<std::shared_ptr<statementNode>> threads) : _threads{std::move(threads)} {
         setType(type);
+        setNodeType(Concurrent);
     }
-    NodeType getNodeType() override { return Concurrent; }
 };
 
 #endif //ANTLR_CPP_TUTORIAL_CONCURRENTNODE_HPP

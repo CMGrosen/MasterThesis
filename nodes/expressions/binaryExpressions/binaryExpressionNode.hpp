@@ -14,9 +14,9 @@ public:
         type = _type;
         setNodeType(BinaryExpression);
     }
-    expressionNode* getRight() {return right.get();};
-    expressionNode* getLeft() {return left.get();};
-    op getOperator() {return _operator;};
+    expressionNode* getRight() const {return right.get();};
+    expressionNode* getLeft() const {return left.get();};
+    op getOperator() const {return _operator;};
 private:
     std::shared_ptr<expressionNode> left;
     std::shared_ptr<expressionNode> right;

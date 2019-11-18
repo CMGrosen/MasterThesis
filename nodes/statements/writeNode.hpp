@@ -19,6 +19,9 @@ public:
         setNodeType(Write);
     }
 
+    variableNode *getVar() const {return _v.get();};
+    expressionNode *getExpr() const {return _e.get();};
+
 private:
     std::shared_ptr <variableNode> _v;
     std::shared_ptr <expressionNode> _e;
