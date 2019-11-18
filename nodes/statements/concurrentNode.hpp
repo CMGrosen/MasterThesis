@@ -15,6 +15,7 @@ public:
         setType(type);
         setNodeType(Concurrent);
     }
+    const std::vector<std::shared_ptr<statementNode>> getThreads() const {return _threads;};
 };
 
 #endif //ANTLR_CPP_TUTORIAL_CONCURRENTNODE_HPP

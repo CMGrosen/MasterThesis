@@ -16,8 +16,14 @@ public:
         else setType(errorType);
         setNodeType(Sequential);
     };
-    const statementNode* getBody() const { return _body.get(); }
-    const statementNode* getNext() const { return _next.get(); }
+
+    sequentialNode(Type t, std::shared_ptr<statementNode> body, std::shared_ptr<statementNode> next) : _body{std::move(body)}, _next{std::move(next)} {
+        setType(t);
+        setNodeType(Sequential);
+    };
+
+    statementNode* getBody() const { return _body.get(); }
+    statementNode* getNext() const { return _next.get(); }
 
     std::vector<std::shared_ptr<statementNode>> debug_getAllNodes() override {
         std::vector<std::shared_ptr<statementNode>> nexts{_body};

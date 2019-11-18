@@ -6,6 +6,10 @@
 #define ANTLR_CPP_TUTORIAL_BINARYEXPRESSIONNODE_H
 
 #include <nodes/expressions/expressionNode.hpp>
+#include <nodes/literalNode.hpp>
+#include <nodes/statements/readNode.hpp>
+
+
 
 class binaryExpressionNode : public expressionNode {
 public:
@@ -14,13 +18,21 @@ public:
         type = _type;
         setNodeType(BinaryExpression);
     }
+
     expressionNode* getRight() const {return right.get();};
     expressionNode* getLeft() const {return left.get();};
     op getOperator() const {return _operator;};
+
 private:
     std::shared_ptr<expressionNode> left;
     std::shared_ptr<expressionNode> right;
     op _operator;
 };
+/*
+static std::map< NodeType, std::type_info > binExprs = {
+        {Read, typeid(readNode) },
+        {Literal, typeid(literalNode)},
+        {BinaryExpression, typeid(binaryExpressionNode)},
+};*/
 
 #endif //ANTLR_CPP_TUTORIAL_BINARYEXPRESSIONNODE_H

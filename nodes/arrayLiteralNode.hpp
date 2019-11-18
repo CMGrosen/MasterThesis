@@ -30,6 +30,8 @@ public:
         setNodeType(ArrayLiteral);
     };
 
+    const std::vector<std::shared_ptr<expressionNode>> getArrLit() const {return value;};
+private:
     std::vector<std::shared_ptr<expressionNode>> value;
 };
 

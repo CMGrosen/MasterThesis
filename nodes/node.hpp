@@ -5,6 +5,8 @@
 #ifndef ANTLR_CPP_TUTORIAL_NODE_HPP
 #define ANTLR_CPP_TUTORIAL_NODE_HPP
 
+#include <typeinfo>
+
 enum Type { intType, boolType, arrayIntType, arrayBoolType, okType, errorType};
 enum NodeType { Assign, Concurrent, Sequential, While, If, Write, Read, Literal, ArrayAccess, ArrayLiteral, Event, Variable, BinaryExpression, UnaryExpression};
 
@@ -16,6 +18,24 @@ static std::map< Type, const char * > info = {
         {okType, "well-typed"},
         {errorType, "not well-typed"}
 };
+
+static std::map< NodeType, const char * > nodeInfo = {
+        {Assign, "Assign"},
+        {Concurrent, "Concurrent"},
+        {Sequential, "Sequential"},
+        {While, "While"},
+        {If, "If"},
+        {Write, "Write"},
+        {Read, "Read"},
+        {Literal, "Literal"},
+        {ArrayAccess, "ArrayAccess"},
+        {ArrayLiteral, "ArrayLiteral"},
+        {Event, "Event"},
+        {Variable, "Variable"},
+        {BinaryExpression, "BinaryExpression"},
+        {UnaryExpression, "UnaryExpression"}
+};
+
 
 class node {
 public:

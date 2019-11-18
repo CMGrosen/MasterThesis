@@ -15,9 +15,9 @@ public:
         setType(t);
         setNodeType(Assign);
     };
+
     std::string getName() const {return name;}
     expressionNode* getExpr() const {return expr.get();}
-
 private:
     std::string name;
     std::shared_ptr<expressionNode> expr;

@@ -9,10 +9,11 @@
 
 class readNode : public expressionNode {
 public:
-    readNode(std::shared_ptr<variableNode> node) : n{std::move(node)} {setNodeType(Read);}
+    readNode(Type t, std::shared_ptr<expressionNode> node) : n{std::move(node)} {setNodeType(Read); setType(t);}
 
+    const expressionNode *getVar() const {return n.get();};
 private:
-    std::shared_ptr<variableNode> n;
+    std::shared_ptr<expressionNode> n;
 };
 
 #endif //ANTLR_CPP_TUTORIAL_READNODE_HPP
