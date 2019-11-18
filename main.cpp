@@ -26,7 +26,7 @@ int main(int argc, const char* argv[]) {
         return 0;
     DST visitor;
     //int a = visitor.visitFile(tree);
-    std::pair<std::shared_ptr<statementNode>, std::unordered_map<std::string, constraint>> treeAndSymbolTable = visitor.visitFile(tree);
+    auto treeAndSymbolTable = visitor.getTree(tree);
 
     if(treeAndSymbolTable.first->getType() == errorType)
         return 0;
