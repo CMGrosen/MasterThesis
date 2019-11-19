@@ -1,0 +1,17 @@
+arr = [5,6,7,27,28,16,17,10,11,4,8,9,2,30,3,1,25,26,24,29,21,22,23,15,18,13,14,20,12,19];
+i = 0;
+start = 0;
+end = 29;
+
+while (end > start) {
+    i = 0;
+    while (i < end) {
+        if (arr[i] > arr[i+1]) {
+            tmp = arr[i];
+            arr[i] = arr[i+1];
+            arr[i+1] = tmp;
+        } else {emptyStatement = 0;}
+        i = i+1;
+    }
+    end = end - 1;
+}

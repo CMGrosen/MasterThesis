@@ -13,13 +13,14 @@ using namespace antlr4;
 static std::map< const char *, const char * > files = {
         {"concurrency", "../code_examples/concurrency.small"},
         {"out_of_bounds", "../code_examples/out_of_bounds.small"},
-        {"race_condition", "../code_examples/race_condition.small"}
+        {"race_condition", "../code_examples/race_condition.small"},
+        {"bubblesort", "../code_examples/bubblesort.small"}
 };
 
 int main(int argc, const char* argv[]) {
     std::ifstream stream;
     //stream.open("../code.small");
-    stream.open(files["concurrency"]);
+    stream.open(files["bubblesort"]);
     //stream.open("shortExpr.small");
 
     ANTLRInputStream input(stream);
