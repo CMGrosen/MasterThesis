@@ -8,7 +8,7 @@
 #include <typeinfo>
 
 enum Type { intType, boolType, arrayIntType, arrayBoolType, okType, errorType};
-enum NodeType { Assign, Concurrent, Sequential, While, If, Write, Read, Literal, ArrayAccess, ArrayLiteral, Event, Variable, BinaryExpression, UnaryExpression};
+enum NodeType { Assign, AssignArrField, Concurrent, Sequential, While, If, Write, Read, Literal, ArrayAccess, ArrayLiteral, Event, Variable, BinaryExpression, UnaryExpression};
 
 static std::map< Type, const char * > info = {
         {intType, "int"},
@@ -21,6 +21,7 @@ static std::map< Type, const char * > info = {
 
 static std::map< NodeType, const char * > nodeInfo = {
         {Assign, "Assign"},
+        {AssignArrField, "Array Field Assign"},
         {Concurrent, "Concurrent"},
         {Sequential, "Sequential"},
         {While, "While"},

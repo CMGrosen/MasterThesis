@@ -10,10 +10,16 @@
 using namespace std;
 using namespace antlr4;
 
+static std::map< const char *, const char * > files = {
+        {"concurrency", "../code_examples/concurrency.small"},
+        {"out_of_bounds", "../code_examples/out_of_bounds.small"},
+        {"race_condition", "../code_examples/race_condition.small"}
+};
+
 int main(int argc, const char* argv[]) {
     std::ifstream stream;
     //stream.open("../code.small");
-    stream.open("../precendenceTest.small");
+    stream.open(files["concurrency"]);
     //stream.open("shortExpr.small");
 
     ANTLRInputStream input(stream);
@@ -28,13 +34,11 @@ int main(int argc, const char* argv[]) {
     //int a = visitor.visitFile(tree);
     auto treeAndSymbolTable = visitor.getTree(tree);
 
+    auto tmp = treeAndSymbolTable.first->debug_getAllNodes();
     if(treeAndSymbolTable.first->getType() == errorType)
         return 0;
-    /*lexer.reset();
-    tokens.reset();
-    SmallBaseVisitor visitor;
-    visitor.visitFile(tree);
-*/
+
+    typeof(treeAndSymbolTable.first) a = DST::deepCopy(treeAndSymbolTable.first.get());
     std::cout << "got here" << std::endl;//a << std::endl;
     return 0;
 }

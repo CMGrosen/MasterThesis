@@ -39,7 +39,6 @@ TYPE	: 'int'
 INT_LITERAL: '0' | [1-9] [0-9]*; // no leading zeros
 BOOL_LITERAL: 'true' | 'false';
 
-NAME 	: [a-zA-Z_][0-9a-zA-Z_]*;
 
 OP_OR  : '||';
 OP_AND : '&&';
@@ -57,6 +56,8 @@ OP_MOD : '%';
 OP_NOT : '!' ;
 
 
+NAME 	: [a-zA-Z_][0-9a-zA-Z_]*;
+ARRNAME : [a-zA-Z_][0-9a-zA-Z_]* '[' [0-9]+ ']';
 
 
 WS: [ \r\t\n]+ -> skip; // skip spaces, tabs, newlines

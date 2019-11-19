@@ -50,7 +50,7 @@ set(visitor_SRC
         ${PROJECT_SOURCE_DIR}/main.cpp
         ${PROJECT_SOURCE_DIR}/DST.cpp
         ${visitor-GENERATED_SRC}
-        scope.hpp nodes/nodes.hpp decoratedTree.hpp nodes/statements/statementNode.hpp nodes/statements/assignNode.hpp nodes/statements/readNode.hpp nodes/statements/writeNode.hpp nodes/arrayLiteralNode.hpp nodes/arrayAccessNode.hpp nodes/expressions/unaryExpressionNode.hpp nodes/statements/eventNode.hpp)
+        scope.hpp nodes/nodes.hpp decoratedTree.hpp nodes/statements/statementNode.hpp nodes/statements/assignNode.hpp nodes/statements/readNode.hpp nodes/statements/writeNode.hpp nodes/arrayLiteralNode.hpp nodes/arrayAccessNode.hpp nodes/expressions/unaryExpressionNode.hpp nodes/statements/eventNode.hpp nodes/statements/arrayFieldAssignNode.hpp)
 
 if (NOT CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     set (flags_1 "-Wno-overloaded-virtual")

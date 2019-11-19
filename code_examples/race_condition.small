@@ -1,0 +1,13 @@
+val = 0;
+i = 0;
+j = 0;
+
+fork {
+    while (i < 20) {
+        val = val + 1;
+    }
+} par {
+    while (j < 20) {
+        val = val + 1;
+    }
+}

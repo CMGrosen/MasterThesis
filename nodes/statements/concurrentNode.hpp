@@ -16,6 +16,20 @@ public:
         setNodeType(Concurrent);
     }
     const std::vector<std::shared_ptr<statementNode>> getThreads() const {return _threads;};
+
+    std::vector<std::shared_ptr<statementNode>> debug_getAllNodes() override {
+        std::vector<std::shared_ptr<statementNode>> nexts;
+        for (auto e : _threads) {
+            if(auto seq = dynamic_cast<sequentialNode*>(e.get())) {
+                for (auto &s : seq->debug_getAllNodes())
+                    nexts.push_back(s);
+            } else if (auto con = dynamic_cast<concurrentNode*>(e.get())) {
+                for (auto &ss : con->debug_getAllNodes())
+                    nexts.push_back(ss);
+            }
+            return nexts;
+        }
+    }
 };
 
 #endif //ANTLR_CPP_TUTORIAL_CONCURRENTNODE_HPP

@@ -19,7 +19,8 @@ stmt :
     ;
     
 assign :
-    NAME ASSIGN expr;
+    NAME ASSIGN expr
+    | arrayAccess ASSIGN expr;
     
 iter :
     WHILE LPAREN expr RPAREN scope
@@ -56,9 +57,9 @@ expr :
     | left=expr op=OP_OR right=expr
     | literal
     | read
-    | NAME
     | arrayAccess
     | arrayLiteral
+    | NAME
     ;
 
 arrayAccess

@@ -14,10 +14,10 @@ class  DST : public SmallVisitor {
 public:
     std::unordered_map<std::string, constraint> symboltables;
 
-    std::pair<std::shared_ptr<statementNode>, std::unordered_map<std::string, constraint>> getTree(SmallParser::FileContext *ctx) {
+    std::pair<const std::shared_ptr<statementNode>, const std::unordered_map<std::string, constraint>> getTree(SmallParser::FileContext *ctx) {
         std::shared_ptr<statementNode> a = visitStmts(ctx->stmts());
 
-        std::shared_ptr<statementNode> aNew = wrapTree(a.get());
+        std::shared_ptr<statementNode> aNew = deepCopy(a.get());
         return std::pair<std::shared_ptr<statementNode>, std::unordered_map<std::string, constraint>>(std::move(aNew), symboltables);
     }
 
@@ -69,40 +69,53 @@ public:
     }
 
     virtual antlrcpp::Any visitAssign(SmallParser::AssignContext *ctx) override {
+        Type t;
         std::shared_ptr<expressionNode> node = visitExpr(ctx->expr());
-        auto pair = symboltables.insert({ctx->NAME()->getText(), constraint(node->getType())});
+        if (ctx->arrayAccess()) {
+            std::shared_ptr<expressionNode> arrAcc = visitArrayAccess(ctx->arrayAccess());
+            if (node->getType() == arrayIntType || node->getType() == arrayBoolType || arrAcc->getType() != intType) {
+                t = errorType;
+            } else {
+                t = okType;
+            }
 
-        if (node->getType() == arrayIntType || node->getType() == arrayBoolType){
-            if(auto arrLit = dynamic_cast<arrayLiteralNode*>(node.get())) {
-                auto arr = arrLit->getArrLit();
-                Type t = arr[0]->getType();
-                int count = arr.size();
-                for (int i = 0; i < count; ++i) {
-                    constraint temp = constraint(t);
-                    auto p = symboltables.insert({ctx->NAME()->getText() + "[" + std::to_string(i) + "]", temp});
-                    if(!p.second && p.first->second.type != t) {
-                        pair.first->second.type = errorType;
+            std::shared_ptr<statementNode> a = std::make_shared<arrayFieldAssignNode>(arrayFieldAssignNode(t, arrAcc, node));
+            return a;
+            std::cout << "debug";
+        } else {
+            std::string name = ctx->NAME()->getText();
+            auto pair = symboltables.insert({name, constraint(node->getType())});
+            if (node->getType() == arrayIntType || node->getType() == arrayBoolType){
+                if(auto arrLit = dynamic_cast<arrayLiteralNode*>(node.get())) {
+                    auto arr = arrLit->getArrLit();
+                    t = arr[0]->getType();
+                    int count = arr.size();
+                    for (int i = 0; i < count; ++i) {
+                        constraint temp = constraint(t);
+                        auto p = symboltables.insert({name + "[" + std::to_string(i) + "]", temp});
+                        if(!p.second && p.first->second.type != t) {
+                            pair.first->second.type = errorType;
+                        }
                     }
-                }
-                if(!pair.second) {
-                    auto size = arr.size();
-                    if (symboltables.find(ctx->NAME()->getText() + "[" + std::to_string(size-1) + "]") == symboltables.end() ||
-                       (symboltables.find(ctx->NAME()->getText() + "[" + std::to_string(size) + "]") != symboltables.end())) {
-                        //If this variable already exists and is assigned to a new arrayLiteral that are not the same size as the one previously assigned:
-                        pair.first->second.type = errorType;
+                    if(!pair.second) {
+                        auto size = arr.size();
+                        if (symboltables.find(name + "[" + std::to_string(size-1) + "]") == symboltables.end() ||
+                            (symboltables.find(name + "[" + std::to_string(size) + "]") != symboltables.end())) {
+                            //If this variable already exists and is assigned to a new arrayLiteral that are not the same size as the one previously assigned:
+                            pair.first->second.type = errorType;
+                        }
                     }
                 }
             }
+
+            if(!pair.second && pair.first->second.type != node->getType())
+                pair.first->second.type = errorType;
+//        std::shared_ptr<assignNode> res = std::make_shared<assignNode>(assignNode(name, node));
+
+            assignNode assNode = assignNode(pair.first->second.type == errorType ? errorType : okType, name, node);
+            std::shared_ptr<statementNode> a = std::make_shared<assignNode>(assNode);
+            return a;
         }
-
-        if(!pair.second && pair.first->second.type != node->getType())
-            pair.first->second.type = errorType;
-//        std::shared_ptr<assignNode> res = std::make_shared<assignNode>(assignNode(ctx->NAME()->getText(), node));
-
-        assignNode assNode = assignNode(pair.first->second.type == errorType ? errorType : okType, ctx->NAME()->getText(), node);
-        std::shared_ptr<statementNode> a = std::make_shared<assignNode>(assNode);
-        return a;
-        //return result;
     }
 
     virtual antlrcpp::Any visitIter(SmallParser::IterContext *ctx) override {
@@ -332,12 +345,20 @@ public:
         return p;
     }
 
-    antlrcpp::Any wrapTree(const node *tree) {
+    static antlrcpp::Any deepCopy(const node *tree) {
         switch(tree->getNodeType()) {
             case Assign:
                 if(auto a = dynamic_cast<const assignNode*>(tree)) {
-                    std::shared_ptr<expressionNode> e = wrapTree(a->getExpr());
+                    std::shared_ptr<expressionNode> e = deepCopy(a->getExpr());
                     std::shared_ptr<statementNode> res = std::make_shared<assignNode>(assignNode(a->getType(),a->getName(),e));
+                    return res;
+                }
+                break;
+            case AssignArrField:
+                if(auto a = dynamic_cast<const arrayFieldAssignNode*>(tree)) {
+                    std::shared_ptr<expressionNode> field = deepCopy(a->getField());
+                    std::shared_ptr<expressionNode> e = deepCopy(a->getExpr());
+                    std::shared_ptr<statementNode> res = std::make_shared<arrayFieldAssignNode>(arrayFieldAssignNode(a->getType(),field,e));
                     return res;
                 }
                 break;
@@ -345,7 +366,7 @@ public:
                 if (auto a = dynamic_cast<const concurrentNode*>(tree)) {
                     std::vector<std::shared_ptr<statementNode>> nodes;
                     for (auto &n : a->getThreads()) {
-                        std::shared_ptr<statementNode> inter = wrapTree(n.get());
+                        std::shared_ptr<statementNode> inter = deepCopy(n.get());
                         nodes.push_back(inter);
                     }
                     std::shared_ptr<statementNode> res = std::make_shared<concurrentNode>(concurrentNode(a->getType(), std::move(nodes)));
@@ -354,40 +375,40 @@ public:
                 break;
             case Sequential:
                 if (auto a = dynamic_cast<const sequentialNode*>(tree)) {
-                    std::shared_ptr<statementNode> body = wrapTree(a->getBody());
-                    std::shared_ptr<statementNode> next = wrapTree(a->getNext());
+                    std::shared_ptr<statementNode> body = deepCopy(a->getBody());
+                    std::shared_ptr<statementNode> next = deepCopy(a->getNext());
                     std::shared_ptr<statementNode> res = std::make_shared<sequentialNode>(sequentialNode(a->getType(), body, next));
                     return res;
                 }
                 break;
             case While:
                 if (auto a = dynamic_cast<const whileNode*>(tree)) {
-                    std::shared_ptr<statementNode> body = wrapTree(a->getBody());
-                    std::shared_ptr<expressionNode> cond = wrapTree(a->getCondition());
+                    std::shared_ptr<statementNode> body = deepCopy(a->getBody());
+                    std::shared_ptr<expressionNode> cond = deepCopy(a->getCondition());
                     std::shared_ptr<statementNode> res = std::make_shared<whileNode>(whileNode(a->getType(),cond,body));
                     return res;
                 }
                 break;
             case If:
                 if (auto a = dynamic_cast<const ifElseNode*>(tree)) {
-                    std::shared_ptr<statementNode> tb = wrapTree(a->getTrueBranch());
-                    std::shared_ptr<statementNode> fb = wrapTree(a->getFalseBranch());
-                    std::shared_ptr<expressionNode> cond = wrapTree(a->getCondition());
+                    std::shared_ptr<statementNode> tb = deepCopy(a->getTrueBranch());
+                    std::shared_ptr<statementNode> fb = deepCopy(a->getFalseBranch());
+                    std::shared_ptr<expressionNode> cond = deepCopy(a->getCondition());
                     std::shared_ptr<statementNode> res = std::make_shared<ifElseNode>(ifElseNode(a->getType(),cond,tb,fb));
                     return res;
                 }
                 break;
             case Write:
                 if (auto a = dynamic_cast<const writeNode*>(tree)) {
-                    std::shared_ptr<expressionNode> v = wrapTree(a->getVar());
-                    std::shared_ptr<expressionNode> e = wrapTree(a->getExpr());
+                    std::shared_ptr<expressionNode> v = deepCopy(a->getVar());
+                    std::shared_ptr<expressionNode> e = deepCopy(a->getExpr());
                     std::shared_ptr<statementNode> res = std::make_shared<writeNode>(writeNode(a->getType(),v,e));
                     return res;
                 }
                 break;
             case Read:
                 if (auto a = dynamic_cast<const readNode*>(tree)) {
-                    std::shared_ptr<expressionNode> v = wrapTree(a->getVar());
+                    std::shared_ptr<expressionNode> v = deepCopy(a->getVar());
                     std::shared_ptr<expressionNode> res = std::make_shared<readNode>(readNode(a->getType(),v));
                     return res;
                 }
@@ -400,7 +421,7 @@ public:
                 break;
             case ArrayAccess:
                 if(auto a = dynamic_cast<const arrayAccessNode*>(tree)) {
-                    std::shared_ptr<expressionNode> acc = wrapTree(a->getAccessor());
+                    std::shared_ptr<expressionNode> acc = deepCopy(a->getAccessor());
                     std::shared_ptr<expressionNode> res = std::make_shared<arrayAccessNode>(arrayAccessNode(a->getType(), acc));
                     return res;
                 }
@@ -409,7 +430,7 @@ public:
                 if(auto a = dynamic_cast<const arrayLiteralNode*>(tree)) {
                     std::vector<std::shared_ptr<expressionNode>> nodes;
                     for (auto &i : a->getArrLit()) {
-                        std::shared_ptr<expressionNode> inter = wrapTree(i.get());
+                        std::shared_ptr<expressionNode> inter = deepCopy(i.get());
                         nodes.push_back(inter);
                     }
                     std::shared_ptr<expressionNode> res = std::make_shared<arrayLiteralNode>(arrayLiteralNode(a->getType(),nodes));
@@ -418,7 +439,7 @@ public:
                 break;
             case Event:
                 if(auto a = dynamic_cast<const eventNode*>(tree)) {
-                    std::shared_ptr<expressionNode> cond = wrapTree(a->getCondition());
+                    std::shared_ptr<expressionNode> cond = deepCopy(a->getCondition());
                     std::shared_ptr<statementNode> res = std::make_shared<eventNode>(eventNode(a->getType(), cond));
                     return res;
                 }
@@ -431,15 +452,15 @@ public:
                 break;
             case BinaryExpression:
                 if(auto a = dynamic_cast<const binaryExpressionNode*>(tree)) {
-                    std::shared_ptr<expressionNode> e1 = wrapTree(a->getLeft());
-                    std::shared_ptr<expressionNode> e2 = wrapTree(a->getRight());
+                    std::shared_ptr<expressionNode> e1 = deepCopy(a->getLeft());
+                    std::shared_ptr<expressionNode> e2 = deepCopy(a->getRight());
                     std::shared_ptr<expressionNode> res = std::make_shared<binaryExpressionNode>(binaryExpressionNode(a->getType(), a->getOperator(), e1, e2));
                     return res;
                 }
                 break;
             case UnaryExpression:
                 if(auto a = dynamic_cast<const unaryExpressionNode*>(tree)) {
-                    std::shared_ptr<expressionNode> e = wrapTree(a->getExpression());
+                    std::shared_ptr<expressionNode> e = deepCopy(a->getExpression());
                     std::shared_ptr<expressionNode> res = std::make_shared<unaryExpressionNode>(unaryExpressionNode(a->getType(), a->getOperator(),e));
                     return res;
                 }

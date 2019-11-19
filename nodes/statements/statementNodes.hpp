@@ -13,5 +13,6 @@
 #include "writeNode.hpp"
 #include "readNode.hpp"
 #include "eventNode.hpp"
+#include "arrayFieldAssignNode.hpp"
 
 #endif //ANTLR_CPP_TUTORIAL_STATEMENTNODE_H
