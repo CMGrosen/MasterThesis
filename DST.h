@@ -73,7 +73,17 @@ public:
         std::shared_ptr<expressionNode> node = visitExpr(ctx->expr());
         if (ctx->arrayAccess()) {
             std::shared_ptr<expressionNode> arrAcc = visitArrayAccess(ctx->arrayAccess());
-            if (node->getType() == arrayIntType || node->getType() == arrayBoolType || arrAcc->getType() != intType) {
+            if (node->getType() == arrayIntType || node->getType() == arrayBoolType) {
+                t = errorType;
+                std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
+                << "] Cannot assign an array to a field of an array\n";
+            } else if (arrAcc->getType() != intType) {
+                t = errorType;
+                if (arrAcc->getType() != errorType) {
+                    std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
+                    << "] Type mismatch in assignment. Expected field accessor to be of type " << info[intType] << " got " << info[arrAcc->getType()] << "\n";
+                }
+            } else if (node->getType() == errorType) {
                 t = errorType;
             } else {
                 t = okType;
@@ -81,7 +91,6 @@ public:
 
             std::shared_ptr<statementNode> a = std::make_shared<arrayFieldAssignNode>(arrayFieldAssignNode(t, arrAcc, node));
             return a;
-            std::cout << "debug";
         } else {
             std::string name = ctx->NAME()->getText();
             auto pair = symboltables.insert({name, constraint(node->getType())});
@@ -94,6 +103,11 @@ public:
                         constraint temp = constraint(t);
                         auto p = symboltables.insert({name + "[" + std::to_string(i) + "]", temp});
                         if(!p.second && p.first->second.type != t) {
+                            if (t != errorType) {
+                                std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
+                                          << "] Attempt at changing type signature of array from "
+                                          << info[t] << " to " << info[p.first->second.type] << "\n";
+                            }
                             pair.first->second.type = errorType;
                         }
                     }
@@ -102,6 +116,8 @@ public:
                         if (symboltables.find(name + "[" + std::to_string(size-1) + "]") == symboltables.end() ||
                             (symboltables.find(name + "[" + std::to_string(size) + "]") != symboltables.end())) {
                             //If this variable already exists and is assigned to a new arrayLiteral that are not the same size as the one previously assigned:
+                            std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
+                                      << "] Attempt to reassign an array to another literal that is not the same size\n";
                             pair.first->second.type = errorType;
                         }
                     }
@@ -168,8 +184,16 @@ public:
         auto symbol = symboltables.find(ctx->NAME()->getText());
         std::string name = ctx->NAME()->getText();
         Type type = errorType;
+        Type typeToWrite = errorType;
         if (symbol != symboltables.end() && symbol->second.type == intType) {
             type = intType;
+        } else if (symbol != symboltables.end() && symbol->second.type != errorType) {
+            typeToWrite = symbol->second.type;
+        }
+        if (type != intType && typeToWrite != errorType) {
+            std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
+                      << "] Type mismatch of variable used to read to. Expected "
+                      << info[intType] << " got " << info[typeToWrite] << "\n";
         }
         std::shared_ptr<variableNode> nameNode = std::make_shared<variableNode>(variableNode(type, name));
         readNode node = readNode((type == intType) ? okType : errorType, nameNode);
@@ -184,6 +208,11 @@ public:
         Type t = intType;
         if (symbol == symboltables.end() || symbol->second.type != intType) {
             t = errorType;
+        }
+        if (t != intType && symbol != symboltables.end()) {
+            std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
+                      << "] Type mismatch of variable used to write from. Expected "
+                      << info[t] << " got " << info[symbol->second.type] << "\n";
         }
         std::shared_ptr<variableNode> var = std::make_shared<variableNode>(variableNode(t, ctx->NAME()->getText()));
         std::shared_ptr<statementNode> res = std::make_shared<writeNode>(writeNode(var, expr));
@@ -231,6 +260,11 @@ public:
             std::shared_ptr<expressionNode> node = visitExpr(ctx->expr(0));
             Type t = boolType;
             if (node->getType() != boolType) t = errorType;
+            if (node->getType() != errorType && node->getType() != boolType) {
+                std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
+                      << "] Type mismatch in unary expression. Expected "
+                      << info[boolType] << " got " << info[node->getType()] << "\n";
+            }
             std::shared_ptr<expressionNode> res = std::make_shared<unaryExpressionNode>(unaryExpressionNode(t, NOT, node));
             return res;
         } else if (ctx->literal()) {
@@ -247,6 +281,10 @@ public:
             variableNode node = (pair != symboltables.end())
                                 ? variableNode(pair->second.type, ctx->NAME()->getText())
                                 : variableNode(errorType, ctx->NAME()->getText());
+            if (node.getType() == errorType) {
+                std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
+                          << "] Attempted to use variable that hasn't been assigned a value\n";
+            }
             std::shared_ptr<expressionNode> res = std::make_shared<variableNode>(node);
             return res;
         } else if (ctx->read()) {
