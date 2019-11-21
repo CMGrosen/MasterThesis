@@ -8,16 +8,16 @@
 #include "Constraint.hpp"
 class SymbolTable{
 public:
-    void updateValue(const std::string& name, std::string expression){
+    void updateValue(const std::string& name, std::vector<std::shared_ptr<node>> expression){
         if(isConcrete(expression)){
             std::string value;
             if(symbolicVariables.find(name) != symbolicVariables.end()){
                 auto pair = symbolicVariables.find(name);
-                pair->second.setRule("");
+                pair->second.setRule(std::vector<std::shared_ptr<node>>());             // empty the constraint rule
                 concreteVariables.insert({pair->first, pair->second});
                 symbolicVariables.erase(name);
             }
-            if(concreteVariables.find(name)->second.type = intType) {
+            if(concreteVariables.find(name)->second.type == intType) {
                 value = evaluateExpression(expression, intType);
             } else {
                 value = evaluateExpression(expression, boolType);
@@ -32,7 +32,9 @@ private:
     std::map<std::string, constraint> symbolicVariables;
     std::map<std::string, constraint> concreteVariables;
 
-    std::string evaluateExpression(std::string& expr, Type type){
+    std::string evaluateExpression(std::vector<std::shared_ptr<node>> expression, Type type){
+        // use expression visitor
+        /*
         std::vector<std::string> tokens =  stringSplit(expr);
         if(type == intType){
             return  std::to_string(evaluateArithmetic(tokens));
@@ -41,9 +43,32 @@ private:
         } else {
             return "ERROR";
         }
-
+        */
     }
 
+    bool isConcrete(std::vector<std::shared_ptr<node>> expression){
+        std::vector<std::string> variables = getVariables(expression);
+        for(const auto& var : variables){
+            if(var == "Read" ||symbolicVariables.find(var) != symbolicVariables.end()){
+                return false;
+            }
+        }
+        // since all variables are global we should never find a variable name not in the lists
+        return true;
+    }
+
+    static std::vector<std::string> getVariables(std::vector<std::shared_ptr<node>> expression){
+        std::vector<std::string> result = std::vector<std::string>();
+        // besøg alle noder og returner alle variable navne
+        return result;
+    }
+
+
+
+
+
+
+    /*
     int evaluateArithmetic(const std::vector<std::string>& tokens){
         int result = 0;
         char op = ' ';
@@ -206,45 +231,8 @@ private:
         }
         return result;
     }
-    bool isConcrete(const std::string& expr){
-        std::vector<std::string> variables = getVariables(expr);
-        for(const auto& var : variables){
-            if(var == "Read" ||symbolicVariables.find(var) != symbolicVariables.end()){
-                return false;
-            }
-        }
-        // fix så den kan håndtere at var ikke findes
-        return true;
-    }
-    static std::vector<std::string> getVariables(const std::string& expr){
-        std::vector<std::string> result = std::vector<std::string>();
-        std::string temp = "";
-        for(auto c : expr){
-            switch(c){
-                case '+':
-                case '-':
-                case '*':
-                case '/':
-                case '%':
-                case '<':
-                case '>':
-                case '=':
-                case '!':
-                case '&':
-                case '|':
-                case ' ':
-                    if(!temp.empty() && !isValue(temp)) {
-                        result.emplace_back(temp);
-                        temp = "";
-                    }
-                    break;
-                default:
-                    temp += c;
-                    break;
-            }
-        }
-        return result;
-    }
+
+
 
     static bool isValue(const std::string& str){
         char c = str[0];
@@ -265,18 +253,22 @@ private:
             }
         return true;
     }
+
     static bool isBool(const std::string& str){
         return str == "true" || str == "false";
     }
-
+    // bool to string
     static std::string btos(bool boolean){
         if(boolean){
             return "true";
         }
         return "false";
     }
+    // string to bool
     static bool stob(const std::string& str){
         return str == "true";
     }
+    */
 };
+
 #endif //ANTLR_CPP_TUTORIAL_SYMBOLTABLE_HPP

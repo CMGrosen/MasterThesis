@@ -10,7 +10,6 @@ class constraint{
 public:
     constraint(Type _type){
         type = _type;
-        rule  = "";
         value = "";
     }
 
@@ -26,27 +25,24 @@ public:
     void setValue(std::string val){
         value = val;
     }
-    std::string getValue(){
+    std::string getValue() {
         return value;
     }
 
-    void updateRule(std::string _rule){
-        if(rule != ""){
-            rule = rule + " && " + _rule;
-        } else {
-            rule = _rule;
-        }
+    void updateRule(std::vector<std::shared_ptr<node>> _rule){
+
     }
-    void setRule(std::string _rule){
-        rule = _rule;
+
+    void setRule(std::vector<std::shared_ptr<node>> _rule){
+        rule = std::move(_rule);
     }
-    std::string getRule(){
+    std::vector<std::shared_ptr<node>> getRule(){
         return rule;
     }
 
 private:
     std::string value;
-    std::string rule;
+    std::vector<std::shared_ptr<node>> rule;
 };
 
 #endif //ANTLR_CPP_TUTORIAL_CONSTRAINT_HPP
