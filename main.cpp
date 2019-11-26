@@ -15,7 +15,9 @@ static std::map< const char *, const char * > files = {
         {"out_of_bounds", "../code_examples/out_of_bounds.small"},
         {"race_condition", "../code_examples/race_condition.small"},
         {"bubblesort", "../code_examples/bubblesort.small"},
-        {"stateTest", "../nodeptr_test.small"}
+        {"stateTest", "../nodeptr_test.small"},
+        {"precedence", "../precendenceTest.small"},
+        {"temp", "../temp.small"}
 };
 
 //definitely have to think carefully about how we do this
@@ -50,7 +52,7 @@ std::vector<state> f(state* s) {
 int main(int argc, const char* argv[]) {
     std::ifstream stream;
     //stream.open("../code.small");
-    stream.open(files["stateTest"]);
+    stream.open(files["temp"]);
     //stream.open("shortExpr.small");
 
     ANTLRInputStream input(stream);

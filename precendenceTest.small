@@ -24,11 +24,11 @@ if (a > b) {
 }
 
 fork {
-    a=b;
+    a=a+2;
 } par {
-    a=b;
+    a=a*b;
 } par {
-    a=b;
+    a=a-b;
 }
 
 tt = true;

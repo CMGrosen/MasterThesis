@@ -231,6 +231,11 @@ public:
                 std::shared_ptr<expressionNode> node = visitExpr(ctx->expr(0));
                 Type t = intType;
                 if (node->getType() != intType) t = errorType;
+                if (auto n = dynamic_cast<literalNode*>(node.get())) {
+                    if (t != errorType) {
+                        return compute_new_literal(*n, *n, NEG, t);
+                    }
+                }
                 std::shared_ptr<expressionNode> res = std::make_shared<unaryExpressionNode>(unaryExpressionNode(t, NEG, node));
                 return res;
             }
@@ -264,6 +269,11 @@ public:
                 std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
                       << "] Type mismatch in unary expression. Expected "
                       << info[boolType] << " got " << info[node->getType()] << "\n";
+            }
+            if (auto n = dynamic_cast<literalNode*>(node.get())) {
+                if (t != errorType) {
+                    return compute_new_literal(*n, *n, NOT, t);
+                }
             }
             std::shared_ptr<expressionNode> res = std::make_shared<unaryExpressionNode>(unaryExpressionNode(t, NOT, node));
             return res;
@@ -322,6 +332,95 @@ public:
         return res;
     }
 
+    std::string btos (bool val) const {
+        return val ? "true" : "false";
+    }
+
+    std::shared_ptr<expressionNode> compute_new_literal (literalNode l, literalNode r, op expressionType, Type t) {
+        std::string lVal = l.value;
+        std::string rVal = r.value;
+        Type nodesType;
+        int lIntVal = 0;
+        int rIntVal = 0;
+        bool lBoolVal = false;
+        bool rBoolVal = false;
+        if (l.getType() == intType) {
+            lIntVal = std::stoi(lVal);
+            rIntVal = std::stoi(rVal);
+            nodesType = intType;
+        } else {
+            lBoolVal = lVal == "true";
+            rBoolVal = rVal == "true";
+            nodesType = boolType;
+        }
+        switch (expressionType) {
+            case PLUS:
+                return std::make_shared<literalNode>(literalNode(t, std::to_string(lIntVal + rIntVal)));
+            case MINUS:
+                return std::make_shared<literalNode>(literalNode(t, std::to_string(lIntVal - rIntVal)));
+            case MULT:
+                return std::make_shared<literalNode>(literalNode(t, std::to_string(lIntVal * rIntVal)));
+            case DIV:
+                return std::make_shared<literalNode>(literalNode(t, std::to_string(lIntVal / rIntVal)));
+            case MOD:
+                return std::make_shared<literalNode>(literalNode(t, std::to_string(lIntVal % rIntVal)));
+            case AND:
+                if (nodesType == intType) {
+                    return std::make_shared<literalNode>(literalNode(t, btos(lIntVal && rIntVal)));
+                } else {
+                    return std::make_shared<literalNode>(literalNode(t, btos(lBoolVal && rBoolVal)));
+                }
+            case OR:
+                if (nodesType == intType) {
+                    return std::make_shared<literalNode>(literalNode(t, btos(lIntVal || rIntVal)));
+                } else {
+                    return std::make_shared<literalNode>(literalNode(t, btos(lBoolVal || rBoolVal)));
+                }
+            case LE:
+                if (nodesType == intType) {
+                    return std::make_shared<literalNode>(literalNode(t, btos(lIntVal < rIntVal)));
+                } else {
+                    return std::make_shared<literalNode>(literalNode(t, btos(lBoolVal < rBoolVal)));
+                }
+            case LEQ:
+                if (nodesType == intType) {
+                    return std::make_shared<literalNode>(literalNode(t, btos(lIntVal <= rIntVal)));
+                } else {
+                    return std::make_shared<literalNode>(literalNode(t, btos(lBoolVal <= rBoolVal)));
+                }
+            case GE:
+                if (nodesType == intType) {
+                    return std::make_shared<literalNode>(literalNode(t, btos(lIntVal > rIntVal)));
+                } else {
+                    return std::make_shared<literalNode>(literalNode(t, btos(lBoolVal > rBoolVal)));
+                }
+            case GEQ:
+                if (nodesType == intType) {
+                    return std::make_shared<literalNode>(literalNode(t, btos(lIntVal >= rIntVal)));
+                } else {
+                    return std::make_shared<literalNode>(literalNode(t, btos(lBoolVal >= rBoolVal)));
+                }
+            case EQ:
+                if (nodesType == intType) {
+                    return std::make_shared<literalNode>(literalNode(t, btos(lIntVal == rIntVal)));
+                } else {
+                    return std::make_shared<literalNode>(literalNode(t, btos(lBoolVal == rBoolVal)));
+                }
+            case NEQ:
+                if (nodesType == intType) {
+                    return std::make_shared<literalNode>(literalNode(t, btos(lIntVal != rIntVal)));
+                } else {
+                    return std::make_shared<literalNode>(literalNode(t, btos(lBoolVal != rBoolVal)));
+                }
+            case NOT:
+                return std::make_shared<literalNode>(literalNode(t, btos(!lBoolVal)));
+            case NEG:
+                return std::make_shared<literalNode>(literalNode(t, std::to_string(-lIntVal)));
+            default:
+                std::cout << "this shouldn't happen\n";
+        }
+    }
+
     std::shared_ptr<expressionNode> binary_expression (SmallParser::ExprContext *ctx, op expressionType) {
         std::shared_ptr<expressionNode> l = (visitExpr(ctx->left));
         std::shared_ptr<expressionNode> r = (visitExpr(ctx->right));
@@ -378,6 +477,13 @@ public:
             default:
                 t = errorType;
                 break;
+        }
+        if (t != errorType) {
+            if (auto lh = dynamic_cast<literalNode *>(l.get())) {
+                if (auto rh = dynamic_cast<literalNode *>(r.get())) {
+                    return compute_new_literal(*lh, *rh, expressionType, t);
+                }
+            }
         }
         std::shared_ptr<expressionNode> p = std::make_shared<binaryExpressionNode>(binaryExpressionNode(t, expressionType, l,r));
         return p;
