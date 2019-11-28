@@ -4,45 +4,29 @@
 #ifndef ANTLR_CPP_TUTORIAL_CONSTRAINT_HPP
 #define ANTLR_CPP_TUTORIAL_CONSTRAINT_HPP
 
-#include <nodes/node.hpp>
+#include <nodes/nodes.hpp>
 
 class constraint{
 public:
-    constraint(Type _type){
-        type = _type;
-        value = "";
-    }
+    constraint(Type _type) : type{_type} {}
+
+    constraint(Type _type, std::shared_ptr<expressionNode> _expression) : type{_type}, rule{std::move(_expression)} {}
 
     Type type;
 
-    void updateValue(std::string val){
-        if(value != ""){
-            value = value + val;
-        } else {
-            value = val;
-        }
-    }
-    void setValue(std::string val){
-        value = val;
-    }
-    std::string getValue() {
-        return value;
-    }
-
-    void updateRule(std::vector<std::shared_ptr<node>> _rule){
+    void updateRule(std::shared_ptr<expressionNode> _rule){
 
     }
 
-    void setRule(std::vector<std::shared_ptr<node>> _rule){
+    void setRule(std::shared_ptr<expressionNode> _rule){
         rule = std::move(_rule);
     }
-    std::vector<std::shared_ptr<node>> getRule(){
+    std::shared_ptr<node> getRule(){
         return rule;
     }
 
 private:
-    std::string value;
-    std::vector<std::shared_ptr<node>> rule;
+    std::shared_ptr<expressionNode> rule;
 };
 
 #endif //ANTLR_CPP_TUTORIAL_CONSTRAINT_HPP

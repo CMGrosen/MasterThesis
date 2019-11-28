@@ -8,31 +8,22 @@
 #include "Constraint.hpp"
 class SymbolTable{
 public:
-    void updateValue(const std::string& name, std::vector<std::shared_ptr<node>> expression){
-        if(isConcrete(expression)){
-            std::string value;
-            if(symbolicVariables.find(name) != symbolicVariables.end()){
-                auto pair = symbolicVariables.find(name);
-                pair->second.setRule(std::vector<std::shared_ptr<node>>());             // empty the constraint rule
-                concreteVariables.insert({pair->first, pair->second});
-                symbolicVariables.erase(name);
+    void updateRule(const std::string& name, std::shared_ptr<expressionNode> expression){
+        if(expression->getNodeType() == Literal){
+            auto pair = variables.find(name);
+            if(variables.find(name) != variables.end()) {
+                if (pair->second.type == intType) {
+                    pair->second.setRule(evaluateExpression(expression, intType));
+                } else {
+                    pair->second.setRule(evaluateExpression(expression, boolType));
+                }
             }
-            if(concreteVariables.find(name)->second.type == intType) {
-                value = evaluateExpression(expression, intType);
-            } else {
-                value = evaluateExpression(expression, boolType);
-            }
-            concreteVariables.find(name)->second.setValue(value);
         }
     }
-    void updateRule(){
-
-    }
 private:
-    std::map<std::string, constraint> symbolicVariables;
-    std::map<std::string, constraint> concreteVariables;
+    std::map<std::string, constraint> variables;
 
-    std::string evaluateExpression(std::vector<std::shared_ptr<node>> expression, Type type){
+    std::shared_ptr<expressionNode> evaluateExpression(std::shared_ptr<expressionNode> expression, Type type){
         // use expression visitor
         /*
         std::vector<std::string> tokens =  stringSplit(expr);
@@ -45,8 +36,8 @@ private:
         }
         */
     }
-
-    bool isConcrete(std::vector<std::shared_ptr<node>> expression){
+/*
+    bool isConcrete(std::shared_ptr<expressionNode> expression){
         std::vector<std::string> variables = getVariables(expression);
         for(const auto& var : variables){
             if(var == "Read" ||symbolicVariables.find(var) != symbolicVariables.end()){
@@ -55,9 +46,9 @@ private:
         }
         // since all variables are global we should never find a variable name not in the lists
         return true;
-    }
+    }*/
 
-    static std::vector<std::string> getVariables(std::vector<std::shared_ptr<node>> expression){
+    static std::vector<std::string> getVariables(std::shared_ptr<expressionNode> expression){
         std::vector<std::string> result = std::vector<std::string>();
         // besøg alle noder og returner alle variable navne
         return result;
