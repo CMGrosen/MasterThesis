@@ -6,6 +6,7 @@
 #include "DST.h"
 #include <antlr4-runtime.h>
 #include <symengine/state.hpp>
+#include "z3++.h"
 
 using namespace std;
 using namespace antlr4;
@@ -20,32 +21,24 @@ static std::map< const char *, const char * > files = {
         {"temp", "../temp.small"}
 };
 
-//definitely have to think carefully about how we do this
-std::vector<state> f(state* s) {
-    switch(s->get_position()->getNodeType()) {
-        case BinaryExpression:
-            return std::vector<state>();
-        case Literal:
-            return std::vector<state>();
-        case Assign:
-            if(auto a = dynamic_cast<assignNode*>(s->get_position())) {
-                if (auto b = dynamic_cast<binaryExpressionNode*>(a->getExpr())) {
-                    auto table = std::unordered_map<std::string, std::shared_ptr<expressionNode>>{};
-                    std::shared_ptr<expressionNode> expr = DST::deepCopy(b);
-                    if (expr->getNodeType() == BinaryExpression && expr->getType() == intType) {
-                        if(((binaryExpressionNode*)expr.get())->getLeft()->getNodeType() == Literal
-                        && ((binaryExpressionNode*)expr.get())->getRight()->getNodeType() == Literal) {
-                            std::string lVal = ((literalNode*)((binaryExpressionNode*)expr.get())->getLeft())->value;
-                            std::string rVal = ((literalNode*)((binaryExpressionNode*)expr.get())->getRight())->value;
-                            table.insert({a->getName(), std::make_shared<literalNode>(expr->getType(), std::to_string(stoi(lVal) + stoi(rVal)))});
-                        }
-                    }
-                    return std::vector<state>{state(nullptr, table, nullptr)};
-                }
-            }
-            return std::vector<state>();
-        default:
-            return std::vector<state>();
+void demorgan() { //https://github.com/Z3Prover/z3/blob/31a6788859d4fc05d2b88080d58014c328aa7262/examples/c%2B%2B/example.cpp
+    std::cout << "de-Morgan example\n";
+
+    z3::context c;
+
+    z3::expr x = c.bool_const("x");
+    z3::expr y = c.bool_const("y");
+    z3::expr conjecture = (!(x && y)) == (!x || !y);
+
+    z3::solver s(c);
+    // adding the negation of the conjecture as a constraint.
+    s.add(!conjecture);
+    //std::cout << s << "\n";
+    //std::cout << s.to_smt2() << "\n";
+    switch (s.check()) {
+        case z3::unsat:   std::cout << "de-Morgan is valid\n"; break;
+        case z3::sat:     std::cout << "de-Morgan is not valid\n"; break;
+        case z3::unknown: std::cout << "unknown\n"; break;
     }
 }
 
@@ -76,7 +69,10 @@ int main(int argc, const char* argv[]) {
     auto table = std::unordered_map<std::string, std::shared_ptr<expressionNode>>();
     table.insert({"a", std::make_shared<binaryExpressionNode>(binaryExpressionNode(intType, PLUS, std::make_shared<literalNode>(literalNode(intType, "2")),std::make_shared<literalNode>(literalNode(intType, "2"))))});
     state no = state(a.get(), std::move(table), a);
-    std::vector<state> succStates = no.get_successors(f);
+//    std::vector<state> succStates = no.get_successors(f);
+
+    demorgan();
+
     std::cout << "got here" << std::endl;//a << std::endl;
     return 0;
 }

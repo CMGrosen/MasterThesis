@@ -6,7 +6,7 @@
 
 #include <functional>
 #include <iostream>
-#include "symbolTable.hpp"
+
 class state {
 public:
     state(node *current_position, std::unordered_map<std::string, std::shared_ptr<expressionNode>> constraints, std::shared_ptr<node> operating_on) : cPos{current_position}, table{std::move(constraints)}, n{std::move(operating_on)} {};

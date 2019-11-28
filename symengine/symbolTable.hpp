@@ -6,6 +6,8 @@
 #define ANTLR_CPP_TUTORIAL_SYMBOLTABLE_HPP
 
 #include "Constraint.hpp"
+#include "state.hpp"
+
 class SymbolTable{
 public:
     void updateRule(const std::string& name, std::shared_ptr<expressionNode> expression){
@@ -54,6 +56,34 @@ private:
         return result;
     }
 
+    //definitely have to think carefully about how we do this
+    std::vector<state> f(state* s) {
+        switch(s->get_position()->getNodeType()) {
+            case BinaryExpression:
+                return std::vector<state>();
+            case Literal:
+                return std::vector<state>();
+            case Assign:
+                if(auto a = dynamic_cast<assignNode*>(s->get_position())) {
+                    if (auto b = dynamic_cast<binaryExpressionNode*>(a->getExpr())) {
+                        auto table = std::unordered_map<std::string, std::shared_ptr<expressionNode>>{};
+                        std::shared_ptr<expressionNode> expr = DST::deepCopy(b);
+                        if (expr->getNodeType() == BinaryExpression && expr->getType() == intType) {
+                            if(((binaryExpressionNode*)expr.get())->getLeft()->getNodeType() == Literal
+                               && ((binaryExpressionNode*)expr.get())->getRight()->getNodeType() == Literal) {
+                                std::string lVal = ((literalNode*)((binaryExpressionNode*)expr.get())->getLeft())->value;
+                                std::string rVal = ((literalNode*)((binaryExpressionNode*)expr.get())->getRight())->value;
+                                table.insert({a->getName(), std::make_shared<literalNode>(expr->getType(), std::to_string(stoi(lVal) + stoi(rVal)))});
+                            }
+                        }
+                        return std::vector<state>{state(nullptr, table, nullptr)};
+                    }
+                }
+                return std::vector<state>();
+            default:
+                return std::vector<state>();
+        }
+    }
 
 
 

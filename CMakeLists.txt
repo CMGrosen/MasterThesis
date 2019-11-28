@@ -44,6 +44,8 @@ include_directories(
         ${PROJECT_SOURCE_DIR}/antlr4-runtime/support
         ${PROJECT_SOURCE_DIR}/
         ${PROJECT_SOURCE_DIR}/libs/
+        ${PROJECT_SOURCE_DIR}/z3-4.8.7/bin/
+        ${PROJECT_SOURCE_DIR}/z3-4.8.7/include/
 )
 
 set(visitor_SRC
@@ -79,8 +81,10 @@ endif()
 
 if(APPLE)
     target_link_libraries(visitor "${PROJECT_SOURCE_DIR}/libs/libantlr4-runtime.dylib")
+    target_link_libraries(visitor "${PROJECT_SOURCE_DIR}/z3-4.8.7/bin/osx/libz3.dylib")
 elseif(UNIX)
     target_link_libraries(visitor "${PROJECT_SOURCE_DIR}/libs/libantlr4-runtime.so")
+    target_link_libraries(visitor "${PROJECT_SOURCE_DIR}/z3-4.8.7/bin/linux/libz3.so")
 endif()
 
 target_link_libraries(visitor ${SYSTEM_LIBS})
