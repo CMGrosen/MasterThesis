@@ -9,11 +9,13 @@
 
 class arrayAccessNode : public expressionNode {
 public:
-    arrayAccessNode(Type t, std::shared_ptr<expressionNode> a) : value{std::move(a)} {type = t; setNodeType(ArrayAccess);};
+    arrayAccessNode(Type t, std::shared_ptr<expressionNode> a, std::string n) : value{std::move(a)}, name{std::move(n)} {type = t; setNodeType(ArrayAccess);};
 
-    const expressionNode *getAccessor() const {return value.get();};
+    expressionNode *getAccessor() const {return value.get();};
+    std::string getName() const { return name;}
 private:
     std::shared_ptr<expressionNode> value;
+    std::string name;
 };
 
 

@@ -6,6 +6,7 @@
 #define ANTLR_CPP_TUTORIAL_SYMBOLTABLE_HPP
 
 #include "Constraint.hpp"
+#include "expressionVisitor.hpp"
 #include "state.hpp"
 
 class SymbolTable{
