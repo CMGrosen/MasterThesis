@@ -40,7 +40,7 @@ std::vector<state> f(state* s) {
                             table.insert({a->getName(), std::make_shared<literalNode>(expr->getType(), std::to_string(stoi(lVal) + stoi(rVal)))});
                         }
                     }
-                    return std::vector<state>{state(nullptr, table)};
+                    return std::vector<state>{state(nullptr, table, nullptr)};
                 }
             }
             return std::vector<state>();
@@ -75,7 +75,7 @@ int main(int argc, const char* argv[]) {
 
     auto table = std::unordered_map<std::string, std::shared_ptr<expressionNode>>();
     table.insert({"a", std::make_shared<binaryExpressionNode>(binaryExpressionNode(intType, PLUS, std::make_shared<literalNode>(literalNode(intType, "2")),std::make_shared<literalNode>(literalNode(intType, "2"))))});
-    state no = state(a.get(), std::move(table));
+    state no = state(a.get(), std::move(table), a);
     std::vector<state> succStates = no.get_successors(f);
     std::cout << "got here" << std::endl;//a << std::endl;
     return 0;
