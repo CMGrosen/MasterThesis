@@ -6,7 +6,6 @@
 #include "DST.h"
 #include <antlr4-runtime.h>
 #include <symengine/state.hpp>
-#include "z3++.h"
 
 using namespace std;
 using namespace antlr4;
@@ -20,27 +19,6 @@ static std::map< const char *, const char * > files = {
         {"precedence", "../precendenceTest.small"},
         {"temp", "../temp.small"}
 };
-
-void demorgan() { //https://github.com/Z3Prover/z3/blob/31a6788859d4fc05d2b88080d58014c328aa7262/examples/c%2B%2B/example.cpp
-    std::cout << "de-Morgan example\n";
-
-    z3::context c;
-
-    z3::expr x = c.bool_const("x");
-    z3::expr y = c.bool_const("y");
-    z3::expr conjecture = (!(x && y)) == (!x || !y);
-
-    z3::solver s(c);
-    // adding the negation of the conjecture as a constraint.
-    s.add(!conjecture);
-    //std::cout << s << "\n";
-    //std::cout << s.to_smt2() << "\n";
-    switch (s.check()) {
-        case z3::unsat:   std::cout << "de-Morgan is valid\n"; break;
-        case z3::sat:     std::cout << "de-Morgan is not valid\n"; break;
-        case z3::unknown: std::cout << "unknown\n"; break;
-    }
-}
 
 int main(int argc, const char* argv[]) {
     std::ifstream stream;
@@ -70,8 +48,6 @@ int main(int argc, const char* argv[]) {
     table.insert({"a", std::make_shared<binaryExpressionNode>(binaryExpressionNode(intType, PLUS, std::make_shared<literalNode>(literalNode(intType, "2")),std::make_shared<literalNode>(literalNode(intType, "2"))))});
     state no = state(a.get(), std::move(table), a);
 //    std::vector<state> succStates = no.get_successors(f);
-
-    demorgan();
 
     std::cout << "got here" << std::endl;//a << std::endl;
     return 0;

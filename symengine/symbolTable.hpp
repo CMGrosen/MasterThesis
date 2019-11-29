@@ -7,6 +7,9 @@
 
 #include "Constraint.hpp"
 #include "state.hpp"
+#include "z3++.h"
+
+using namespace z3;
 
 class SymbolTable{
 public:
@@ -82,6 +85,50 @@ private:
                 return std::vector<state>();
             default:
                 return std::vector<state>();
+        }
+    }
+
+    void testExpr() {
+        std::cout << "test example for (a > 34) && !(a <= 50) && a > 80\n";
+
+        z3::context c;
+        auto a = c.int_const("a");
+
+        z3::solver s(c);
+    /*
+        s.add(a > 10);
+        s.add(a < 30);*/
+
+        z3::expr l = a > 34;
+        z3::expr r = a <= 50;
+
+        z3::expr l2 = l && !r;
+        z3::expr r2 = a > 80;
+        s.add(l2 && r2);
+
+
+        switch (s.check()) {
+            case z3::unsat:
+                std::cout << "(a > 34) && !(a <= 50) && a > 80 is not satisfiable \n";
+                break;
+            case z3::sat:
+                std::cout << "(a > 34) && !(a <= 50) && a > 80 is satisfiable\n";
+                break;
+            case z3::unknown:
+                std::cout << "unknown\n";
+                break;
+        }
+        /*
+        while (s.check() == z3::sat) {
+            std::cout << s.get_model().eval(a);
+            s.add(a != s.get_model().eval(a)); //prevent next model from using the same assignment as a previous model
+        }*/
+        auto unsats = s.unsat_core();
+        //if (s.check() == z3::sat) {
+            model m = s.get_model();
+            std::cout << m.eval(a) << std::endl;
+            /*for (auto l : unsats)
+                std::cout << l.to_string() << std::endl;*/
         }
     }
 
