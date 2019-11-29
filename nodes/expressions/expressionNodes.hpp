@@ -7,6 +7,7 @@
 
 #include <nodes/expressions/binaryExpressions/binaryExpressionNode.hpp>
 #include <nodes/expressions/unaryExpressionNode.hpp>
+#include "constraintNode.hpp"
 
 
 #endif //ANTLR_CPP_TUTORIAL_EXPRESSIONNODES_H

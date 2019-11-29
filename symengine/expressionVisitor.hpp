@@ -42,7 +42,7 @@ public:
                 if(vars.find(var->name)->second.getRules()[0]->getNodeType() == Literal){
                     return parent;
                 } else {
-                    // symbolsk
+                    // Symbolsk
                 }
             }
             case Literal: {
@@ -54,12 +54,25 @@ public:
 
                     }
                     case Read: {
-
+                        // Symbolsk
                     }
                     case ArrayAccess:{
 
                     }
+                    case Variable: {
+                        variableNode* var = (dynamic_cast<variableNode*>(child_right));
+                        if(vars.find(var->name)->second.getRules()[0]->getNodeType() == Literal){
+                            return parent; // parents parent instead
+                        } else {
+                            // Symbolsk
+                        }
+                    }
+                    case Literal:
+                        return parent;
                 }
+            }
+            case Read: {
+                // Symbolsk
             }
         }
     }
@@ -150,9 +163,11 @@ private:
                     std::shared_ptr<expressionNode> left;
                     std::shared_ptr<expressionNode> right;
                     if(binexpr->getLeft()->getNodeType() == Literal) {
+                        // opdater højre siden
                         left = getNewTree(binexpr->getLeft(), updateLocation, vars);
                         right = getExpressionUpdate(binexpr->getRight(), vars);
                     } else {
+                        // opdater venstre  siden
                         left = getExpressionUpdate(binexpr->getLeft(), vars);
                         right = getNewTree(binexpr->getRight(), updateLocation, vars);
                     }
@@ -199,10 +214,14 @@ private:
             }
             case Variable: {
                 const variableNode* var = dynamic_cast<const variableNode*>(node);
-                constraint c = vars.find(var->name)->second;
-                std::shared_ptr<literalNode> litptr =
-                        std::make_shared<literalNode>(literalNode(c.type, dynamic_cast<literalNode*>(c.getRules()[0].get())->value));
-                result = litptr;
+                constraint constraints = vars.find(var->name)->second;
+                if(auto con = dynamic_cast<constraintNode*>(constraints.getRules()[0].get())){
+
+                } else {
+                    std::shared_ptr<literalNode> litptr =
+                            std::make_shared<literalNode>(literalNode(constraints.type, dynamic_cast<literalNode*>(constraints.getRules()[0].get())->value));
+                    result = litptr;
+                }
             }
             case ArrayAccess: {
                 const arrayAccessNode* var = dynamic_cast<const arrayAccessNode*>(node);
