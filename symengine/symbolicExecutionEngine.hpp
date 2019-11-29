@@ -16,7 +16,7 @@ class symbolicExecutionEngine {
 public:
 
     std::vector<z3::expr> execute(std::pair<const std::shared_ptr<statementNode>, const std::unordered_map<std::string, constraint>> treeAndSymTable) {
-        testExpr();
+        //testExpr();
         return std::vector<z3::expr>{};
     }
 
