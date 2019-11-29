@@ -15,9 +15,12 @@ using namespace z3;
 class symbolicExecutionEngine {
 public:
 
-    std::vector<z3::expr> execute(std::pair<const std::shared_ptr<statementNode>, const std::unordered_map<std::string, constraint>> treeAndSymTable) {
+    std::vector<z3::expr> execute(std::pair<const std::shared_ptr<statementNode>, const std::unordered_map<std::string, std::shared_ptr<expressionNode>>> treeAndSymTable) {
         //testExpr();
-        return std::vector<z3::expr>{};
+        expressionVisistor eVisitor;
+        state s = state(treeAndSymTable.first.get(), treeAndSymTable.second, treeAndSymTable.first);
+        auto res = compute_statements(eVisitor, s);
+        return res;
     }
 
     void updateRule(const std::string& name, std::shared_ptr<expressionNode> expression){
@@ -64,6 +67,10 @@ private:
         std::vector<std::string> result = std::vector<std::string>();
         // besøg alle noder og returner alle variable navne
         return result;
+    }
+
+    std::vector<z3::expr> compute_statements(expressionVisistor eVisitor, state s) {
+        return std::vector<z3::expr>{};
     }
 
     //definitely have to think carefully about how we do this

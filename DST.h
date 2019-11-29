@@ -15,13 +15,12 @@
 
 class  DST : public SmallVisitor {
 public:
-    std::unordered_map<std::string, constraint> symboltables;
+    std::unordered_map<std::string, std::shared_ptr<expressionNode>> symboltables;
 
-    std::pair<const std::shared_ptr<statementNode>, const std::unordered_map<std::string, constraint>> getTree(SmallParser::FileContext *ctx) {
+    std::pair<const std::shared_ptr<statementNode>, const std::unordered_map<std::string, std::shared_ptr<expressionNode>>> getTree(SmallParser::FileContext *ctx) {
         std::shared_ptr<statementNode> a = visitStmts(ctx->stmts());
-
         std::shared_ptr<statementNode> aNew = deepCopy(a.get());
-        return std::pair<std::shared_ptr<statementNode>, std::unordered_map<std::string, constraint>>(std::move(aNew), symboltables);
+        return std::pair<std::shared_ptr<statementNode>, std::unordered_map<std::string, std::shared_ptr<expressionNode>>>(std::move(aNew), symboltables);
     }
 
     virtual antlrcpp::Any visitFile(SmallParser::FileContext *ctx) override {
@@ -97,22 +96,22 @@ public:
         } else {
             std::shared_ptr<expressionNode> node = visitExpr(ctx->expr());
             std::string name = ctx->NAME()->getText();
-            auto pair = symboltables.insert({name, constraint(node->getType())});
+            auto pair = symboltables.insert({name, std::make_shared<constraintNode>(constraintNode(node->getType()))});
             if (node->getType() == arrayIntType || node->getType() == arrayBoolType){
                 if(auto arrLit = dynamic_cast<arrayLiteralNode*>(node.get())) {
                     auto arr = arrLit->getArrLit();
                     t = arr[0]->getType();
                     int count = arr.size();
                     for (int i = 0; i < count; ++i) {
-                        constraint temp = constraint(t);
+                        std::shared_ptr<expressionNode> temp = std::make_shared<constraintNode>(constraintNode(t));
                         auto p = symboltables.insert({name + "[" + std::to_string(i) + "]", temp});
-                        if(!p.second && p.first->second.type != t) {
+                        if(!p.second && p.first->second->getType() != t) {
                             if (t != errorType) {
                                 std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
                                           << "] Attempt at changing type signature of array from "
-                                          << info[t] << " to " << info[p.first->second.type] << "\n";
+                                          << info[t] << " to " << info[p.first->second->getType()] << "\n";
                             }
-                            pair.first->second.type = errorType;
+                            pair.first->second->setType(errorType);
                         }
                     }
                     if(!pair.second) {
@@ -122,17 +121,17 @@ public:
                             //If this variable already exists and is assigned to a new arrayLiteral that are not the same size as the one previously assigned:
                             std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
                                       << "] Attempt to reassign an array to another literal that is not the same size\n";
-                            pair.first->second.type = errorType;
+                            pair.first->second->setType(errorType);
                         }
                     }
                 }
             }
 
-            if(!pair.second && pair.first->second.type != node->getType())
-                pair.first->second.type = errorType;
+            if(!pair.second && pair.first->second->getType() != node->getType())
+                pair.first->second->setType(errorType);
 //        std::shared_ptr<assignNode> res = std::make_shared<assignNode>(assignNode(name, node));
 
-            assignNode assNode = assignNode(pair.first->second.type == errorType ? errorType : okType, name, node);
+            assignNode assNode = assignNode(pair.first->second->getType() == errorType ? errorType : okType, name, node);
             std::shared_ptr<statementNode> a = std::make_shared<assignNode>(assNode);
             return a;
         }
@@ -189,10 +188,10 @@ public:
         std::string name = ctx->NAME()->getText();
         Type type = errorType;
         Type typeToWrite = errorType;
-        if (symbol != symboltables.end() && symbol->second.type == intType) {
+        if (symbol != symboltables.end() && symbol->second->getType() == intType) {
             type = intType;
-        } else if (symbol != symboltables.end() && symbol->second.type != errorType) {
-            typeToWrite = symbol->second.type;
+        } else if (symbol != symboltables.end() && symbol->second->getType() != errorType) {
+            typeToWrite = symbol->second->getType();
         }
         if (type != intType && typeToWrite != errorType) {
             std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
@@ -210,13 +209,13 @@ public:
         std::shared_ptr<expressionNode> expr = visitExpr(ctx->expr());
         auto symbol = symboltables.find(ctx->NAME()->getText());
         Type t = intType;
-        if (symbol == symboltables.end() || symbol->second.type != intType) {
+        if (symbol == symboltables.end() || symbol->second->getType() != intType) {
             t = errorType;
         }
         if (t != intType && symbol != symboltables.end()) {
             std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
                       << "] Type mismatch of variable used to write from. Expected "
-                      << info[t] << " got " << info[symbol->second.type] << "\n";
+                      << info[t] << " got " << info[symbol->second->getType()] << "\n";
         }
         std::shared_ptr<variableNode> var = std::make_shared<variableNode>(variableNode(t, ctx->NAME()->getText()));
         std::shared_ptr<statementNode> res = std::make_shared<writeNode>(writeNode(var, expr));
@@ -284,16 +283,13 @@ public:
         } else if (ctx->literal()) {
             std::shared_ptr<expressionNode> p = std::make_shared<literalNode>(literalNode(ctx->literal()->getText()));
             return p;
-        } /*else if (ctx->arrayLiteral()) {
-            std::shared_ptr<expressionNode> exp = visitArrayLiteral(ctx->arrayLiteral());
-            return exp;
-        }*/ else if (ctx->arrayAccess()) {
+        } else if (ctx->arrayAccess()) {
             std::shared_ptr<expressionNode> exp = visitArrayAccess(ctx->arrayAccess());
             return exp;
         } else if (ctx->NAME()) {
             auto pair = symboltables.find(ctx->NAME()->getText());
             variableNode node = (pair != symboltables.end())
-                                ? variableNode(pair->second.type, ctx->NAME()->getText())
+                                ? variableNode(pair->second->getType(), ctx->NAME()->getText())
                                 : variableNode(errorType, ctx->NAME()->getText());
             if (node.getType() == errorType) {
                 std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
@@ -312,7 +308,7 @@ public:
         Type t;
         if (node->getType() != intType || it == symboltables.end()) {
             t = errorType;
-        } else if (it->second.type == arrayIntType) {
+        } else if (it->second->getType() == arrayIntType) {
             t = intType;
         } else {
             t = boolType;
