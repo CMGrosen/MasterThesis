@@ -5,7 +5,7 @@
 #include "antlr4-runtime/SmallParser.h"
 #include "DST.h"
 #include <antlr4-runtime.h>
-#include <symengine/state.hpp>
+#include <symengine/symbolTable.hpp>
 
 using namespace std;
 using namespace antlr4;
@@ -42,11 +42,8 @@ int main(int argc, const char* argv[]) {
     if(treeAndSymbolTable.first->getType() == errorType)
         return 0;
 
-    typeof(treeAndSymbolTable.first) a = DST::deepCopy(treeAndSymbolTable.first.get());
-
     auto table = std::unordered_map<std::string, std::shared_ptr<expressionNode>>();
     table.insert({"a", std::make_shared<binaryExpressionNode>(binaryExpressionNode(intType, PLUS, std::make_shared<literalNode>(literalNode(intType, "2")),std::make_shared<literalNode>(literalNode(intType, "2"))))});
-    state no = state(a.get(), std::move(table), a);
 //    std::vector<state> succStates = no.get_successors(f);
 
     std::cout << "got here" << std::endl;//a << std::endl;

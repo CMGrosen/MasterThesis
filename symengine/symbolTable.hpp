@@ -6,6 +6,7 @@
 #define ANTLR_CPP_TUTORIAL_SYMBOLTABLE_HPP
 
 #include "Constraint.hpp"
+#include "expressionVisitor.hpp"
 #include "state.hpp"
 #include "z3++.h"
 
@@ -123,8 +124,8 @@ private:
             std::cout << s.get_model().eval(a);
             s.add(a != s.get_model().eval(a)); //prevent next model from using the same assignment as a previous model
         }*/
-        auto unsats = s.unsat_core();
-        //if (s.check() == z3::sat) {
+        //auto unsats = s.unsat_core();
+        if (s.check() == z3::sat) {
             model m = s.get_model();
             std::cout << m.eval(a) << std::endl;
             /*for (auto l : unsats)

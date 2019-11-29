@@ -1,3 +1,6 @@
+
+#ifndef DST_H
+#define DST_H
 #include "antlr4-runtime.h"
 #include "SmallVisitor.h"
 #include <nodes/nodes.hpp>
@@ -70,8 +73,8 @@ public:
 
     virtual antlrcpp::Any visitAssign(SmallParser::AssignContext *ctx) override {
         Type t;
-        std::shared_ptr<expressionNode> node = visitExpr(ctx->expr());
         if (ctx->arrayAccess()) {
+            std::shared_ptr<arrayLiteralNode> node = visitArrayLiteral(ctx->arrayLiteral());
             std::shared_ptr<expressionNode> arrAcc = visitArrayAccess(ctx->arrayAccess());
             if (node->getType() == arrayIntType || node->getType() == arrayBoolType) {
                 t = errorType;
@@ -92,6 +95,7 @@ public:
             std::shared_ptr<statementNode> a = std::make_shared<arrayFieldAssignNode>(arrayFieldAssignNode(t, arrAcc, node));
             return a;
         } else {
+            std::shared_ptr<expressionNode> node = visitExpr(ctx->expr());
             std::string name = ctx->NAME()->getText();
             auto pair = symboltables.insert({name, constraint(node->getType())});
             if (node->getType() == arrayIntType || node->getType() == arrayBoolType){
@@ -280,10 +284,10 @@ public:
         } else if (ctx->literal()) {
             std::shared_ptr<expressionNode> p = std::make_shared<literalNode>(literalNode(ctx->literal()->getText()));
             return p;
-        } else if (ctx->arrayLiteral()) {
+        } /*else if (ctx->arrayLiteral()) {
             std::shared_ptr<expressionNode> exp = visitArrayLiteral(ctx->arrayLiteral());
             return exp;
-        } else if (ctx->arrayAccess()) {
+        }*/ else if (ctx->arrayAccess()) {
             std::shared_ptr<expressionNode> exp = visitArrayAccess(ctx->arrayAccess());
             return exp;
         } else if (ctx->NAME()) {
@@ -313,7 +317,7 @@ public:
         } else {
             t = boolType;
         }
-        std::shared_ptr<expressionNode> res = std::make_shared<arrayAccessNode>(arrayAccessNode(t, node));
+        std::shared_ptr<expressionNode> res = std::make_shared<arrayAccessNode>(arrayAccessNode(t, node, ctx->NAME()->getText()));
         return res;
     }
 
@@ -328,15 +332,15 @@ public:
         for (auto i : ctx->expr()) {
             inter.push_back(visitExpr(i));
         }
-        std::shared_ptr<expressionNode> res = std::make_shared<arrayLiteralNode>(arrayLiteralNode(inter));
+        std::shared_ptr<arrayLiteralNode> res = std::make_shared<arrayLiteralNode>(arrayLiteralNode(inter));
         return res;
     }
 
-    std::string btos (bool val) const {
+    static std::string btos (bool val) {
         return val ? "true" : "false";
     }
 
-    std::shared_ptr<expressionNode> compute_new_literal (literalNode l, literalNode r, op expressionType, Type t) {
+    static std::shared_ptr<expressionNode> compute_new_literal (literalNode l, literalNode r, op expressionType, Type t) {
         std::string lVal = l.value;
         std::string rVal = r.value;
         Type nodesType;
@@ -566,7 +570,7 @@ public:
             case ArrayAccess:
                 if(auto a = dynamic_cast<const arrayAccessNode*>(tree)) {
                     std::shared_ptr<expressionNode> acc = deepCopy(a->getAccessor());
-                    std::shared_ptr<expressionNode> res = std::make_shared<arrayAccessNode>(arrayAccessNode(a->getType(), acc));
+                    std::shared_ptr<expressionNode> res = std::make_shared<arrayAccessNode>(arrayAccessNode(a->getType(), acc, a->getName()));
                     return res;
                 }
                 break;
@@ -612,3 +616,5 @@ public:
         }
     }
 };
+
+#endif //DST_H
