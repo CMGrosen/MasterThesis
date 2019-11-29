@@ -23,7 +23,7 @@ static std::map< const char *, const char * > files = {
 int main(int argc, const char* argv[]) {
     std::ifstream stream;
     //stream.open("../code.small");
-    stream.open(files["temp"]);
+    stream.open(files["precedence"]);
     //stream.open("shortExpr.small");
 
     ANTLRInputStream input(stream);

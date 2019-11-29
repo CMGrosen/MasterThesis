@@ -93,39 +93,42 @@ public:
 
             std::shared_ptr<statementNode> a = std::make_shared<arrayFieldAssignNode>(arrayFieldAssignNode(t, arrAcc, node));
             return a;
+        } else if (ctx->NAME() && ctx->arrayLiteral()) {
+            std::shared_ptr<arrayLiteralNode> node = visitArrayLiteral(ctx->arrayLiteral());
+            auto arrLit = node.get();
+            std::string name = ctx->NAME()->getText();
+            auto pair = symboltables.insert({name, std::make_shared<constraintNode>(constraintNode(node->getType()))});
+            auto arr = arrLit->getArrLit();
+            t = arr[0]->getType();
+            int count = arr.size();
+            for (int i = 0; i < count; ++i) {
+                std::shared_ptr<expressionNode> temp = std::make_shared<constraintNode>(constraintNode(t));
+                auto p = symboltables.insert({name + "[" + std::to_string(i) + "]", temp});
+                if(!p.second && p.first->second->getType() != t) {
+                    if (t != errorType) {
+                        std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
+                                  << "] Attempt at changing type signature of array from "
+                                  << info[t] << " to " << info[p.first->second->getType()] << "\n";
+                    }
+                    pair.first->second->setType(errorType);
+                }
+            }
+            if(!pair.second) {
+                auto size = arr.size();
+                if (symboltables.find(name + "[" + std::to_string(size-1) + "]") == symboltables.end() ||
+                    (symboltables.find(name + "[" + std::to_string(size) + "]") != symboltables.end())) {
+                    //If this variable already exists and is assigned to a new arrayLiteral that are not the same size as the one previously assigned:
+                    std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
+                              << "] Attempt to reassign an array to another literal that is not the same size\n";
+                    pair.first->second->setType(errorType);
+                }
+            }
+            return sequentialAssignForArray(name,0, arr);
         } else {
             std::shared_ptr<expressionNode> node = visitExpr(ctx->expr());
             std::string name = ctx->NAME()->getText();
             auto pair = symboltables.insert({name, std::make_shared<constraintNode>(constraintNode(node->getType()))});
-            if (node->getType() == arrayIntType || node->getType() == arrayBoolType){
-                if(auto arrLit = dynamic_cast<arrayLiteralNode*>(node.get())) {
-                    auto arr = arrLit->getArrLit();
-                    t = arr[0]->getType();
-                    int count = arr.size();
-                    for (int i = 0; i < count; ++i) {
-                        std::shared_ptr<expressionNode> temp = std::make_shared<constraintNode>(constraintNode(t));
-                        auto p = symboltables.insert({name + "[" + std::to_string(i) + "]", temp});
-                        if(!p.second && p.first->second->getType() != t) {
-                            if (t != errorType) {
-                                std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
-                                          << "] Attempt at changing type signature of array from "
-                                          << info[t] << " to " << info[p.first->second->getType()] << "\n";
-                            }
-                            pair.first->second->setType(errorType);
-                        }
-                    }
-                    if(!pair.second) {
-                        auto size = arr.size();
-                        if (symboltables.find(name + "[" + std::to_string(size-1) + "]") == symboltables.end() ||
-                            (symboltables.find(name + "[" + std::to_string(size) + "]") != symboltables.end())) {
-                            //If this variable already exists and is assigned to a new arrayLiteral that are not the same size as the one previously assigned:
-                            std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
-                                      << "] Attempt to reassign an array to another literal that is not the same size\n";
-                            pair.first->second->setType(errorType);
-                        }
-                    }
-                }
-            }
+
 
             if(!pair.second && pair.first->second->getType() != node->getType())
                 pair.first->second->setType(errorType);
@@ -609,6 +612,25 @@ public:
                     return res;
                 }
                 break;
+        }
+    }
+
+    std::shared_ptr<statementNode> sequentialAssignForArray(std::string name, int accessor, std::vector<std::shared_ptr<expressionNode>> n) {
+        Type t = n[0]->getType();
+        if(n.size() == 1) {
+            std::shared_ptr<expressionNode> access = std::make_shared<literalNode>(t, std::to_string(accessor));
+            std::shared_ptr<expressionNode> arrAcc = std::make_shared<arrayAccessNode>(arrayAccessNode(t,access,name));
+            std::shared_ptr<statementNode> arrFieldAss = std::make_shared<arrayFieldAssignNode>(arrayFieldAssignNode(okType,arrAcc,n[0]));
+            return arrFieldAss;
+        } else {
+            std::shared_ptr<expressionNode> access = std::make_shared<literalNode>(t,std::to_string(accessor));
+            std::shared_ptr<expressionNode> arrAcc = std::make_shared<arrayAccessNode>(arrayAccessNode(t,access,name));
+            std::shared_ptr<statementNode> arrFieldAss = std::make_shared<arrayFieldAssignNode>(arrayFieldAssignNode(okType,arrAcc,n[0]));
+            std::vector<std::shared_ptr<expressionNode>> ne;
+            for (auto i = 1; i < n.size(); i++) {
+                ne.push_back(n[i]);
+            }
+            return std::make_shared<sequentialNode>(sequentialNode(okType,arrFieldAss,sequentialAssignForArray(name,accessor+1,ne)));
         }
     }
 };

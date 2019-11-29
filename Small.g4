@@ -20,6 +20,7 @@ stmt :
     
 assign :
     NAME ASSIGN expr
+    | NAME ASSIGN arrayLiteral
     | arrayAccess ASSIGN arrayLiteral;
     
 iter :
