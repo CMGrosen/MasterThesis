@@ -5,7 +5,7 @@
 #include "antlr4-runtime/SmallParser.h"
 #include "DST.h"
 #include <antlr4-runtime.h>
-#include <symengine/symbolTable.hpp>
+#include <symengine/symbolicExecutionEngine.hpp>
 
 using namespace std;
 using namespace antlr4;
@@ -47,5 +47,11 @@ int main(int argc, const char* argv[]) {
 //    std::vector<state> succStates = no.get_successors(f);
 
     std::cout << "got here" << std::endl;//a << std::endl;
+
+    symbolicExecutionEngine symEngine;
+    auto constraintsToReachBug = symEngine.execute(treeAndSymbolTable);
+
+    std::cout << "finished\n";
+
     return 0;
 }

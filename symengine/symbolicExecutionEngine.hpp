@@ -2,8 +2,8 @@
 // Created by CMG on 12/11/2019.
 //
 
-#ifndef ANTLR_CPP_TUTORIAL_SYMBOLTABLE_HPP
-#define ANTLR_CPP_TUTORIAL_SYMBOLTABLE_HPP
+#ifndef ANTLR_CPP_TUTORIAL_SYMBOLICEXECUTIONENGINE_HPP
+#define ANTLR_CPP_TUTORIAL_SYMBOLICEXECUTIONENGINE_HPP
 
 #include "Constraint.hpp"
 #include "expressionVisitor.hpp"
@@ -12,10 +12,15 @@
 
 using namespace z3;
 
-class SymbolTable{
+class symbolicExecutionEngine {
 public:
+
+    std::vector<z3::expr> execute(std::pair<const std::shared_ptr<statementNode>, const std::unordered_map<std::string, constraint>> treeAndSymTable) {
+        return std::vector<z3::expr>{};
+    }
+
     void updateRule(const std::string& name, std::shared_ptr<expressionNode> expression){
-        if(expression->getNodeType() == Literal){
+        /*if(expression->getNodeType() == Literal){
             auto pair = variables.find(name);
             if(variables.find(name) != variables.end()) {
                 if (pair->second.type == intType) {
@@ -24,10 +29,10 @@ public:
                     pair->second.setRule(evaluateExpression(expression, boolType));
                 }
             }
-        }
+        }*/
     }
 private:
-    std::map<std::string, constraint> variables;
+    //std::map<std::string, constraint> variables;
 
     std::shared_ptr<expressionNode> evaluateExpression(std::shared_ptr<expressionNode> expression, Type type){
         // use expression visitor
@@ -340,4 +345,4 @@ private:
     */
 };
 
-#endif //ANTLR_CPP_TUTORIAL_SYMBOLTABLE_HPP
+#endif //ANTLR_CPP_TUTORIAL_SYMBOLICEXECUTIONENGINE_HPP
