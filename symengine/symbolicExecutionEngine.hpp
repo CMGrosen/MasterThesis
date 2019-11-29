@@ -16,6 +16,7 @@ class symbolicExecutionEngine {
 public:
 
     std::vector<z3::expr> execute(std::pair<const std::shared_ptr<statementNode>, const std::unordered_map<std::string, constraint>> treeAndSymTable) {
+        testExpr();
         return std::vector<z3::expr>{};
     }
 
@@ -110,9 +111,20 @@ private:
 
         z3::expr l2 = l && !r;
         z3::expr r2 = a > 80;
+        z3::expr fin = l2 && r2;
         s.add(l2 && r2);
 
+        std::string aaaa = "(and (> a 34) (not (<= a 50)))";
+        tactic t1 = tactic(c, "simplify");
+        tactic t2 = tactic(c, "solve-eqs");
+        tactic t = t1 & t2;
 
+        solver ss = t.mk_solver();
+        expr con = c.int_val(10);
+        std::cout << con.to_string() << std::endl;
+        std::cout << "fin: " << fin.num_args() << std::endl;
+
+        std::cout << "fin simpl: " << fin.num_args() << std::endl;
         switch (s.check()) {
             case z3::unsat:
                 std::cout << "(a > 34) && !(a <= 50) && a > 80 is not satisfiable \n";
@@ -133,6 +145,7 @@ private:
         if (s.check() == z3::sat) {
             model m = s.get_model();
             std::cout << m.eval(a) << std::endl;
+            //std::cout <<  << std::endl;
             /*for (auto l : unsats)
                 std::cout << l.to_string() << std::endl;*/
         }

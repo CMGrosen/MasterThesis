@@ -19,6 +19,11 @@ public:
         setNodeType(BinaryExpression);
     }
 
+    binaryExpressionNode(std::shared_ptr<binaryExpressionNode> n) : left{(*n).left}, right{(*n).right}, _operator{(*n)._operator} {
+        type = n->getType();
+        setNodeType(BinaryExpression);
+    }
+
     expressionNode* getRight() const {return right.get();};
     expressionNode* getLeft() const {return left.get();};
     op getOperator() const {return _operator;};
