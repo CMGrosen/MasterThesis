@@ -9,9 +9,9 @@
 
 class state {
 public:
-    state(node *current_position, std::unordered_map<std::string, std::shared_ptr<expressionNode>> constraints, std::shared_ptr<node> operating_on) : cPos{current_position}, table{std::move(constraints)}, n{std::move(operating_on)} {};
+    state(node *current_position, std::unordered_map<std::string, std::shared_ptr<expressionNode>> constraints, std::vector<node *>possible_nodes_to_execute) : cPos{current_position}, table{std::move(constraints)}, ns{std::move(possible_nodes_to_execute)} {};
     node *get_position() const {return cPos;}
-    node *get_operation() const {return n.get();}
+    std::vector<node *> get_nexts() const {return ns;}
     std::vector<state> get_successors(std::vector<state> (*func)(state*)) {
         return (*func)(this);
     }
@@ -23,7 +23,7 @@ private:
      * Symbolic is a BinaryExpression
      */
     std::unordered_map<std::string, std::shared_ptr<expressionNode>> table;
-    std::shared_ptr<node> n;
+    std::vector<node *> ns;
 };
 
 #endif //ANTLR_CPP_TUTORIAL_STATE_HPP

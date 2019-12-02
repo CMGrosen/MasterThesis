@@ -18,7 +18,7 @@ public:
     std::vector<z3::expr> execute(std::pair<const std::shared_ptr<statementNode>, const std::unordered_map<std::string, std::shared_ptr<expressionNode>>> treeAndSymTable) {
         //testExpr();
         expressionVisistor eVisitor;
-        state s = state(treeAndSymTable.first.get(), treeAndSymTable.second, treeAndSymTable.first);
+        state s = state(treeAndSymTable.first.get(), treeAndSymTable.second, std::vector<node *>{treeAndSymTable.first.get()});
         auto res = compute_statements(eVisitor, s);
         return res;
     }
@@ -93,7 +93,7 @@ private:
                                 table.insert({a->getName(), std::make_shared<literalNode>(expr->getType(), std::to_string(stoi(lVal) + stoi(rVal)))});
                             }
                         }
-                        return std::vector<state>{state(nullptr, table, nullptr)};
+                        return std::vector<state>{state(nullptr, table, std::vector<node *>())};
                     }
                 }
                 return std::vector<state>();

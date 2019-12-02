@@ -42,8 +42,8 @@ int main(int argc, const char* argv[]) {
     if(treeAndSymbolTable.first->getType() == errorType)
         return 0;
 
-    auto table = std::unordered_map<std::string, std::shared_ptr<expressionNode>>();
-    table.insert({"a", std::make_shared<binaryExpressionNode>(binaryExpressionNode(intType, PLUS, std::make_shared<literalNode>(literalNode(intType, "2")),std::make_shared<literalNode>(literalNode(intType, "2"))))});
+//    auto table = std::unordered_map<std::string, std::shared_ptr<expressionNode>>();
+//    table.insert({"a", std::make_shared<binaryExpressionNode>(binaryExpressionNode(intType, PLUS, std::make_shared<literalNode>(literalNode(intType, "2")),std::make_shared<literalNode>(literalNode(intType, "2"))))});
 //    std::vector<state> succStates = no.get_successors(f);
 
     std::cout << "got here" << std::endl;//a << std::endl;
