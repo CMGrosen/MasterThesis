@@ -11,7 +11,9 @@
 #include <nodes/nodes.hpp>
 #include "Constraint.hpp"
 #include <DST.h>
-
+// we assume that the left most leaf of the expression tree is the next part to be evaluated,
+// if the leaf is a literal then either the parent or the right child of the parent is the next to be evaluated,
+// depending on whether the parent is a binary expression and the type of the right child
 class expressionVisistor {
 public:
     // uses an expression tree for current state to create a new expression tree for the next state
@@ -19,11 +21,11 @@ public:
         expressionNode* changeHere = nullptr;
         if(node->getNodeType() == BinaryExpression){
             binaryExpressionNode* binexpr = (dynamic_cast<binaryExpressionNode*>(node));
-            changeHere = getBottomExpression(binexpr, binexpr->getLeft(), binexpr->getLeft(),vars);
+            changeHere = getBottomExpression(binexpr, binexpr->getLeft(), binexpr->getRight(),vars);
         } else if(node->getNodeType() == BinaryExpression) {
 
         }
-        return getNewTree(node, changeHere, vars);
+        return makeNewTree(node, changeHere, vars);
     }
 
     //finds the next part of the expression to be updated
@@ -37,45 +39,67 @@ public:
                 unaryExpressionNode* unexpr = (dynamic_cast<unaryExpressionNode*>(child_left));
                 return getBottomExpression(unexpr, unexpr->getExpression(), nullptr, vars);
             }
-            case Variable: {
-                variableNode* var = (dynamic_cast<variableNode*>(child_left));
-                if(vars.find(var->name)->second.getRules()[0]->getNodeType() == Literal){
-                    return parent;
-                } else {
-                    // Symbolsk
-                }
+            case ArrayAccess: {
+                arrayAccessNode* arracc = dynamic_cast<arrayAccessNode*>(child_left);
+                return getBottomExpression(arracc, arracc->getAccessor(), nullptr, vars);
             }
-            case Literal: {
-                switch(child_right->getNodeType()) {
-                    case BinaryExpression: {
-
-                    }
-                    case UnaryExpression: {
-
-                    }
-                    case Read: {
-                        // Symbolsk
-                    }
-                    case ArrayAccess:{
-
-                    }
-                    case Variable: {
-                        variableNode* var = (dynamic_cast<variableNode*>(child_right));
-                        if(vars.find(var->name)->second.getRules()[0]->getNodeType() == Literal){
-                            return parent; // parents parent instead
-                        } else {
-                            // Symbolsk
-                        }
-                    }
-                    case Literal:
-                        return parent;
-                }
+            case Variable: {
+                return child_left;
             }
             case Read: {
-                // Symbolsk
+                return checkRightChild(parent, child_left, child_right, vars);
+            }
+            case ConstraintNode: {
+                return checkRightChild(parent, child_left, child_right, vars);
+            }
+            case Literal: {
+                return checkRightChild(parent, child_left, child_right, vars);
+            }
+            default: {
+                // ERROR
+                std::cout << "ERROR(getBottomExpression() in expressionVisitor): unhandled node type on left side of expression, recieved node of type" << child_left->getNodeType() << std::endl;
+                return nullptr;
             }
         }
     }
+
+    // returns an expressionNode pointer based on the right side of an expression,
+    // if the expression has no rightside then child_right is nullptr
+    expressionNode* checkRightChild(expressionNode* parent, expressionNode* child_left, expressionNode* child_right, std::map<std::string, constraint> vars){
+        // in case of parent being unaryExpression or array access, child_right == null_ptr
+        if(child_right == nullptr){
+            return parent;
+        }
+        switch(child_right->getNodeType()) {
+            case BinaryExpression: {
+                binaryExpressionNode* binexpr = (dynamic_cast<binaryExpressionNode*>(child_right));
+                return getBottomExpression(binexpr, binexpr->getLeft(), binexpr->getRight(), vars);
+            }
+            case UnaryExpression: {
+                unaryExpressionNode* unexpr = (dynamic_cast<unaryExpressionNode*>(child_right));
+                return getBottomExpression(unexpr, unexpr->getExpression(), nullptr, vars);
+            }
+            case Read: {
+                return child_right;
+            }
+            case ArrayAccess: {
+                arrayAccessNode* arracc = dynamic_cast<arrayAccessNode*>(child_right);
+                return getBottomExpression(arracc, arracc->getAccessor(), nullptr, vars);
+            }
+            case ConstraintNode: {
+                return parent;
+            }
+            case Variable:
+                return child_right;
+            case Literal:
+                return parent;
+            default:
+                // ERROR this should not happen
+                std::cout << "ERROR(checkRightChild() in expressionVisitor): unhandled node type  on rightside of expresion, received node of type: " << child_right->getNodeType() << std::endl;
+                return nullptr;
+        }
+    }
+
 
     // finds all variable names in the expression
     // might not be needed
@@ -102,74 +126,30 @@ public:
     }
 
 private:
+
     //Creates a new expression tree for the new state
-    static antlrcpp::Any getNewTree(const expressionNode *tree, const node* updateLocation, const std::map<std::string, constraint>& vars) {
+    static std::shared_ptr<expressionNode> makeNewTree(const expressionNode* tree, const node* updateLocation, const std::map<std::string, constraint>& vars) {
         if(tree != updateLocation){
-            switch(tree->getNodeType()) {
-                case Read:
-                    if (auto a = dynamic_cast<const readNode*>(tree)) {
-                        std::shared_ptr<expressionNode> v = getNewTree(a->getVar(), updateLocation, vars);
-                        std::shared_ptr<expressionNode> res = std::make_shared<readNode>(readNode(a->getType(),v));
-                        return res;
-                    }
-                    break;
-                case Literal:
-                    if(auto a = dynamic_cast<const literalNode*>(tree)) {
-                        std::shared_ptr<expressionNode> res = std::make_shared<literalNode>(literalNode(a->getType(), a->value));
-                        return res;
-                    }
-                    break;
-                case ArrayLiteral:
-                    if(auto a = dynamic_cast<const arrayLiteralNode*>(tree)) {
-                        std::vector<std::shared_ptr<expressionNode>> nodes;
-                        for (auto &i : a->getArrLit()) {
-                            std::shared_ptr<expressionNode> inter = getNewTree(i.get(), updateLocation, vars);
-                            nodes.push_back(inter);
-                        }
-                        std::shared_ptr<expressionNode> res = std::make_shared<arrayLiteralNode>(arrayLiteralNode(a->getType(),nodes));
-                        return res;
-                    }
-                    break;
-                case Variable:
-                    if(auto a = dynamic_cast<const variableNode*>(tree)) {
-                        std::shared_ptr<expressionNode> res = std::make_shared<variableNode>(variableNode(a->getType(),a->name));
-                        return res;
-                    }
-                    break;
-                case BinaryExpression:
-                    if(auto a = dynamic_cast<const binaryExpressionNode*>(tree)) {
-                        std::shared_ptr<expressionNode> e1 = getNewTree(a->getLeft(), updateLocation, vars);
-                        std::shared_ptr<expressionNode> e2 = getNewTree(a->getRight(), updateLocation, vars);
-                        std::shared_ptr<expressionNode> res = std::make_shared<binaryExpressionNode>(binaryExpressionNode(a->getType(), a->getOperator(), e1, e2));
-                        return res;
-                    }
-                    break;
-                case UnaryExpression:
-                    if(auto a = dynamic_cast<const unaryExpressionNode*>(tree)) {
-                        std::shared_ptr<expressionNode> e = getNewTree(a->getExpression(), updateLocation, vars);
-                        std::shared_ptr<expressionNode> res = std::make_shared<unaryExpressionNode>(unaryExpressionNode(a->getType(), a->getOperator(),e));
-                        return res;
-                    }
-                    break;
-                default:
-                    std::cout << "ERROR: wrong node type located in expression" << std::endl;
-                    //should never happen
-                    break;
-            }
+            standardDeepCopy(tree, updateLocation, vars);
         } else {
             switch(tree->getNodeType()) {
                 case BinaryExpression:{
                     const binaryExpressionNode* binexpr = dynamic_cast<const binaryExpressionNode *>(tree);
                     std::shared_ptr<expressionNode> left;
                     std::shared_ptr<expressionNode> right;
+                    switch (binexpr->getLeft()->getNodeType()) {
+                        case Literal: {
+
+                        }
+                    }
                     if(binexpr->getLeft()->getNodeType() == Literal) {
                         // opdater højre siden
-                        left = getNewTree(binexpr->getLeft(), updateLocation, vars);
-                        right = getExpressionUpdate(binexpr->getRight(), vars);
-                    } else {
+                        left = makeNewTree(binexpr->getLeft(), updateLocation, vars);
+                        right = makeExpressionUpdate(binexpr->getRight(), vars);
+                    } else if(binexpr->getRight()->getNodeType() == Literal){
                         // opdater venstre  siden
-                        left = getExpressionUpdate(binexpr->getLeft(), vars);
-                        right = getNewTree(binexpr->getRight(), updateLocation, vars);
+                        left = makeExpressionUpdate(binexpr->getLeft(), vars);
+                        right = makeNewTree(binexpr->getRight(), updateLocation, vars);
                     }
                     std::shared_ptr<expressionNode> res =
                             std::make_shared<binaryExpressionNode>(
@@ -178,7 +158,7 @@ private:
                 }
                 case UnaryExpression: {
                     const unaryExpressionNode* unexpr = dynamic_cast<const unaryExpressionNode*>(tree);
-                    std::shared_ptr<expressionNode> e = getExpressionUpdate(unexpr->getExpression(), vars);
+                    std::shared_ptr<expressionNode> e = makeExpressionUpdate(unexpr->getExpression(), vars);
                     std::shared_ptr<expressionNode> res =
                             std::make_shared<unaryExpressionNode>(
                                     unaryExpressionNode(unexpr->getType(), unexpr->getOperator(), e));
@@ -186,19 +166,75 @@ private:
                 }
                 case ArrayAccess:{
                     const arrayAccessNode* arracc = dynamic_cast<const arrayAccessNode*>(tree);
-                    std::shared_ptr<expressionNode> acc = getExpressionUpdate(arracc->getAccessor(), vars);
+                    std::shared_ptr<expressionNode> acc = makeExpressionUpdate(arracc->getAccessor(), vars);
                     std::shared_ptr<expressionNode> res = std::make_shared<arrayAccessNode>(arrayAccessNode(arracc->getType(), acc, arracc->getName()));
                     return res;
                 }
                 default:
-                    std::cout << "ERROR: in finding Expression update location" << std::endl;
                     //should never happen
+                    std::cout << "ERROR(makeNewTree() in expressionVisitor): unhandled node type in Expression update location, received node of type: " << tree->getNodeType() << std::endl;
+                    return nullptr;
             }
         }
     }
 
+    // creates copy of current node and copies children through getNewTree
+    static std::shared_ptr<expressionNode> standardDeepCopy(const expressionNode *tree, const node* updateLocation, const std::map<std::string, constraint>& vars){
+        switch(tree->getNodeType()) {
+            case Read:
+                if (auto a = dynamic_cast<const readNode*>(tree)) {
+                    std::shared_ptr<expressionNode> v = makeNewTree(a->getVar(), updateLocation, vars);
+                    std::shared_ptr<expressionNode> res = std::make_shared<readNode>(readNode(a->getType(),v));
+                    return res;
+                }
+                break;
+            case Literal:
+                if(auto a = dynamic_cast<const literalNode*>(tree)) {
+                    std::shared_ptr<expressionNode> res = std::make_shared<literalNode>(literalNode(a->getType(), a->value));
+                    return res;
+                }
+                break;
+            case ArrayLiteral:
+                if(auto a = dynamic_cast<const arrayLiteralNode*>(tree)) {
+                    std::vector<std::shared_ptr<expressionNode>> nodes;
+                    for (auto &i : a->getArrLit()) {
+                        std::shared_ptr<expressionNode> inter = makeNewTree(i.get(), updateLocation, vars);
+                        nodes.push_back(inter);
+                    }
+                    std::shared_ptr<expressionNode> res = std::make_shared<arrayLiteralNode>(arrayLiteralNode(a->getType(),nodes));
+                    return res;
+                }
+                break;
+            case Variable:
+                if(auto a = dynamic_cast<const variableNode*>(tree)) {
+                    std::shared_ptr<expressionNode> res = std::make_shared<variableNode>(variableNode(a->getType(),a->name));
+                    return res;
+                }
+                break;
+            case BinaryExpression:
+                if(auto a = dynamic_cast<const binaryExpressionNode*>(tree)) {
+                    std::shared_ptr<expressionNode> e1 = makeNewTree(a->getLeft(), updateLocation, vars);
+                    std::shared_ptr<expressionNode> e2 = makeNewTree(a->getRight(), updateLocation, vars);
+                    std::shared_ptr<expressionNode> res = std::make_shared<binaryExpressionNode>(binaryExpressionNode(a->getType(), a->getOperator(), e1, e2));
+                    return res;
+                }
+                break;
+            case UnaryExpression:
+                if(auto a = dynamic_cast<const unaryExpressionNode*>(tree)) {
+                    std::shared_ptr<expressionNode> e = makeNewTree(a->getExpression(), updateLocation, vars);
+                    std::shared_ptr<expressionNode> res = std::make_shared<unaryExpressionNode>(unaryExpressionNode(a->getType(), a->getOperator(),e));
+                    return res;
+                }
+                break;
+            default:
+                std::cout << "ERROR: wrong node type located in expression" << std::endl;
+                //should never happen
+                break;
+        }
+    }
+
     // helper function to create the updated part of the new tree
-    static std::shared_ptr<expressionNode> getExpressionUpdate(const expressionNode* node, const std::map<std::string, constraint>& vars){
+    static std::shared_ptr<expressionNode> makeExpressionUpdate(const expressionNode* node, const std::map<std::string, constraint>& vars){
         std::shared_ptr<expressionNode> result;
         switch (node->getNodeType()) {
             case BinaryExpression: {
@@ -216,8 +252,12 @@ private:
                 const variableNode* var = dynamic_cast<const variableNode*>(node);
                 constraint constraints = vars.find(var->name)->second;
                 if(auto con = dynamic_cast<constraintNode*>(constraints.getRules()[0].get())){
-
+                    // symbolic: gets the constraint node
+                    std::shared_ptr<constraintNode> cstrptr =
+                            std::make_shared<constraintNode>(*con);
+                    result = cstrptr;
                 } else {
+                    // concrete: creates a new literalNode with the value of the variable
                     std::shared_ptr<literalNode> litptr =
                             std::make_shared<literalNode>(literalNode(constraints.type, dynamic_cast<literalNode*>(constraints.getRules()[0].get())->value));
                     result = litptr;
@@ -231,13 +271,24 @@ private:
                         std::make_shared<literalNode>(literalNode(c.type, dynamic_cast<literalNode*>(c.getRules()[0].get())->value));
                 result = litptr;
             }
+            case Read: {
+                std::shared_ptr<variableNode> var = std::make_shared<variableNode>(variableNode(intType, "_x_"));
+                std::shared_ptr<literalNode> max  = std::make_shared<literalNode>(literalNode(intType, std::to_string(INT_MAX)));
+                std::shared_ptr<literalNode> min  = std::make_shared<literalNode>(literalNode(intType, std::to_string(INT_MIN)));
+                std::shared_ptr<binaryExpressionNode> less = std::make_shared<binaryExpressionNode>(binaryExpressionNode(intType, LE, var, max));
+                std::shared_ptr<binaryExpressionNode> great = std::make_shared<binaryExpressionNode>(binaryExpressionNode(intType, GE, var, min));
+                std::vector<std::shared_ptr<binaryExpressionNode>> cstrs = std::vector<std::shared_ptr<binaryExpressionNode>>{less, great};
+                std::shared_ptr<constraintNode> cstr = std::make_shared<constraintNode>(constraintNode(cstrs));
+                result = cstr;
+            }
             default :{
                 // should never happen
-                std::cout << "ERROR: getExpressionUpdate() received illegal expressionNode type" << std::endl;
+                std::cout << "ERROR: makeExpressionUpdate() received illegal expressionNode type" << std::endl;
             }
         }
         return result;
     }
+
 
 };
 #endif //ANTLR_CPP_TUTORIAL_EXPRESSIONVISITOR_HPP
