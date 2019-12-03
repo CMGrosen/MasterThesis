@@ -75,90 +75,78 @@ public:
 
     virtual antlrcpp::Any visitAssign(SmallParser::AssignContext *ctx) override {
         Type t;
-        if (ctx->arrayLiteral()) {
+        if (ctx->arrayAccess()) {
+            std::shared_ptr<node> first = visitExpr(ctx->expr());
+            std::shared_ptr<node> last = first;
+            while (last->getNext()) {
+                last = last->getNext();
+            }
+            std::shared_ptr<node> arrAcc = visitArrayAccess(ctx->arrayAccess());
+            std::shared_ptr<node> last2 = arrAcc;
+            while (last2->getNext()) {
+                last2 = last2->getNext();
+            }
+            if (last->getType() == arrayIntType || last->getType() == arrayBoolType) {
+                t = errorType;
+                std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
+                << "] Cannot assign an array to a field of an array\n";
+            } else if (last2->getType() != intType) {
+                t = errorType;
+                std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
+                << "] Type mismatch in assignment. Expected field accessor to be of type " << info[intType] << " got " << info[last2->getType()] << "\n";
+            } else if (last->getType() == errorType) {
+                t = errorType;
+            } else {
+                t = okType;
+            }
+            std::shared_ptr<node> n = std::make_shared<node>(node(t, AssignArrField));
+            last->setNext(arrAcc);
+            last2->setNext(n);
+            return first;
+        } else if (ctx->NAME() && ctx->arrayLiteral()) {
             std::shared_ptr<node> last = visitArrayLiteral(ctx->arrayLiteral());
             std::shared_ptr<node> first = last;
             while(last->getNext()) {
                 last = last->getNext();
             }
-            if (last->getType() != okType) {
+            if (last->getType() == errorType) {
                 t = errorType;
             } else {
                 t = last->getType();
             }
             std::shared_ptr<node> n = std::make_shared<node>(node(t, Assign, ctx->NAME()->getText()));
             int length = std::stoi(last->getValue());
-            while (length-->0)
-                symboltables.insert({(ctx->NAME()->getText() + "[" + std::to_string(length) + "]"), std::make_shared<constraintNode>(constraintNode(first->getType()))});
+            if (symboltables.insert({ctx->NAME()->getText(), std::make_shared<constraintNode>(constraintNode(t))}).second) {
+                while (length-->0)
+                    symboltables.insert({(ctx->NAME()->getText() + "[" + std::to_string(length) + "]"), std::make_shared<constraintNode>(constraintNode(first->getType()))});
+            } else {
+                if (symboltables.find(ctx->NAME()->getText() + "[" + std::to_string(length) + "]") != symboltables.end()
+                || (symboltables.find(ctx->NAME()->getText() + "[" + std::to_string(length-1) + "]") == symboltables.end())
+                ) {
+                    symboltables.find(ctx->NAME()->getText())->second->setType(errorType);
+                }
+                else {
+                    while (length-->0)
+                        symboltables.insert({(ctx->NAME()->getText() + "[" + std::to_string(length) + "]"), std::make_shared<constraintNode>(constraintNode(first->getType()))});
+                }
+            }
             last->setNext(n);
             return first;
-        }
-        /*Type t;
-        if (ctx->arrayAccess()) {
-            std::shared_ptr<node> node = visitArrayLiteral(ctx->arrayLiteral());
-            std::shared_ptr<node> arrAcc = visitArrayAccess(ctx->arrayAccess());
-            if (node->getType() == arrayIntType || node->getType() == arrayBoolType) {
-                t = errorType;
-                std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
-                << "] Cannot assign an array to a field of an array\n";
-            } else if (arrAcc->getType() != intType) {
-                t = errorType;
-                if (arrAcc->getType() != errorType) {
-                    std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
-                    << "] Type mismatch in assignment. Expected field accessor to be of type " << info[intType] << " got " << info[arrAcc->getType()] << "\n";
-                }
-            } else if (node->getType() == errorType) {
-                t = errorType;
-            } else {
-                t = okType;
-            }
-
-            std::shared_ptr<statementNode> a = std::make_shared<arrayFieldAssignNode>(arrayFieldAssignNode(t, arrAcc, node));
-            return a;
-        } else if (ctx->NAME() && ctx->arrayLiteral()) {
-            std::shared_ptr<arrayLiteralNode> node = visitArrayLiteral(ctx->arrayLiteral());
-            auto arrLit = node.get();
-            std::string name = ctx->NAME()->getText();
-            auto pair = symboltables.insert({name, std::make_shared<constraintNode>(constraintNode(node->getType()))});
-            auto arr = arrLit->getArrLit();
-            t = arr[0]->getType();
-            int count = arr.size();
-            for (int i = 0; i < count; ++i) {
-                std::shared_ptr<expressionNode> temp = std::make_shared<constraintNode>(constraintNode(t));
-                auto p = symboltables.insert({name + "[" + std::to_string(i) + "]", temp});
-                if(!p.second && p.first->second->getType() != t) {
-                    if (t != errorType) {
-                        std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
-                                  << "] Attempt at changing type signature of array from "
-                                  << info[t] << " to " << info[p.first->second->getType()] << "\n";
-                    }
-                    pair.first->second->setType(errorType);
-                }
-            }
-            if(!pair.second) {
-                auto size = arr.size();
-                if (symboltables.find(name + "[" + std::to_string(size-1) + "]") == symboltables.end() ||
-                    (symboltables.find(name + "[" + std::to_string(size) + "]") != symboltables.end())) {
-                    //If this variable already exists and is assigned to a new arrayLiteral that are not the same size as the one previously assigned:
-                    std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
-                              << "] Attempt to reassign an array to another literal that is not the same size\n";
-                    pair.first->second->setType(errorType);
-                }
-            }
-            return sequentialAssignForArray(name,0, arr);
         } else {
-            std::shared_ptr<expressionNode> node = visitExpr(ctx->expr());
-            std::string name = ctx->NAME()->getText();
-            auto pair = symboltables.insert({name, std::make_shared<constraintNode>(constraintNode(node->getType()))});
-
-
-            if(!pair.second && pair.first->second->getType() != node->getType())
-                pair.first->second->setType(errorType);
-
-            assignNode assNode = assignNode(pair.first->second->getType() == errorType ? errorType : okType, name, node);
-            std::shared_ptr<statementNode> a = std::make_shared<assignNode>(assNode);
-            return a;
-        }*/
+            std::shared_ptr<node> first = visitExpr(ctx->expr());
+            std::shared_ptr<node> last = first;
+            while(last->getNext()) {
+                last = last->getNext();
+            }
+            auto pair = symboltables.find(ctx->NAME()->getText());
+            if (pair == symboltables.end()) {
+                symboltables.insert({ctx->NAME()->getText(), std::make_shared<constraintNode>(constraintNode(last->getType()))});
+                pair = symboltables.find(ctx->NAME()->getText());
+            }
+            if (pair->second->getType() == errorType) t = errorType;
+            last->setNext(std::make_shared<node>(node(t,Assign, ctx->NAME()->getText())));
+            return first;
+        }
     }
 
     virtual antlrcpp::Any visitIter(SmallParser::IterContext *ctx) override {
@@ -230,6 +218,20 @@ public:
     }
 
     virtual antlrcpp::Any visitWrite(SmallParser::WriteContext *ctx) override {
+        auto pair = symboltables.find(ctx->NAME()->getText());
+        Type t = okType;
+        if (pair == symboltables.end()) {
+            t = errorType;
+        }
+        std::shared_ptr<node> name = std::make_shared<node>(node(intType, Variable, ctx->NAME()->getText()));
+        name->setNext(visitExpr(ctx->expr()));
+        std::shared_ptr<node> last = name;
+        while(last->getNext()) {
+            last = last->getNext();
+        }
+        t = (t != errorType && last->getType() == intType) ? okType : errorType;
+        last->setNext(std::make_shared<node>(node(t, Write)));
+        return name;
        /* std::shared_ptr<expressionNode> expr = visitExpr(ctx->expr());
         auto symbol = symboltables.find(ctx->NAME()->getText());
         Type t = intType;
@@ -263,7 +265,19 @@ public:
                 std::shared_ptr<expressionNode> node = visitExpr(ctx->expr(0));
                 Type t = intType;
                 if (node->getType() != intType) t = errorType;
-                if (auto n = dynamic_cast<literalNode*>(node.get())) {
+                if (auto n = dynamic_            std::shared_ptr<node> first = visitExpr(ctx->expr());
+            std::shared_ptr<node> last = first;
+            while(last->getNext()) {
+                last = last->getNext();
+            }
+            auto pair = symboltables.find(ctx->NAME()->getText());
+            if (pair == symboltables.end()) {
+                symboltables.insert({ctx->NAME()->getText(), std::make_shared<constraintNode>(constraintNode(last->getType()))});
+                pair = symboltables.find(ctx->NAME()->getText());
+            }
+            if (pair->second->getType() == errorType) t = errorType;
+            last->setNext(std::make_shared<node>(node(t,Assign, ctx->NAME()->getText())));
+            return first;cast<literalNode*>(node.get())) {
                     if (t != errorType) {
                         return compute_new_literal(*n, *n, NEG, t);
                     }
@@ -332,18 +346,25 @@ public:
     }
 
     virtual antlrcpp::Any visitArrayAccess(SmallParser::ArrayAccessContext *ctx) override {
-        /*std::shared_ptr<expressionNode> node = visitExpr(ctx->expr());
+        std::shared_ptr<node> first = visitExpr(ctx->expr());
+        std::shared_ptr<node> last = first;
+        while (last->getNext()) {
+            last = last->getNext();
+        }
         auto it = symboltables.find(ctx->NAME()->getText());
+        std::string name = ctx->NAME()->getText();
+        auto val = it->second;
         Type t;
-        if (node->getType() != intType || it == symboltables.end()) {
+        if (last->getType() != intType || it == symboltables.end()) {
             t = errorType;
         } else if (it->second->getType() == arrayIntType) {
             t = intType;
         } else {
             t = boolType;
         }
-        std::shared_ptr<expressionNode> res = std::make_shared<arrayAccessNode>(arrayAccessNode(t, node, ctx->NAME()->getText()));
-        return res;*/
+        std::shared_ptr<node> n = std::make_shared<node>(node(t, ArrayAccess, ctx->NAME()->getText()));
+        last->setNext(n);
+        return first;
     }
 
     virtual antlrcpp::Any visitLiteral(SmallParser::LiteralContext *ctx) override {

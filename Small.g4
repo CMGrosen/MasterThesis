@@ -21,7 +21,8 @@ stmt :
 assign :
     NAME ASSIGN expr
     | NAME ASSIGN arrayLiteral
-    | arrayAccess ASSIGN arrayLiteral;
+    | arrayAccess ASSIGN expr
+    ;
     
 iter :
     WHILE LPAREN expr RPAREN scope

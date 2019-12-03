@@ -54,6 +54,14 @@ public:
     virtual std::string getValue() const {return _val;};
     std::shared_ptr<node> getNext() const {return _next;}
     void setNext(std::shared_ptr<node> n) {_next = std::move(n);}
+    std::shared_ptr<node> getLast() const {
+        //if (!_next) return std::make_shared<node>(*this);
+        std::shared_ptr<node> tmp = std::make_shared<node>(*this);
+        while (tmp->getNext()) {
+            tmp = tmp->getNext();
+        }
+        return tmp;
+    }
 
 protected:
     Type type;
