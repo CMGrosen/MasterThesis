@@ -17,13 +17,14 @@ static std::map< const char *, const char * > files = {
         {"bubblesort", "../code_examples/bubblesort.small"},
         {"stateTest", "../nodeptr_test.small"},
         {"precedence", "../precendenceTest.small"},
-        {"temp", "../temp.small"}
+        {"temp", "../temp.small"},
+        {"oob_race-condition", "../code_examples/out_of_bounds_race-condition.small"}
 };
 
 int main(int argc, const char* argv[]) {
     std::ifstream stream;
     //stream.open("../code.small");
-    stream.open(files["precedence"]);
+    stream.open(files["oob_race-condition"]);
     //stream.open("shortExpr.small");
 
     ANTLRInputStream input(stream);

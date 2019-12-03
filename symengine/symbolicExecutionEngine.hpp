@@ -16,7 +16,7 @@ class symbolicExecutionEngine {
 public:
 
     std::vector<z3::expr> execute(std::pair<const std::shared_ptr<statementNode>, const std::unordered_map<std::string, std::shared_ptr<expressionNode>>> treeAndSymTable) {
-        //testExpr();
+        testExpr();
         expressionVisistor eVisitor;
         state s = state(treeAndSymTable.first.get(), treeAndSymTable.second, std::vector<node *>{treeAndSymTable.first.get()});
         auto res = compute_statements(eVisitor, s);
@@ -70,7 +70,25 @@ private:
     }
 
     std::vector<z3::expr> compute_statements(expressionVisistor eVisitor, state s) {
+        auto res = compute_statements_helper(eVisitor, s);
         return std::vector<z3::expr>{};
+    }
+
+    state compute_statements_helper(expressionVisistor eVisitor, state s) {
+        node *n = s.get_position();
+        switch (n->getNodeType()) {
+            case Assign:
+            case AssignArrField:
+            case Concurrent:
+            case Sequential:
+            case While:
+            case If:
+            case Write:
+            case Event:
+                return s;
+            default:
+                return s;
+        }
     }
 
     //definitely have to think carefully about how we do this
@@ -116,6 +134,7 @@ private:
         z3::expr l = a > 34;
         z3::expr r = a <= 50;
 
+        std::cout << r.body().to_string() << "\n";
         z3::expr l2 = l && !r;
         z3::expr r2 = a > 80;
         z3::expr fin = l2 && r2;

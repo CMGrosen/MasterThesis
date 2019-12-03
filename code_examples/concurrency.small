@@ -5,10 +5,12 @@ fork {
     while (counter < 100) {
         when (val % 2 == 0)
         counter = counter + 1;
+        val = val + 1;
     }
 } par {
     while (counter < 100) {
         when (val % 2 == 1)
         counter = counter + 1;
+        val = val + 1;
     }
 }
