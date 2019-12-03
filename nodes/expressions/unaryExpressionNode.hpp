@@ -5,18 +5,13 @@
 #ifndef ANTLR_CPP_TUTORIAL_UNARYEXPRESSIONNODE_HPP
 #define ANTLR_CPP_TUTORIAL_UNARYEXPRESSIONNODE_HPP
 
-class unaryExpressionNode : public expressionNode {
+class unaryExpressionNode : public node {
 public:
-    unaryExpressionNode(Type _type, op _op, std::shared_ptr<expressionNode> _n) :
-            expr{std::move(_n)}, _operator{_op} {
-        type = _type;
-        setNodeType(UnaryExpression);
-    }
-    expressionNode* getExpression() const {return expr.get();};
-    op getOperator() const {return _operator;};
+    unaryExpressionNode(Type _type, op _op, std::shared_ptr<node> _n) :
+        node(_type, UnaryExpression, _op), expr{std::move(_n)} {}
+    node* getExpression() const {return expr.get();};
 private:
-    std::shared_ptr<expressionNode> expr;
-    op _operator;
+    std::shared_ptr<node> expr;
 };
 
 #endif //ANTLR_CPP_TUTORIAL_UNARYEXPRESSIONNODE_HPP

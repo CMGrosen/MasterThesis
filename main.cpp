@@ -5,7 +5,7 @@
 #include "antlr4-runtime/SmallParser.h"
 #include "DST.h"
 #include <antlr4-runtime.h>
-#include <symengine/symbolicExecutionEngine.hpp>
+//#include <symengine/symbolicExecutionEngine.hpp>
 
 using namespace std;
 using namespace antlr4;
@@ -24,7 +24,7 @@ static std::map< const char *, const char * > files = {
 int main(int argc, const char* argv[]) {
     std::ifstream stream;
     //stream.open("../code.small");
-    stream.open(files["oob_race-condition"]);
+    stream.open(files["stateTest"]);
     //stream.open("shortExpr.small");
 
     ANTLRInputStream input(stream);
@@ -39,7 +39,7 @@ int main(int argc, const char* argv[]) {
     //int a = visitor.visitFile(tree);
     auto treeAndSymbolTable = visitor.getTree(tree);
 
-    auto tmp = treeAndSymbolTable.first->debug_getAllNodes();
+    //auto tmp = treeAndSymbolTable.first->debug_getAllNodes();
     if(treeAndSymbolTable.first->getType() == errorType)
         return 0;
 
@@ -49,8 +49,8 @@ int main(int argc, const char* argv[]) {
 
     std::cout << "got here" << std::endl;//a << std::endl;
 
-    symbolicExecutionEngine symEngine;
-    auto constraintsToReachBug = symEngine.execute(treeAndSymbolTable);
+    //symbolicExecutionEngine symEngine;
+    //auto constraintsToReachBug = symEngine.execute(treeAndSymbolTable);
 
     std::cout << "finished\n";
 

@@ -5,15 +5,17 @@
 #ifndef ANTLR_CPP_TUTORIAL_CONSTRAINTNODE_HPP
 #define ANTLR_CPP_TUTORIAL_CONSTRAINTNODE_HPP
 
-#include "binaryExpressions/binaryExpressionNode.hpp"
+#include "binaryExpressionNode.hpp"
+#include <nodes/variableNode.hpp>
 #include <z3++.h>
 
-class constraintNode : public expressionNode {
+class constraintNode : public node {
 public:
-    constraintNode(Type t) : constraints{std::vector<std::shared_ptr<binaryExpressionNode>>{}} {type = t;}
-    constraintNode(std::shared_ptr<binaryExpressionNode> constraint) :
+    constraintNode(Type t) : node(t, ConstraintNode),
+        constraints{std::vector<std::shared_ptr<binaryExpressionNode>>{}} {}
+    constraintNode(std::shared_ptr<binaryExpressionNode> constraint) : node(constraint->getType(), ConstraintNode),
         constraints{std::vector<std::shared_ptr<binaryExpressionNode>>{std::move(constraint)}} {type = constraints[0]->getType();}
-    constraintNode(std::vector<std::shared_ptr<binaryExpressionNode>> constraints) :
+    constraintNode(std::vector<std::shared_ptr<binaryExpressionNode>> constraints) : node(constraints[0]->getType(), ConstraintNode),
         constraints{std::move(constraints)} {type = constraints[0]->getType();}
 
     std::vector<std::shared_ptr<binaryExpressionNode>> getConstraints() const {return constraints;}

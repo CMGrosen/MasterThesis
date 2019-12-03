@@ -59,11 +59,11 @@ set(visitor_SRC
         nodes/statements/assignNode.hpp
         nodes/statements/readNode.hpp
         nodes/statements/writeNode.hpp
-        nodes/arrayLiteralNode.hpp
-        nodes/arrayAccessNode.hpp
+        nodes/expressions/arrayLiteralNode.hpp
+        nodes/expressions/arrayAccessNode.hpp
         nodes/expressions/unaryExpressionNode.hpp
         nodes/statements/eventNode.hpp
-        nodes/statements/arrayFieldAssignNode.hpp)
+        nodes/statements/arrayFieldAssignNode.hpp nodes/expressions/arrayAccessNode.hpp)
 
 if (NOT CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     set (flags_1 "-Wno-overloaded-virtual")

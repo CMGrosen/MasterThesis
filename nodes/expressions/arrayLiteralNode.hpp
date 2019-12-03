@@ -4,15 +4,16 @@
 
 #ifndef ANTLR_CPP_TUTORIAL_ARRAYLITERALNODE_HPP
 #define ANTLR_CPP_TUTORIAL_ARRAYLITERALNODE_HPP
-#include <nodes/expressions/expressionNode.hpp>
+#include <nodes/node.hpp>
 
-class arrayLiteralNode : public expressionNode {
+class arrayLiteralNode : public node {
 public:
-    arrayLiteralNode(Type t, std::vector<std::shared_ptr<expressionNode>> a) : value{std::move(a)} {
+    arrayLiteralNode(Type t, std::vector<std::shared_ptr<node>> a) : node(t, ArrayLiteral), value{std::move(a)} {
         setType(t);
         setNodeType(ArrayLiteral);
     };
-    arrayLiteralNode(std::vector<std::shared_ptr<expressionNode>> a) : value{std::move(a)} {
+    /*
+    arrayLiteralNode(std::vector<std::shared_ptr<node>> a) : value{std::move(a)} {
         bool wellTyped = true;
         Type t = value[0]->getType();
         if (t == intType || t == boolType) {
@@ -29,10 +30,10 @@ public:
         } else type = errorType;
         setNodeType(ArrayLiteral);
     };
-
-    const std::vector<std::shared_ptr<expressionNode>> getArrLit() const {return value;};
+*/
+    std::vector<std::shared_ptr<node>> getArrLit() const {return value;};
 private:
-    std::vector<std::shared_ptr<expressionNode>> value;
+    std::vector<std::shared_ptr<node>> value;
 };
 
 #endif //ANTLR_CPP_TUTORIAL_ARRAYLITERALNODE_HPP

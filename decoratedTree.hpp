@@ -6,7 +6,7 @@
 #define ANTLR_CPP_TUTORIAL_DECORATEDTREE_HPP
 
 #include <nodes/node.hpp>
-#include <nodes/literalNode.hpp>
+#include <nodes/expressions/literalNode.hpp>
 
 class decoratedTree {
 private:

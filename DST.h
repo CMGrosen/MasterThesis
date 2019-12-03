@@ -4,7 +4,7 @@
 #include "antlr4-runtime.h"
 #include "SmallVisitor.h"
 #include <nodes/nodes.hpp>
-#include "symengine/Constraint.hpp"
+//#include "symengine/Constraint.hpp"
 
 
 /**
@@ -15,17 +15,17 @@
 
 class  DST : public SmallVisitor {
 public:
-    std::unordered_map<std::string, std::shared_ptr<expressionNode>> symboltables;
+    std::unordered_map<std::string, std::shared_ptr<node>> symboltables;
 
-    std::pair<const std::shared_ptr<statementNode>, const std::unordered_map<std::string, std::shared_ptr<expressionNode>>> getTree(SmallParser::FileContext *ctx) {
-        std::shared_ptr<statementNode> a = visitStmts(ctx->stmts());
-        std::shared_ptr<statementNode> aNew = deepCopy(a.get());
-        return std::pair<std::shared_ptr<statementNode>, std::unordered_map<std::string, std::shared_ptr<expressionNode>>>(std::move(aNew), symboltables);
+    std::pair<const std::shared_ptr<node>, const std::unordered_map<std::string, std::shared_ptr<node>>> getTree(SmallParser::FileContext *ctx) {
+        std::shared_ptr<node> a = visitStmts(ctx->stmts());
+//        std::shared_ptr<statementNode> aNew = deepCopy(a.get());
+        return std::pair<std::shared_ptr<node>, std::unordered_map<std::string, std::shared_ptr<node>>>(std::move(a), symboltables);
     }
 
     virtual antlrcpp::Any visitFile(SmallParser::FileContext *ctx) override {
         //antlrcpp::Any result = visitChildren(ctx);
-        std::shared_ptr<statementNode> a = visitStmts(ctx->stmts());
+        std::shared_ptr<node> a = visitStmts(ctx->stmts());
 
         //std::vector<std::shared_ptr<statementNode>> l = a->debug_getAllNodes();
         //std::cout << "\n\n\nwriting out what we have:\n";
@@ -38,43 +38,65 @@ public:
 
     virtual antlrcpp::Any visitStmts(SmallParser::StmtsContext *ctx) override {
         if(ctx->stmts()) {
-            std::shared_ptr<statementNode> body = visitStmt(ctx->stmt());
-            std::shared_ptr<statementNode> next = visitStmts(ctx->stmts());
-            std::shared_ptr<statementNode> result = std::make_shared<sequentialNode>(sequentialNode(body, next));
-            return result;
+            std::shared_ptr<node> first = visitStmt(ctx->stmt());
+            std::shared_ptr<node> last = first;
+            while(last->getNext()) {
+                last = last->getNext();
+            }
+            last->setNext(visitStmts(ctx->stmts()));
+            return first;
         } else {
-            std::shared_ptr<statementNode> result = visitStmt(ctx->stmt());
+            std::shared_ptr<node> result = visitStmt(ctx->stmt());
             return result;
         }
     }
 
     virtual antlrcpp::Any visitStmt(SmallParser::StmtContext *ctx) override {
         if (ctx->assign()) {
-            std::shared_ptr<statementNode> stmt =  visitAssign(ctx->assign());
+            std::shared_ptr<node> stmt = visitAssign(ctx->assign());
             return stmt;
         } else if (ctx->write()) {
-            std::shared_ptr<statementNode> stmt = visitWrite(ctx->write());
+            std::shared_ptr<node> stmt = visitWrite(ctx->write());
             return stmt;
         } else if (ctx->iter()) {
-            std::shared_ptr<statementNode> stmt = visitIter(ctx->iter());
+            std::shared_ptr<node> stmt = visitIter(ctx->iter());
             return stmt;
         } else if (ctx->ifs()) {
-            std::shared_ptr<statementNode> stmt = visitIfs(ctx->ifs());
+            std::shared_ptr<node> stmt = visitIfs(ctx->ifs());
             return stmt;
         } else if (ctx->thread()) {
-            std::shared_ptr<statementNode> stmt = visitThread(ctx->thread());
+            std::shared_ptr<node> stmt = visitThread(ctx->thread());
             return stmt;
         } else { //only event is remaining
-            std::shared_ptr<statementNode> stmt = visitEvent(ctx->event());
+            std::shared_ptr<node> stmt = visitEvent(ctx->event());
             return stmt;
         }
     }
 
     virtual antlrcpp::Any visitAssign(SmallParser::AssignContext *ctx) override {
         Type t;
+        if (ctx->arrayLiteral()) {
+            std::shared_ptr<node> last = visitArrayLiteral(ctx->arrayLiteral());
+            std::shared_ptr<node> first = last;
+            while(last->getNext()) {
+                last = last->getNext();
+            }
+            if (last->getType() != okType) {
+                t = errorType;
+            } else {
+                t = last->getType();
+            }
+            std::shared_ptr<node> n = std::make_shared<node>(node(t, Assign, ctx->NAME()->getText()));
+            int length = std::stoi(last->getValue());
+            while (length-->0)
+                symboltables.insert({(ctx->NAME()->getText() + "[" + std::to_string(length) + "]"), std::make_shared<constraintNode>(constraintNode(first->getType()))});
+            last->setNext(n);
+            return first;
+        }
+        /*Type t;
         if (ctx->arrayAccess()) {
-            std::shared_ptr<arrayLiteralNode> node = visitArrayLiteral(ctx->arrayLiteral());
-            std::shared_ptr<expressionNode> arrAcc = visitArrayAccess(ctx->arrayAccess());
+            std::shared_ptr<node> node = visitArrayLiteral(ctx->arrayLiteral());
+            std::shared_ptr<node> arrAcc = visitArrayAccess(ctx->arrayAccess());
             if (node->getType() == arrayIntType || node->getType() == arrayBoolType) {
                 t = errorType;
                 std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
@@ -132,35 +154,34 @@ public:
 
             if(!pair.second && pair.first->second->getType() != node->getType())
                 pair.first->second->setType(errorType);
-//        std::shared_ptr<assignNode> res = std::make_shared<assignNode>(assignNode(name, node));
 
             assignNode assNode = assignNode(pair.first->second->getType() == errorType ? errorType : okType, name, node);
             std::shared_ptr<statementNode> a = std::make_shared<assignNode>(assNode);
             return a;
-        }
+        }*/
     }
 
     virtual antlrcpp::Any visitIter(SmallParser::IterContext *ctx) override {
-        std::shared_ptr<expressionNode> condition = visitExpr(ctx->expr());
+        /*std::shared_ptr<expressionNode> condition = visitExpr(ctx->expr());
         std::shared_ptr<statementNode> body = visitStmts(ctx->scope()->stmts());
         Type t = okType;
         if (condition->getType() != boolType || body->getType() != okType) t = errorType;
         std::shared_ptr<statementNode> res = std::make_shared<whileNode>(whileNode(t, condition, body));
-        return res;
+        return res;*/
     }
 
     virtual antlrcpp::Any visitIfs(SmallParser::IfsContext *ctx) override {
-        std::shared_ptr<expressionNode> condition = visitExpr(ctx->expr());
+       /* std::shared_ptr<expressionNode> condition = visitExpr(ctx->expr());
         std::shared_ptr<statementNode> trueBranch = visitStmts(ctx->scope(0)->stmts());
         std::shared_ptr<statementNode> falseBranch = visitStmts(ctx->scope(1)->stmts());
         Type t = okType;
         if (condition->getType() != boolType || trueBranch->getType() != okType || falseBranch->getType() != okType) t = errorType;
         std::shared_ptr<statementNode> res = std::make_shared<ifElseNode>(ifElseNode(t, condition, trueBranch, falseBranch));
-        return res;
+        return res;*/
     }
 
     virtual antlrcpp::Any visitThread(SmallParser::ThreadContext *ctx) override {
-        std::vector<std::shared_ptr<statementNode>> statements;
+        /*std::vector<std::shared_ptr<statementNode>> statements;
         for (auto scopeContext : ctx->threads) {
             statements.push_back(visitStmts(scopeContext->stmts()));
         }
@@ -172,14 +193,14 @@ public:
             }
         }
         std::shared_ptr<statementNode> res = std::make_shared<concurrentNode>(concurrentNode(t, statements));
-        return res;
+        return res;*/
     }
 
     virtual antlrcpp::Any visitEvent(SmallParser::EventContext *ctx) override {
-        std::shared_ptr<expressionNode> condition = visitExpr(ctx->expr());
+        /*std::shared_ptr<expressionNode> condition = visitExpr(ctx->expr());
         Type t = (condition->getType() == boolType) ? okType : errorType;
         std::shared_ptr<statementNode> res = std::make_shared<eventNode>(eventNode(t, condition));
-        return res;
+        return res;*/
     }
 
     virtual antlrcpp::Any visitScope(SmallParser::ScopeContext *ctx) override {
@@ -187,7 +208,7 @@ public:
     }
 
     virtual antlrcpp::Any visitRead(SmallParser::ReadContext *ctx) override {
-        auto symbol = symboltables.find(ctx->NAME()->getText());
+       /* auto symbol = symboltables.find(ctx->NAME()->getText());
         std::string name = ctx->NAME()->getText();
         Type type = errorType;
         Type typeToWrite = errorType;
@@ -205,11 +226,11 @@ public:
         readNode node = readNode((type == intType) ? okType : errorType, nameNode);
         node.setType(type);
         std::shared_ptr<expressionNode> res = std::make_shared<readNode>(node);
-        return res;
+        return res;*/
     }
 
     virtual antlrcpp::Any visitWrite(SmallParser::WriteContext *ctx) override {
-        std::shared_ptr<expressionNode> expr = visitExpr(ctx->expr());
+       /* std::shared_ptr<expressionNode> expr = visitExpr(ctx->expr());
         auto symbol = symboltables.find(ctx->NAME()->getText());
         Type t = intType;
         if (symbol == symboltables.end() || symbol->second->getType() != intType) {
@@ -222,11 +243,16 @@ public:
         }
         std::shared_ptr<variableNode> var = std::make_shared<variableNode>(variableNode(t, ctx->NAME()->getText()));
         std::shared_ptr<statementNode> res = std::make_shared<writeNode>(writeNode(var, expr));
-        return res;
+        return res;*/
     }
 
     virtual antlrcpp::Any visitExpr(SmallParser::ExprContext *ctx) override {
-        if (ctx->LPAREN()) {
+        if (ctx->literal()) {
+            std::string val = ctx->literal()->getText();
+            std::shared_ptr<node> l = std::make_shared<literalNode>(literalNode((val == "true" || val == "false") ? boolType : intType, val));
+            return l;
+        }
+        /*if (ctx->LPAREN()) {
             return visitExpr(ctx->expr(0));
         } else if (ctx->OP_ADD()) {
             return binary_expression(ctx, PLUS);
@@ -302,11 +328,11 @@ public:
             return res;
         } else if (ctx->read()) {
             return visitRead(ctx->read());
-        }
+        }*/
     }
 
     virtual antlrcpp::Any visitArrayAccess(SmallParser::ArrayAccessContext *ctx) override {
-        std::shared_ptr<expressionNode> node = visitExpr(ctx->expr());
+        /*std::shared_ptr<expressionNode> node = visitExpr(ctx->expr());
         auto it = symboltables.find(ctx->NAME()->getText());
         Type t;
         if (node->getType() != intType || it == symboltables.end()) {
@@ -317,7 +343,7 @@ public:
             t = boolType;
         }
         std::shared_ptr<expressionNode> res = std::make_shared<arrayAccessNode>(arrayAccessNode(t, node, ctx->NAME()->getText()));
-        return res;
+        return res;*/
     }
 
     virtual antlrcpp::Any visitLiteral(SmallParser::LiteralContext *ctx) override {
@@ -326,19 +352,36 @@ public:
     }
 
     virtual antlrcpp::Any visitArrayLiteral(SmallParser::ArrayLiteralContext *ctx) override {
-        std::vector<std::shared_ptr<expressionNode>> inter;
-        auto a = ctx->expr();
+        std::vector<std::shared_ptr<node>> inter;
+        Type t = okType;
         for (auto i : ctx->expr()) {
             inter.push_back(visitExpr(i));
         }
-        std::shared_ptr<arrayLiteralNode> res = std::make_shared<arrayLiteralNode>(arrayLiteralNode(inter));
-        return res;
+        for (unsigned long l = 0; l < inter.size()-1; l++) {
+            if (inter[l]->getType() != inter[l+1]->getType()) {
+                t = errorType;
+            }
+            while (inter[l]->getNext()) {
+                inter[l] = inter[l]->getNext();
+            }
+            inter[l]->setNext(inter[l+1]);
+        }
+        if (t == okType) {
+            if (inter[0]->getType() == intType) {
+                t = arrayIntType;
+            } else {
+                t = arrayBoolType;
+            }
+        }
+        std::shared_ptr<node> n = std::make_shared<node>(node(t, ArrayLiteral,std::to_string(inter.size())));
+        inter[inter.size()-1]->setNext(n);
+        return inter[0];
     }
 
     static std::string btos (bool val) {
         return val ? "true" : "false";
     }
-
+/*
     static std::shared_ptr<expressionNode> compute_new_literal (literalNode l, literalNode r, op expressionType, Type t) {
         std::string lVal = l.value;
         std::string rVal = r.value;
@@ -491,7 +534,8 @@ public:
         std::shared_ptr<expressionNode> p = std::make_shared<binaryExpressionNode>(binaryExpressionNode(t, expressionType, l,r));
         return p;
     }
-
+*/
+    /*
     static antlrcpp::Any deepCopy(const node *tree) {
         switch(tree->getNodeType()) {
             case Assign:
@@ -613,8 +657,8 @@ public:
                 }
                 break;
         }
-    }
-
+    }*/
+/*
     std::shared_ptr<statementNode> sequentialAssignForArray(std::string name, int accessor, std::vector<std::shared_ptr<expressionNode>> n) {
         Type t = n[0]->getType();
         if(n.size() == 1) {
@@ -632,7 +676,7 @@ public:
             }
             return std::make_shared<sequentialNode>(sequentialNode(okType,arrFieldAss,sequentialAssignForArray(name,accessor+1,ne)));
         }
-    }
+    }*/
 };
 
 #endif //DST_H

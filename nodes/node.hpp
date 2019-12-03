@@ -9,6 +9,7 @@
 
 enum Type { intType, boolType, arrayIntType, arrayBoolType, okType, errorType};
 enum NodeType { Assign, AssignArrField, Concurrent, Sequential, While, If, Write, Read, Literal, ArrayAccess, ArrayLiteral, Event, Variable, BinaryExpression, UnaryExpression, ConstraintNode};
+enum op { PLUS, MINUS, MULT, DIV, MOD, NOT, AND, OR, LE, LEQ, GE, GEQ, EQ, NEQ, NEG, NOTUSED};
 
 static std::map< Type, const char * > info = {
         {intType, "int"},
@@ -40,14 +41,26 @@ static std::map< NodeType, const char * > nodeInfo = {
 
 class node {
 public:
-    virtual Type getType() const {return type;};
-    virtual void setType(Type t) {type = t;};
-    virtual NodeType getNodeType() const {return nodetype;};
-    virtual void setNodeType(NodeType t) {nodetype = t;};
+    node(Type type, NodeType nodeType) : type{type}, nodetype{nodeType} {};
+    node(Type type, NodeType nodeType, op _operator) : type{type}, nodetype{nodeType}, _operator{_operator} {};
+    node(Type type, NodeType nodeType, op _operator, std::string value) : type{type}, nodetype{nodeType}, _operator{_operator}, _val{std::move(value)} {};
+    node(Type type, NodeType nodeType, std::string value) : type{type}, nodetype{nodeType}, _val{std::move(value)} {};
+    Type getType() const {return type;};
+    void setType(Type t) {type = t;};
+    NodeType getNodeType() const {return nodetype;};
+    void setNodeType(NodeType t) {nodetype = t;};
+    op getOperator() const {return _operator;};
+    void setOperator(op o) {_operator = o;};
+    virtual std::string getValue() const {return _val;};
+    std::shared_ptr<node> getNext() const {return _next;}
+    void setNext(std::shared_ptr<node> n) {_next = std::move(n);}
 
 protected:
     Type type;
     NodeType nodetype;
+    op _operator = NOTUSED;
+    std::shared_ptr<node> _next = nullptr;
+    std::string _val = "";
 };
 
 #endif //ANTLR_CPP_TUTORIAL_NODE_HPP
