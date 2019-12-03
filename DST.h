@@ -39,11 +39,19 @@ public:
     virtual antlrcpp::Any visitStmts(SmallParser::StmtsContext *ctx) override {
         if(ctx->stmts()) {
             std::shared_ptr<node> first = visitStmt(ctx->stmt());
-            std::shared_ptr<node> last = first;
+            std::shared_ptr<node> last = first->getLast();
+            if (!last) last = first;
+            if (last->getNodeType() == While) {
+                std::vector<std::shared_ptr<node>> tmp = last->getNexts();
+                tmp[1] = visitStmts(ctx->stmts());
+                last->setNexts(tmp);
+            } else {
+                last->setNext(visitStmts(ctx->stmts()));
+            }
+            /*
             while(last->getNext()) {
                 last = last->getNext();
-            }
-            last->setNext(visitStmts(ctx->stmts()));
+            }*/
             return first;
         } else {
             std::shared_ptr<node> result = visitStmt(ctx->stmt());
@@ -77,15 +85,17 @@ public:
         Type t;
         if (ctx->arrayAccess()) {
             std::shared_ptr<node> first = visitExpr(ctx->expr());
-            std::shared_ptr<node> last = first;
+            std::shared_ptr<node> last = first->getLast();
+            if (!last) last = first;/*
             while (last->getNext()) {
                 last = last->getNext();
-            }
+            }*/
             std::shared_ptr<node> arrAcc = visitArrayAccess(ctx->arrayAccess());
-            std::shared_ptr<node> last2 = arrAcc;
+            std::shared_ptr<node> last2 = arrAcc->getLast();
+            if (!last2) last2 = arrAcc;/*
             while (last2->getNext()) {
                 last2 = last2->getNext();
-            }
+            }*/
             if (last->getType() == arrayIntType || last->getType() == arrayBoolType) {
                 t = errorType;
                 std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
@@ -104,11 +114,12 @@ public:
             last2->setNext(n);
             return first;
         } else if (ctx->NAME() && ctx->arrayLiteral()) {
-            std::shared_ptr<node> last = visitArrayLiteral(ctx->arrayLiteral());
-            std::shared_ptr<node> first = last;
+            std::shared_ptr<node> first = visitArrayLiteral(ctx->arrayLiteral());
+            std::shared_ptr<node> last = first->getLast();
+            if (!last) last = first;/*
             while(last->getNext()) {
                 last = last->getNext();
-            }
+            }*/
             if (last->getType() == errorType) {
                 t = errorType;
             } else {
@@ -134,22 +145,38 @@ public:
             return first;
         } else {
             std::shared_ptr<node> first = visitExpr(ctx->expr());
-            std::shared_ptr<node> last = first;
+            std::shared_ptr<node> last = first->getLast();
+            if (!last) last = first;/*
             while(last->getNext()) {
                 last = last->getNext();
-            }
+            }*/
             auto pair = symboltables.find(ctx->NAME()->getText());
             if (pair == symboltables.end()) {
                 symboltables.insert({ctx->NAME()->getText(), std::make_shared<constraintNode>(constraintNode(last->getType()))});
                 pair = symboltables.find(ctx->NAME()->getText());
             }
-            if (pair->second->getType() == errorType) t = errorType;
+            if (pair->second->getType() == errorType) t = errorType; else t = okType;
             last->setNext(std::make_shared<node>(node(t,Assign, ctx->NAME()->getText())));
             return first;
         }
     }
 
     virtual antlrcpp::Any visitIter(SmallParser::IterContext *ctx) override {
+        Type t = okType;
+        std::shared_ptr<node> first = visitExpr(ctx->expr());
+        std::shared_ptr<node> lastInBoolExpr = first->getLast();
+        if (!lastInBoolExpr) lastInBoolExpr = first;
+        if (lastInBoolExpr->getType() != boolType) t = errorType;
+
+        std::shared_ptr<node> firstStmt = visitStmts(ctx->scope()->stmts());
+        std::shared_ptr<node> lastExecutableBitStmt = firstStmt->getLast();
+        if (!lastExecutableBitStmt) lastExecutableBitStmt = firstStmt;
+
+        std::shared_ptr<node> n = std::make_shared<node>(node(t, While));
+        lastExecutableBitStmt->setNext(first);
+        lastInBoolExpr->setNext(n);
+        n->setNexts(std::vector<std::shared_ptr<node>>{first, nullptr});
+        return n;
         /*std::shared_ptr<expressionNode> condition = visitExpr(ctx->expr());
         std::shared_ptr<statementNode> body = visitStmts(ctx->scope()->stmts());
         Type t = okType;
@@ -225,10 +252,11 @@ public:
         }
         std::shared_ptr<node> name = std::make_shared<node>(node(intType, Variable, ctx->NAME()->getText()));
         name->setNext(visitExpr(ctx->expr()));
-        std::shared_ptr<node> last = name;
+        std::shared_ptr<node> last = name->getLast();
+        if (!last) last = name;/*
         while(last->getNext()) {
             last = last->getNext();
-        }
+        }*/
         t = (t != errorType && last->getType() == intType) ? okType : errorType;
         last->setNext(std::make_shared<node>(node(t, Write)));
         return name;
@@ -251,8 +279,19 @@ public:
     virtual antlrcpp::Any visitExpr(SmallParser::ExprContext *ctx) override {
         if (ctx->literal()) {
             std::string val = ctx->literal()->getText();
-            std::shared_ptr<node> l = std::make_shared<literalNode>(literalNode((val == "true" || val == "false") ? boolType : intType, val));
+            std::shared_ptr<node> l = std::make_shared<node>(node((val == "true" || val == "false") ? boolType : intType, Literal, val));
             return l;
+        } else if (ctx->NAME()) {
+            auto pair = symboltables.find(ctx->NAME()->getText());
+            Type t = (pair != symboltables.end())
+                    ? (pair->second->getType())
+                    : errorType;
+            if (t == errorType) {
+                std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
+                          << "] Attempted to use variable that hasn't been assigned a value\n";
+            }
+            std::shared_ptr<node> res = std::make_shared<node>(node(t,Variable,ctx->NAME()->getText()));
+            return res;
         }
         /*if (ctx->LPAREN()) {
             return visitExpr(ctx->expr(0));
@@ -347,10 +386,12 @@ public:
 
     virtual antlrcpp::Any visitArrayAccess(SmallParser::ArrayAccessContext *ctx) override {
         std::shared_ptr<node> first = visitExpr(ctx->expr());
-        std::shared_ptr<node> last = first;
+        std::shared_ptr<node> last = first->getLast();
+        if (!last) last = first;
+        /*
         while (last->getNext()) {
             last = last->getNext();
-        }
+        }*/
         auto it = symboltables.find(ctx->NAME()->getText());
         std::string name = ctx->NAME()->getText();
         auto val = it->second;
@@ -382,9 +423,14 @@ public:
             if (inter[l]->getType() != inter[l+1]->getType()) {
                 t = errorType;
             }
+            std::shared_ptr<node> tmp = inter[l]->getLast();
+            if(tmp) {
+                inter[l] = tmp;
+            }/*
+            inter[l] = inter[l]->getLast();
             while (inter[l]->getNext()) {
                 inter[l] = inter[l]->getNext();
-            }
+            }*/
             inter[l]->setNext(inter[l+1]);
         }
         if (t == okType) {

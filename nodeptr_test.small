@@ -1,3 +1,8 @@
+aa = false;
+
+while(aa) {
+    bb = true;
+}
 a = [1,2,3];
 a[1] = 2;
 b = [4,5,6];

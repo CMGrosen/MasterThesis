@@ -52,13 +52,21 @@ public:
     op getOperator() const {return _operator;};
     void setOperator(op o) {_operator = o;};
     virtual std::string getValue() const {return _val;};
-    std::shared_ptr<node> getNext() const {return _next;}
-    void setNext(std::shared_ptr<node> n) {_next = std::move(n);}
+    std::vector<std::shared_ptr<node>> getNexts() const {return _nexts;}
+    void setNext(std::shared_ptr<node> n) {_nexts = std::vector<std::shared_ptr<node>>{std::move(n)};}
+    void setNexts(std::vector<std::shared_ptr<node>> n) {_nexts = std::move(n);}
     std::shared_ptr<node> getLast() const {
-        //if (!_next) return std::make_shared<node>(*this);
-        std::shared_ptr<node> tmp = std::make_shared<node>(*this);
-        while (tmp->getNext()) {
-            tmp = tmp->getNext();
+        if (_nexts.empty()) return nullptr;
+        std::shared_ptr<node> tmp = _nexts[0];
+        while (!(tmp->_nexts.empty())) {
+            if(tmp->getNodeType() != While) {
+                tmp = tmp->_nexts[0];
+            } else {
+                if (tmp->_nexts[1])
+                    tmp = tmp->_nexts[1];
+                else
+                    return tmp;
+            }
         }
         return tmp;
     }
@@ -67,7 +75,7 @@ protected:
     Type type;
     NodeType nodetype;
     op _operator = NOTUSED;
-    std::shared_ptr<node> _next = nullptr;
+    std::vector<std::shared_ptr<node>> _nexts = std::vector<std::shared_ptr<node>>();
     std::string _val = "";
 };
 
