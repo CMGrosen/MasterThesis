@@ -57,8 +57,8 @@ public:
             }
             default: {
                 // ERROR
-                std::cout << "ERROR(getBottomExpression() in expressionVisitor): unhandled node type on left side of expression, recieved node of type" << child_left->getNodeType() << std::endl;
-                return nullptr;
+                return ExpressionVisitorERROR("getBottomExpression()",
+                        "unhandled node type on left side of expression, received node of type" + std::to_string(child_left->getNodeType())).get();
             }
         }
     }
@@ -67,7 +67,7 @@ public:
     // if the expression has no rightside then child_right is nullptr
     expressionNode* checkRightChild(expressionNode* parent, expressionNode* child_left, expressionNode* child_right, std::map<std::string, constraint> vars){
         // in case of parent being unaryExpression or array access, child_right == null_ptr
-        if(child_right == nullptr){
+        if(child_right == nullptr) {
             return parent;
         }
         switch(child_right->getNodeType()) {
@@ -79,24 +79,22 @@ public:
                 unaryExpressionNode* unexpr = (dynamic_cast<unaryExpressionNode*>(child_right));
                 return getBottomExpression(unexpr, unexpr->getExpression(), nullptr, vars);
             }
-            case Read: {
-                return child_right;
-            }
             case ArrayAccess: {
                 arrayAccessNode* arracc = dynamic_cast<arrayAccessNode*>(child_right);
                 return getBottomExpression(arracc, arracc->getAccessor(), nullptr, vars);
             }
-            case ConstraintNode: {
+            case Read:
+                return child_right;
+            case ConstraintNode:
                 return parent;
-            }
             case Variable:
                 return child_right;
             case Literal:
                 return parent;
             default:
                 // ERROR this should not happen
-                std::cout << "ERROR(checkRightChild() in expressionVisitor): unhandled node type  on rightside of expresion, received node of type: " << child_right->getNodeType() << std::endl;
-                return nullptr;
+                return ExpressionVisitorERROR("checkRightChild()",
+                        "unhandled node type  on rightside of expresion, received node of type: " + std::to_string(child_right->getNodeType())).get();
         }
     }
 
@@ -135,26 +133,7 @@ private:
             switch(tree->getNodeType()) {
                 case BinaryExpression:{
                     const binaryExpressionNode* binexpr = dynamic_cast<const binaryExpressionNode *>(tree);
-                    std::shared_ptr<expressionNode> left;
-                    std::shared_ptr<expressionNode> right;
-                    switch (binexpr->getLeft()->getNodeType()) {
-                        case Literal: {
-
-                        }
-                    }
-                    if(binexpr->getLeft()->getNodeType() == Literal) {
-                        // opdater højre siden
-                        left = makeNewTree(binexpr->getLeft(), updateLocation, vars);
-                        right = makeExpressionUpdate(binexpr->getRight(), vars);
-                    } else if(binexpr->getRight()->getNodeType() == Literal){
-                        // opdater venstre  siden
-                        left = makeExpressionUpdate(binexpr->getLeft(), vars);
-                        right = makeNewTree(binexpr->getRight(), updateLocation, vars);
-                    }
-                    std::shared_ptr<expressionNode> res =
-                            std::make_shared<binaryExpressionNode>(
-                                    binaryExpressionNode(binexpr->getType(), binexpr->getOperator(), left, right));
-                    return res;
+                    return EvaluateBinepxr(binexpr);
                 }
                 case UnaryExpression: {
                     const unaryExpressionNode* unexpr = dynamic_cast<const unaryExpressionNode*>(tree);
@@ -172,8 +151,8 @@ private:
                 }
                 default:
                     //should never happen
-                    std::cout << "ERROR(makeNewTree() in expressionVisitor): unhandled node type in Expression update location, received node of type: " << tree->getNodeType() << std::endl;
-                    return nullptr;
+                    return ExpressionVisitorERROR("makeNewTree()",
+                            "unhandled node type in Expression update location, received node of type: " + std::to_string(tree->getNodeType()));
             }
         }
     }
@@ -289,6 +268,67 @@ private:
         return result;
     }
 
+    // evaluate the binary expression by finding the nodetypes on each side and then call the correct expression evaluation function
+    static std::shared_ptr<expressionNode> EvaluateBinepxr(const binaryExpressionNode* binexpr) {
+        const expressionNode* left = binexpr->getLeft();
+        const expressionNode* right = binexpr->getRight();
+        switch (left->getNodeType()) {
+            case Read: {
+                switch (right->getNodeType()) {
+                    case ConstraintNode: {
+
+                    }
+                    case Literal: {
+
+                    }
+                    default:
+                        return ExpressionVisitorERROR("evaluateBinexpr",
+                                "Unhandled nodeType on right child, left child is of type: Read, and right child is of type: " + std::to_string(right->getNodeType()));
+                }
+            }
+            case ConstraintNode: {
+                switch (right->getNodeType()) {
+                    case ConstraintNode: {
+
+                    }
+                    case Literal: {
+
+                    }
+                    default:
+                        return ExpressionVisitorERROR("evaluateBinexpr",
+                                                      "Unhandled nodeType on right child, left child is of type: ConstraintNode, and right child is of type: " + std::to_string(right->getNodeType()));
+                }
+            }
+            case Literal: {
+                switch (right->getNodeType()) {
+                    case ConstraintNode: {
+
+                    }
+                    case Literal: {
+
+                    }
+                    default:
+                        return ExpressionVisitorERROR("evaluateBinexpr",
+                                                      "Unhandled nodeType on right child, left child is of type: Literal, and right child is of type: " + std::to_string(right->getNodeType()));
+                }
+            }
+            default: {
+                // ERROR
+                return ExpressionVisitorERROR("evaluateBinexpr",
+                        "NodeType of left expression is not of expected type, received node of type: " + std::to_string(left->getNodeType()));
+            }
+        }
+    }
+
+    // create functions for each expression evaluation pattern, based on the right and left side
+
+
+
+
+    static std::shared_ptr<expressionNode> ExpressionVisitorERROR(std::string functionName, std::string errorString) {
+        std::cout << "ERROR (" << functionName << " in expressionVisitor): " << errorString << std::endl;
+        return nullptr;
+    }
 
 };
 #endif //ANTLR_CPP_TUTORIAL_EXPRESSIONVISITOR_HPP
