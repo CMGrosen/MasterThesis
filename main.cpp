@@ -40,7 +40,7 @@ int main(int argc, const char* argv[]) {
     auto treeAndSymbolTable = visitor.getTree(tree);
 
     //auto tmp = treeAndSymbolTable.first->debug_getAllNodes();
-    if(treeAndSymbolTable.first->getType() == errorType)
+    if(visitor.getNumErrors())
         return 0;
 
 //    auto table = std::unordered_map<std::string, std::shared_ptr<expressionNode>>();

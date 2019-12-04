@@ -1,7 +1,8 @@
-t = 0;
+t = 0+1+2+3+4;
 aa = false;
+tt = t*2;
 
-when(aa)
+when(tt < 10)
 fork {
     t = 1;
 } par {
