@@ -18,13 +18,14 @@ static std::map< const char *, const char * > files = {
         {"stateTest", "../nodeptr_test.small"},
         {"precedence", "../precendenceTest.small"},
         {"temp", "../temp.small"},
-        {"oob_race-condition", "../code_examples/out_of_bounds_race-condition.small"}
+        {"oob_race-condition", "../code_examples/out_of_bounds_race-condition.small"},
+        {"testAssign", "../code_examples/testAssign.small"}
 };
 
 int main(int argc, const char* argv[]) {
     std::ifstream stream;
     //stream.open("../code.small");
-    stream.open(files["stateTest"]);
+    stream.open(files["testAssign"]);
     //stream.open("shortExpr.small");
 
     ANTLRInputStream input(stream);
@@ -52,6 +53,8 @@ int main(int argc, const char* argv[]) {
     //symbolicExecutionEngine symEngine;
     //auto constraintsToReachBug = symEngine.execute(treeAndSymbolTable);
 
+    symbolicExecutionEngine symEngine;
+    symEngine.execute(treeAndSymbolTable);
     std::cout << "finished\n";
 
     return 0;

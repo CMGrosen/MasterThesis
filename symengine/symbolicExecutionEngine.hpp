@@ -9,6 +9,7 @@
 //#include "expressionVisitor.hpp"
 #include "state.hpp"
 #include "z3++.h"
+#include <symengine/stateQueue.hpp>
 
 using namespace z3;
 
@@ -18,32 +19,64 @@ public:
     std::vector<z3::expr> execute(std::pair<const std::shared_ptr<node>, const std::unordered_map<std::string, std::shared_ptr<node>>> treeAndSymTable) {
         //testExpr();
         //expressionVisistor eVisitor;
-        state s = state(treeAndSymTable.first.get(), treeAndSymTable.second);
-        auto res = compute_statements(s);
+        state s = state(treeAndSymTable.first, treeAndSymTable.second);
+        frontier.push(s);
+        auto res = compute_statements();
         return res;
     }
 
 private:
-    std::vector<z3::expr> compute_statements(state s) {
-        auto res = compute_statements_helper(std::move(s));
+    std::unordered_set<state> explored;
+    stateQueue<state> frontier;
+
+    std::vector<z3::expr> compute_statements() {
+        while(!frontier.empty()) {
+            state s = frontier.myPop();
+            auto inserted = explored.insert(s);
+            if (inserted.second) {
+                std::vector<state> states = compute_statements_helper(std::move(s));
+                for (auto state : states)
+                    frontier.push(state);
+            }
+            std::cout << "here\n";
+        }
         return std::vector<z3::expr>{};
     }
 
-    state compute_statements_helper(state s) {
-        node *n = s.get_position();
+    std::vector<state> compute_statements_helper(state s) {
+        std::shared_ptr<node> n = s.get_position();
+        std::vector<state> states = std::vector<state>{};
+        stateStack<std::shared_ptr<node>> stack = s.stack;
+        if (!n) {return states;}
+        std::vector<std::shared_ptr<node>> nexts = n->getNexts();
         switch (n->getNodeType()) {
-            case Assign:
-            case AssignArrField:
-            case Concurrent:
-            case Sequential:
-            case While:
-            case If:
-            case Write:
-            case Event:
-                return s;
+            case Literal:
+                stack.push(n);
+                if (nexts.empty()) states.emplace_back(state(nullptr, s.getTable(), std::move(stack)));
+                else states.emplace_back(state(n->getNexts()[0], s.getTable(), std::move(stack)));
+                break;
+            case Assign: {
+                std::shared_ptr<node> top = stack.myPop();
+                auto table = s.getTable();
+                table.find(n->getValue())->second = top;
+                if (nexts.empty()) states.emplace_back(state(nullptr, table, stack));
+                else states.emplace_back(state(n->getNexts()[0], table, stack));
+                break;
+            }
+            case BinaryExpression: {
+                std::shared_ptr<node> right = stack.myPop();
+                std::shared_ptr<node> left = stack.myPop();
+                if (left->getNodeType() == Literal && right->getNodeType() == Literal)
+                    stack.push(DST::compute_new_literal(left,right,n->getOperator(),n->getType()));
+                else {
+
+                }
+            }
             default:
-                return s;
+                break;
+
         }
+        return states;
     }
 
     //definitely have to think carefully about how we do this
