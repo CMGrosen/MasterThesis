@@ -45,6 +45,19 @@ public:
                 std::vector<std::shared_ptr<node>> tmp = last->getNexts();
                 tmp[1] = visitStmts(ctx->stmts());
                 last->setNexts(tmp);
+            } else if (last->getNodeType() == If) {
+                std::vector<std::shared_ptr<node>> tmp = last->getNexts();
+                tmp[0] = tmp[1];
+                tmp[1] = tmp[2];
+                tmp.pop_back();
+                auto lastTrue = tmp[0]->getLast();
+                auto lastFalse = tmp[1]->getLast();
+                if (!lastTrue) lastTrue = tmp[0];
+                if (!lastFalse) lastFalse = tmp[1];
+                std::shared_ptr<node> remainingStatements = visitStmts(ctx->stmts());
+                lastTrue->setNext(remainingStatements);
+                lastFalse->setNext(remainingStatements);
+                last->setNexts(tmp);
             } else {
                 last->setNext(visitStmts(ctx->stmts()));
             }
@@ -186,6 +199,25 @@ public:
     }
 
     virtual antlrcpp::Any visitIfs(SmallParser::IfsContext *ctx) override {
+        std::shared_ptr<node> firstExpr = visitExpr(ctx->expr());
+        std::shared_ptr<node> lastExpr = firstExpr->getLast();
+        if (!lastExpr) lastExpr = firstExpr;
+
+        std::shared_ptr<node> firstTrue = visitStmts(ctx->scope(0)->stmts());
+        std::shared_ptr<node> lastTrue = firstTrue->getLast();
+        if (!lastTrue) lastTrue = firstTrue;
+
+        std::shared_ptr<node> firstFalse = visitStmts(ctx->scope(1)->stmts());
+        std::shared_ptr<node> lastFalse = firstFalse->getLast();
+        if (!lastFalse) lastFalse = firstFalse;
+
+        Type t = okType;
+        if (lastExpr->getType() != boolType || lastTrue->getType() != okType || lastFalse->getType() != okType) t = errorType;
+
+        std::shared_ptr<node> n = std::make_shared<node>(node(t,If));
+        lastExpr->setNext(n);
+        n->setNexts(std::vector<std::shared_ptr<node>>{nullptr, firstTrue, firstFalse});
+        return firstExpr;
        /* std::shared_ptr<expressionNode> condition = visitExpr(ctx->expr());
         std::shared_ptr<statementNode> trueBranch = visitStmts(ctx->scope(0)->stmts());
         std::shared_ptr<statementNode> falseBranch = visitStmts(ctx->scope(1)->stmts());
@@ -196,7 +228,7 @@ public:
     }
 
     virtual antlrcpp::Any visitThread(SmallParser::ThreadContext *ctx) override {
-        /*std::vector<std::shared_ptr<statementNode>> statements;
+        std::vector<std::shared_ptr<node>> statements;
         for (auto scopeContext : ctx->threads) {
             statements.push_back(visitStmts(scopeContext->stmts()));
         }
@@ -207,15 +239,20 @@ public:
                 break;
             }
         }
-        std::shared_ptr<statementNode> res = std::make_shared<concurrentNode>(concurrentNode(t, statements));
-        return res;*/
+        std::shared_ptr<node> res = std::make_shared<concurrentNode>(concurrentNode(t, statements));
+        return res;
     }
 
     virtual antlrcpp::Any visitEvent(SmallParser::EventContext *ctx) override {
-        /*std::shared_ptr<expressionNode> condition = visitExpr(ctx->expr());
-        Type t = (condition->getType() == boolType) ? okType : errorType;
-        std::shared_ptr<statementNode> res = std::make_shared<eventNode>(eventNode(t, condition));
-        return res;*/
+        std::shared_ptr<node> condition = visitExpr(ctx->expr());
+        std::shared_ptr<node> last = condition->getLast();
+        if (!last) last = condition;
+        Type t = (last->getType() == boolType) ? okType : errorType;
+        std::shared_ptr<node> ifNode = std::make_shared<node>(node(t, If));
+        ifNode->setNexts(std::vector<std::shared_ptr<node>>{nullptr, condition});
+        last->setNext(ifNode);
+        std::shared_ptr<node> res = std::make_shared<eventNode>(eventNode(t, condition));
+        return res;
     }
 
     virtual antlrcpp::Any visitScope(SmallParser::ScopeContext *ctx) override {

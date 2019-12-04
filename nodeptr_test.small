@@ -1,4 +1,18 @@
+t = 0;
 aa = false;
+
+when(aa)
+fork {
+    t = 1;
+} par {
+    t = 2;
+}
+
+if(aa) {
+  aa = true;
+} else {
+  aa = false;
+}
 
 while(aa) {
     bb = true;

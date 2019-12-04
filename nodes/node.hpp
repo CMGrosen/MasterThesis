@@ -58,14 +58,22 @@ public:
     std::shared_ptr<node> getLast() const {
         if (_nexts.empty()) return nullptr;
         std::shared_ptr<node> tmp = _nexts[0];
+        if (!tmp) tmp = _nexts[1];
         while (!(tmp->_nexts.empty())) {
-            if(tmp->getNodeType() != While) {
-                tmp = tmp->_nexts[0];
-            } else {
-                if (tmp->_nexts[1])
+            if(tmp->getNodeType() == While) {
+                if(tmp->_nexts[1]) {
                     tmp = tmp->_nexts[1];
-                else
+                } else {
                     return tmp;
+                }
+            } else if (tmp->getNodeType() == If) {
+                if(tmp->_nexts[0]) {
+                    tmp = tmp->_nexts[0];
+                } else {
+                    return tmp;
+                }
+            } else {
+                tmp = tmp->_nexts[0];
             }
         }
         return tmp;

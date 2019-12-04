@@ -5,17 +5,12 @@
 #ifndef ANTLR_CPP_TUTORIAL_EVENTNODE_HPP
 #define ANTLR_CPP_TUTORIAL_EVENTNODE_HPP
 
-#include <nodes/expressions/expressionNode.hpp>
-
-class eventNode : public statementNode {
+class eventNode : public node {
 public:
-    eventNode(Type t, std::shared_ptr<expressionNode> condition) : _condition{condition} {
-        setType(t);
-        setNodeType(Event);
-    }
-    const expressionNode *getCondition() const {return _condition.get();}
+    eventNode(Type t, std::shared_ptr<node> condition) : node(t,Event),_condition{std::move(condition)} {}
+    const node *getCondition() const {return _condition.get();}
 private:
-    std::shared_ptr<expressionNode> _condition;
+    std::shared_ptr<node> _condition;
 };
 
 #endif //ANTLR_CPP_TUTORIAL_EVENTNODE_HPP
