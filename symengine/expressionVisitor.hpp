@@ -17,7 +17,7 @@
 class expressionVisistor {
 public:
     // uses an expression tree for current state to create a new expression tree for the next state
-    std::shared_ptr<expressionNode> visitNextExpression(expressionNode* node, std::map<std::string, constraint> vars){
+    std::shared_ptr<node> visitNextExpression(expressionNode* node, std::map<std::string, constraint> vars){
         expressionNode* changeHere = nullptr;
         if(node->getNodeType() == BinaryExpression){
             binaryExpressionNode* binexpr = (dynamic_cast<binaryExpressionNode*>(node));

@@ -5,8 +5,8 @@
 #ifndef ANTLR_CPP_TUTORIAL_SYMBOLICEXECUTIONENGINE_HPP
 #define ANTLR_CPP_TUTORIAL_SYMBOLICEXECUTIONENGINE_HPP
 
-#include "Constraint.hpp"
-#include "expressionVisitor.hpp"
+//#include "Constraint.hpp"
+//#include "expressionVisitor.hpp"
 #include "state.hpp"
 #include "z3++.h"
 
@@ -15,66 +15,21 @@ using namespace z3;
 class symbolicExecutionEngine {
 public:
 
-    std::vector<z3::expr> execute(std::pair<const std::shared_ptr<statementNode>, const std::unordered_map<std::string, std::shared_ptr<expressionNode>>> treeAndSymTable) {
-        testExpr();
-        expressionVisistor eVisitor;
-        state s = state(treeAndSymTable.first.get(), treeAndSymTable.second, std::vector<node *>{treeAndSymTable.first.get()});
-        auto res = compute_statements(eVisitor, s);
+    std::vector<z3::expr> execute(std::pair<const std::shared_ptr<node>, const std::unordered_map<std::string, std::shared_ptr<node>>> treeAndSymTable) {
+        //testExpr();
+        //expressionVisistor eVisitor;
+        state s = state(treeAndSymTable.first.get(), treeAndSymTable.second);
+        auto res = compute_statements(s);
         return res;
     }
 
-    void updateRule(const std::string& name, std::shared_ptr<expressionNode> expression){
-        /*if(expression->getNodeType() == Literal){
-            auto pair = variables.find(name);
-            if(variables.find(name) != variables.end()) {
-                if (pair->second.type == intType) {
-                    pair->second.setRule(evaluateExpression(expression, intType));
-                } else {
-                    pair->second.setRule(evaluateExpression(expression, boolType));
-                }
-            }
-        }*/
-    }
 private:
-    //std::map<std::string, constraint> variables;
-
-    std::shared_ptr<expressionNode> evaluateExpression(std::shared_ptr<expressionNode> expression, Type type){
-        // use expression visitor
-        /*
-        std::vector<std::string> tokens =  stringSplit(expr);
-        if(type == intType){
-            return  std::to_string(evaluateArithmetic(tokens));
-        } else if(type == boolType){
-            return std::to_string(evaluateLogic(tokens));
-        } else {
-            return "ERROR";
-        }
-        */
-    }
-/*
-    bool isConcrete(std::shared_ptr<expressionNode> expression){
-        std::vector<std::string> variables = getVariables(expression);
-        for(const auto& var : variables){
-            if(var == "Read" ||symbolicVariables.find(var) != symbolicVariables.end()){
-                return false;
-            }
-        }
-        // since all variables are global we should never find a variable name not in the lists
-        return true;
-    }*/
-
-    static std::vector<std::string> getVariables(std::shared_ptr<expressionNode> expression){
-        std::vector<std::string> result = std::vector<std::string>();
-        // besøg alle noder og returner alle variable navne
-        return result;
-    }
-
-    std::vector<z3::expr> compute_statements(expressionVisistor eVisitor, state s) {
-        auto res = compute_statements_helper(eVisitor, s);
+    std::vector<z3::expr> compute_statements(state s) {
+        auto res = compute_statements_helper(std::move(s));
         return std::vector<z3::expr>{};
     }
 
-    state compute_statements_helper(expressionVisistor eVisitor, state s) {
+    state compute_statements_helper(state s) {
         node *n = s.get_position();
         switch (n->getNodeType()) {
             case Assign:
@@ -99,21 +54,6 @@ private:
             case Literal:
                 return std::vector<state>();
             case Assign:
-                if(auto a = dynamic_cast<assignNode*>(s->get_position())) {
-                    if (auto b = dynamic_cast<binaryExpressionNode*>(a->getExpr())) {
-                        auto table = std::unordered_map<std::string, std::shared_ptr<expressionNode>>{};
-                        std::shared_ptr<expressionNode> expr = DST::deepCopy(b);
-                        if (expr->getNodeType() == BinaryExpression && expr->getType() == intType) {
-                            if(((binaryExpressionNode*)expr.get())->getLeft()->getNodeType() == Literal
-                               && ((binaryExpressionNode*)expr.get())->getRight()->getNodeType() == Literal) {
-                                std::string lVal = ((literalNode*)((binaryExpressionNode*)expr.get())->getLeft())->value;
-                                std::string rVal = ((literalNode*)((binaryExpressionNode*)expr.get())->getRight())->value;
-                                table.insert({a->getName(), std::make_shared<literalNode>(expr->getType(), std::to_string(stoi(lVal) + stoi(rVal)))});
-                            }
-                        }
-                        return std::vector<state>{state(nullptr, table, std::vector<node *>())};
-                    }
-                }
                 return std::vector<state>();
             default:
                 return std::vector<state>();

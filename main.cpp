@@ -5,7 +5,7 @@
 #include "antlr4-runtime/SmallParser.h"
 #include "DST.h"
 #include <antlr4-runtime.h>
-//#include <symengine/symbolicExecutionEngine.hpp>
+#include <symengine/symbolicExecutionEngine.hpp>
 
 using namespace std;
 using namespace antlr4;

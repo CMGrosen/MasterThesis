@@ -5,7 +5,6 @@
 #include "SmallVisitor.h"
 #include <nodes/nodes.hpp>
 //#include "symengine/Constraint.hpp"
-#include <symengine/state.hpp>
 
 
 /**
