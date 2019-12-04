@@ -7,8 +7,7 @@
 
 #include <nodes/expressions/binaryExpressionNode.hpp>
 #include <nodes/expressions/unaryExpressionNode.hpp>
-#include <nodes/expressions/arrayAccessNode.hpp>
-#include <nodes/expressions/arrayLiteralNode.hpp>
+#include <nodes/expressions/literalNode.hpp>
 #include "constraintNode.hpp"
 
 
