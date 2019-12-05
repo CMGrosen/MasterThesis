@@ -12,46 +12,96 @@
 class constraintNode : public node {
 public:
     constraintNode(Type t) : node(t, ConstraintNode),
-        constraints{std::vector<std::shared_ptr<binaryExpressionNode>>{}} {}
+        _constraints{std::vector<std::shared_ptr<binaryExpressionNode>>{}} {}
     constraintNode(std::shared_ptr<binaryExpressionNode> constraint) : node(constraint->getType(), ConstraintNode),
-        constraints{std::vector<std::shared_ptr<binaryExpressionNode>>{std::move(constraint)}} {type = constraints[0]->getType();}
+        _constraints{std::vector<std::shared_ptr<binaryExpressionNode>>{std::move(constraint)}} {type = _constraints[0]->getType();}
     constraintNode(std::vector<std::shared_ptr<binaryExpressionNode>> constraints) : node(constraints[0]->getType(), ConstraintNode),
-        constraints{std::move(constraints)} {type = constraints[0]->getType();}
+        _constraints{std::move(constraints)} {type = _constraints[0]->getType();}
 
-    std::vector<std::shared_ptr<binaryExpressionNode>> getConstraints() const {return constraints;}
+    std::vector<std::shared_ptr<binaryExpressionNode>> getConstraints() const {return _constraints;}
 
-    bool isSatisfiable(const variableNode *var) {
+    std::pair<bool, z3::expr> isSatisfiable() {
         z3::context c;
-        const char *n = (var->name).c_str();
+        const char *n = getValue().c_str();
+        bool leftConstraint = false;
+        bool rightConstraint = false;
         z3::expr name = (type == intType) ? c.int_const(n) : c.bool_const(n);
-
+        //if (checkedAndSatisfiable.first) return std::pair<bool, z3::expr>(checkedAndSatisfiable.second, name);
+        std::pair<bool, z3::expr> satisfiable = std::pair<bool, z3::expr>(true, name);
+        z3::expr l = name;
+        z3::expr r = name;
         z3::solver s(c);
+        //z3::expr completeExpr = c.string_val("true");
+        //bool completeExprChanged = false;
+        for (auto &e : _constraints) {
+            if (auto ce = dynamic_cast<constraintNode *>(e->getLeft())) {
+                satisfiable = ce->isSatisfiable();
+                l = satisfiable.second;
+                leftConstraint = true;
+            }
+            if (satisfiable.first) {
+                if (auto ce = dynamic_cast<constraintNode *>(e->getRight())) {
+                    satisfiable = ce->isSatisfiable();
+                    r = satisfiable.second;
+                    rightConstraint = true;
+                }
+            }
 
-        for (auto &e : constraints) {
-            std::string val = dynamic_cast<literalNode*>(e->getRight())->value;
+            if (!satisfiable.first) return std::pair<bool, z3::expr>(false, name);
+            std::string val;
+            if (e->getLeft()->getNodeType() == Variable) {
+                l = name;
+            }
+            if (e->getRight()->getNodeType() == Variable) {
+                r = name;
+            }
+            if (e->getLeft()->getNodeType() == Literal) {
+                val = e->getLeft()->getValue();
+                l = e->getLeft()->getType() == intType ? c.int_val(val.c_str()) : c.bool_val(val.c_str());
+            }
+            if (e->getRight()->getNodeType() == Literal) {
+                val = e->getRight()->getValue();
+                r = e->getRight()->getType()  == intType ? c.int_val(val.c_str()) : c.bool_val(val.c_str());
+            }
+
             switch (e->getOperator()) {
+                case PLUS:
+                    l = l + r;
+                    break;
                 case LE:
-                    s.add(name < std::stoi(val));
+                    l = l < r;
+                    break;
                 case LEQ:
-                    s.add(name <= std::stoi(val));
+                    l = l <= r;
+                    break;
                 case GE:
-                    s.add(name > std::stoi(val));
+                    l = l > r;
+                    break;
                 case GEQ:
-                    s.add(name >= std::stoi(val));
+                    l = l >= r;
+                    break;
                 case EQ:
-                    s.add(name == ((type == intType) ? std::stoi(val) : (val == "true")));
+                    l = l == r;
+                    break;
                 case NEQ:
-                    s.add(name == ((type == intType) ? std::stoi(val) : (val == "true")));
+                    l = l != r;
+                    break;
                 default:
                     std::cout << "something went wrong" << std::endl;
             }
-        }
+            s.add(l);
 
-        return s.check() == z3::sat;
+        }
+        checkedAndSatisfiable.second = s.check() == z3::sat;
+        checkedAndSatisfiable.first = true;
+        //expr = completeExpr;
+        return std::pair<bool, z3::expr>(checkedAndSatisfiable.second, l);
     }
 
 private:
-    std::vector<std::shared_ptr<binaryExpressionNode>> constraints;
+    std::vector<std::shared_ptr<binaryExpressionNode>> _constraints;
+    std::pair<bool, bool> checkedAndSatisfiable = std::pair<bool,bool>(false, false);
+    //z3::expr expr = z3::expr(z3::context().string_val(""));
 };
 
 

@@ -288,7 +288,7 @@ public:
                       << info[intType] << " got " << info[typeToWrite] << "\n";
         }
         std::shared_ptr<node> nameNode = std::make_shared<node>(node(type, Variable, name));
-        std::shared_ptr<node> readNode = std::make_shared<node>(node((type == intType) ? okType : errorType, Read));
+        std::shared_ptr<node> readNode = std::make_shared<node>(node((type == intType) ? intType : errorType, Read));
         if (type == errorType)
             updateErrorCount();
         nameNode->setNext(readNode);
