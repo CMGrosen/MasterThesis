@@ -495,17 +495,19 @@ public:
         return val ? "true" : "false";
     }
 
-    static std::shared_ptr<node> compute_new_literal (std::shared_ptr<node> l, std::shared_ptr<node> r, op expressionType, Type t) {
+    static std::pair<bool, std::shared_ptr<node>> compute_new_literal (std::shared_ptr<node> l, std::shared_ptr<node> r, op expressionType, Type t) {
         std::string lVal = l->getValue();
         std::string rVal = r->getValue();
+        std::shared_ptr<node> n;
         Type nodesType;
-        int lIntVal = 0;
-        int rIntVal = 0;
+        int64_t lIntVal = 0;
+        int64_t rIntVal = 0;
         bool lBoolVal = false;
         bool rBoolVal = false;
+        bool success = true;
         if (l->getType() == intType) {
-            lIntVal = std::stoi(lVal);
-            rIntVal = std::stoi(rVal);
+            lIntVal = std::stol(lVal);
+            rIntVal = std::stol(rVal);
             nodesType = intType;
         } else {
             lBoolVal = lVal == "true";
@@ -514,70 +516,106 @@ public:
         }
         switch (expressionType) {
             case PLUS:
-                return std::make_shared<node>(node(t, Literal, std::to_string(lIntVal + rIntVal)));
+                lIntVal += rIntVal;
+                if(lIntVal > INT32_MAX || lIntVal < INT32_MIN) success = false;
+                n = std::make_shared<node>(node(t, Literal, std::to_string((int32_t )lIntVal)));
+                break;
             case MINUS:
-                return std::make_shared<node>(node(t, Literal, std::to_string(lIntVal - rIntVal)));
+                lIntVal -= rIntVal;
+                if(lIntVal > INT32_MAX || lIntVal < INT32_MIN) success = false;
+                n = std::make_shared<node>(node(t, Literal, std::to_string((int32_t)lIntVal)));
+                break;
             case MULT:
-                return std::make_shared<node>(node(t, Literal, std::to_string(lIntVal * rIntVal)));
+                lIntVal *= rIntVal;
+                if(lIntVal > INT32_MAX || lIntVal < INT32_MIN) success = false;
+                n = std::make_shared<node>(node(t, Literal, std::to_string((int32_t)lIntVal)));
+                break;
             case DIV:
-                return std::make_shared<node>(node(t, Literal, std::to_string(lIntVal / rIntVal)));
+                if(rIntVal == 0) {
+                    success = false;
+                    n = l;
+                    l->setNext(r);
+                    r->setNext(std::make_shared<node>(node(t,BinaryExpression, DIV)));
+                }
+                else {
+                    lIntVal /= rIntVal;
+                    n = std::make_shared<node>(node(t, Literal, std::to_string((int32_t)lIntVal)));
+                }
+                break;
             case MOD:
-                return std::make_shared<node>(node(t, Literal, std::to_string(lIntVal % rIntVal)));
+                if(rIntVal == 0) {
+                    success = false;
+                    n = l;
+                    l->setNext(r);
+                    r->setNext(std::make_shared<node>(node(t,BinaryExpression,MOD)));
+                } else {
+                    lIntVal %= rIntVal;
+                    n = std::make_shared<node>(node(t, Literal, std::to_string((int32_t)lIntVal)));
+                }
+                break;
             case AND:
-                if (nodesType == intType) {
-                    return std::make_shared<node>(node(t, Literal, btos(lIntVal && rIntVal)));
-                } else {
-                    return std::make_shared<node>(node(t, Literal, btos(lBoolVal && rBoolVal)));
-                }
+                n = std::make_shared<node>(node(t, Literal, btos(lBoolVal && rBoolVal)));
+                break;
             case OR:
-                if (nodesType == intType) {
-                    return std::make_shared<node>(node(t, Literal, btos(lIntVal || rIntVal)));
-                } else {
-                    return std::make_shared<node>(node(t, Literal, btos(lBoolVal || rBoolVal)));
-                }
+                n = std::make_shared<node>(node(t, Literal, btos(lBoolVal || rBoolVal)));
+                break;
             case LE:
                 if (nodesType == intType) {
-                    return std::make_shared<node>(node(t, Literal, btos(lIntVal < rIntVal)));
+                    n = std::make_shared<node>(node(t, Literal, btos(lIntVal < rIntVal)));
                 } else {
-                    return std::make_shared<node>(node(t, Literal, btos(lBoolVal < rBoolVal)));
+                    n = std::make_shared<node>(node(t, Literal, btos(lBoolVal < rBoolVal)));
                 }
+                break;
             case LEQ:
                 if (nodesType == intType) {
-                    return std::make_shared<node>(node(t, Literal, btos(lIntVal <= rIntVal)));
+                    n = std::make_shared<node>(node(t, Literal, btos(lIntVal <= rIntVal)));
                 } else {
-                    return std::make_shared<node>(node(t, Literal, btos(lBoolVal <= rBoolVal)));
+                    n = std::make_shared<node>(node(t, Literal, btos(lBoolVal <= rBoolVal)));
                 }
+                break;
             case GE:
                 if (nodesType == intType) {
-                    return std::make_shared<node>(node(t, Literal, btos(lIntVal > rIntVal)));
+                    n = std::make_shared<node>(node(t, Literal, btos(lIntVal > rIntVal)));
                 } else {
-                    return std::make_shared<node>(node(t, Literal, btos(lBoolVal > rBoolVal)));
+                    n = std::make_shared<node>(node(t, Literal, btos(lBoolVal > rBoolVal)));
                 }
+                break;
             case GEQ:
                 if (nodesType == intType) {
-                    return std::make_shared<node>(node(t, Literal, btos(lIntVal >= rIntVal)));
+                    n = std::make_shared<node>(node(t, Literal, btos(lIntVal >= rIntVal)));
                 } else {
-                    return std::make_shared<node>(node(t, Literal, btos(lBoolVal >= rBoolVal)));
+                    n = std::make_shared<node>(node(t, Literal, btos(lBoolVal >= rBoolVal)));
                 }
+                break;
             case EQ:
                 if (nodesType == intType) {
-                    return std::make_shared<node>(node(t, Literal, btos(lIntVal == rIntVal)));
+                    n = std::make_shared<node>(node(t, Literal, btos(lIntVal == rIntVal)));
                 } else {
-                    return std::make_shared<node>(node(t, Literal, btos(lBoolVal == rBoolVal)));
+                    n = std::make_shared<node>(node(t, Literal, btos(lBoolVal == rBoolVal)));
                 }
+                break;
             case NEQ:
                 if (nodesType == intType) {
-                    return std::make_shared<node>(node(t, Literal, btos(lIntVal != rIntVal)));
+                    n = std::make_shared<node>(node(t, Literal, btos(lIntVal != rIntVal)));
                 } else {
-                    return std::make_shared<node>(node(t, Literal, btos(lBoolVal != rBoolVal)));
+                    n = std::make_shared<node>(node(t, Literal, btos(lBoolVal != rBoolVal)));
                 }
+                break;
             case NOT:
-                return std::make_shared<node>(node(t, Literal, btos(!lBoolVal)));
+                n = std::make_shared<node>(node(t, Literal, btos(!lBoolVal)));
+                break;
             case NEG:
-                return std::make_shared<node>(node(t, Literal, std::to_string(-lIntVal)));
+                if(lIntVal == INT32_MIN) {
+                    success = false;
+                    n = std::make_shared<node>(node(t, Literal, std::to_string(INT32_MIN)));
+                } else {
+                    n = std::make_shared<node>(node(t, Literal, std::to_string(-lIntVal)));
+                }
+                break;
             default:
                 std::cout << "this shouldn't happen\n";
         }
+        return std::pair<bool, std::shared_ptr<node>>(success, n);
     }
 
     std::shared_ptr<node> binary_expression (SmallParser::ExprContext *ctx, op expressionType) {
@@ -644,7 +682,7 @@ public:
         }
         if (t != errorType) {
             if ((l->getNodeType() == Literal && r->getNodeType() == Literal) && l->getNexts().empty() && r->getNexts().empty()) {
-                return compute_new_literal(l,r, expressionType, t);
+                return compute_new_literal(l,r, expressionType, t).second;
             }
         }
         std::shared_ptr<node> lastL = l->getLast();

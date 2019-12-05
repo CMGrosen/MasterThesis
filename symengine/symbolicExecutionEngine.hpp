@@ -10,6 +10,7 @@
 #include "state.hpp"
 #include "z3++.h"
 #include <symengine/stateQueue.hpp>
+#include <exception>
 
 using namespace z3;
 
@@ -28,6 +29,7 @@ public:
 private:
     std::unordered_set<state> explored;
     stateQueue<state> frontier;
+    std::vector<state> testCases;
 
     std::vector<z3::expr> compute_statements() {
         while(!frontier.empty()) {
@@ -66,9 +68,13 @@ private:
             case BinaryExpression: {
                 std::shared_ptr<node> right = stack.myPop();
                 std::shared_ptr<node> left = stack.myPop();
-                if (left->getNodeType() == Literal && right->getNodeType() == Literal)
-                    stack.push(DST::compute_new_literal(left,right,n->getOperator(),n->getType()));
-                else {
+                if (left->getNodeType() == Literal && right->getNodeType() == Literal) {
+                    auto res = DST::compute_new_literal(left, right, n->getOperator(), n->getType());
+                    if (res.first)
+                        stack.push(res.second);
+                    else
+                        testCases.emplace_back(s);
+                } else {
 
                 }
             }
