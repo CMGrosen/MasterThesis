@@ -76,20 +76,17 @@ private:
                     } else
                         testCases.emplace_back(s);
                 } else {
-                    std::vector<std::shared_ptr<binaryExpressionNode>> v;
-                    bool leftConcrete = false;
-                    bool rightConcrete = false;
+                    std::shared_ptr<constraintNode> leftConstraint = nullptr;
+                    std::shared_ptr<constraintNode> rightConstraint = nullptr;
                     if (left->getNodeType() == ConstraintNode) {
-                        for (auto l : dynamic_cast<constraintNode *>(left.get())->getConstraints())
-                            v.emplace_back(l);
-                    } else leftConcrete = true;
+                        leftConstraint = std::make_shared<constraintNode>(*dynamic_cast<constraintNode*>(left.get()));
+                    }
                     if (right->getNodeType() == ConstraintNode) {
-                        for (auto r : dynamic_cast<constraintNode*>(right.get())->getConstraints())
-                            v.emplace_back(r);
-                    } else rightConcrete = true;
+                        rightConstraint = std::make_shared<constraintNode>(*dynamic_cast<constraintNode *>(right.get()));
+                    }
 
                     std::shared_ptr<constraintNode> c;
-
+/*
                     if (leftConcrete) {
                         c = std::make_shared<constraintNode>(std::make_shared<binaryExpressionNode>(binaryExpressionNode(n->getType(), n->getOperator(), left, std::make_shared<constraintNode>(constraintNode(v)))));
                     } else {
@@ -102,24 +99,41 @@ private:
                     } else {
                         stack.push(std::make_shared<node>(node(boolType,BinaryExpression,n->getOperator(),"false")));
                         states.emplace_back(state(nexts[0],table,stack));
-                    }
+                    }*/
                 }
             }
             break;
             case Read: {
                 std::shared_ptr<node> top = stack.myPop();
                 if (top->getNodeType() == ConstraintNode) {
-                    if(dynamic_cast<constraintNode*>(top.get())->isSatisfiable().first) {
-                        auto l = std::make_shared<binaryExpressionNode>(binaryExpressionNode(intType, GEQ, std::make_shared<node>(node(intType,Variable)), std::make_shared<node>(node(intType, Literal, std::to_string(INT32_MIN)))));
-                        auto r = std::make_shared<binaryExpressionNode>(binaryExpressionNode(intType, LEQ, std::make_shared<node>(node(intType,Variable)), std::make_shared<node>(node(intType, Literal, std::to_string(INT32_MAX)))));
-                        stack.push(std::make_shared<constraintNode>(constraintNode(std::vector<std::shared_ptr<binaryExpressionNode>>{l,r})));
+                    if(dynamic_cast<constraintNode*>(top.get())->isSatisfiable()) {
+                        auto l = std::make_shared<node>(node(intType,Variable));
+                        auto last = std::make_shared<node>(node(intType, Literal, std::to_string(INT32_MIN)));
+                        auto prev = last;
+                        l->setNext(prev);
+                        last = std::make_shared<node>(node(intType, BinaryExpression, GEQ));
+                        prev->setNext(last);
+                        prev = last;
+                        last = std::make_shared<node>(node(intType, Variable));
+                        prev->setNext(last);
+                        prev = last;
+                        last = std::make_shared<node>(node(intType, Literal, std::to_string(INT32_MAX)));
+                        prev->setNext(last);
+                        prev = last;
+                        last = std::make_shared<node>(node(intType, BinaryExpression, LEQ));
+                        prev->setNext(last);
+                        last = std::make_shared<node>(node(intType, BinaryExpression, AND));
+                        prev->setNext(last);
+                        std::shared_ptr<constraintNode> nod = std::make_shared<constraintNode>(constraintNode(intType));
+                        nod->setNext(l);
+                        stack.push(nod);
                         states.emplace_back(state(nexts[0],table,stack));
                     }
                 } else {
-                    auto l = std::make_shared<binaryExpressionNode>(binaryExpressionNode(intType, GEQ, std::make_shared<node>(node(intType,Variable)), std::make_shared<node>(node(intType, Literal, std::to_string(INT32_MIN)))));
+                    /*auto l = std::make_shared<binaryExpressionNode>(binaryExpressionNode(intType, GEQ, std::make_shared<node>(node(intType,Variable)), std::make_shared<node>(node(intType, Literal, std::to_string(INT32_MIN)))));
                     auto r = std::make_shared<binaryExpressionNode>(binaryExpressionNode(intType, LEQ, std::make_shared<node>(node(intType,Variable)), std::make_shared<node>(node(intType, Literal, std::to_string(INT32_MAX)))));
                     stack.push(std::make_shared<constraintNode>(constraintNode(std::vector<std::shared_ptr<binaryExpressionNode>>{l,r})));
-                    states.emplace_back(state(nexts[0],table,stack));
+                    states.emplace_back(state(nexts[0],table,stack));*/
                 }
                 break;
             }
@@ -131,7 +145,7 @@ private:
             case If: {
                 std::shared_ptr<node> top = stack.myPop();
                 if (top->getNodeType() == ConstraintNode) {
-                    if (!(dynamic_cast<constraintNode*>(top.get())->isSatisfiable().first)) {
+                    if (!(dynamic_cast<constraintNode*>(top.get())->isSatisfiable())) {
                         states.emplace_back(state(nexts[1], table, stack));
                     } else {
                         states.emplace_back(state(nexts[0], table, stack));

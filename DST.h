@@ -264,7 +264,8 @@ public:
         std::shared_ptr<node> ifNode = std::make_shared<node>(node(t, If));
         ifNode->setNexts(std::vector<std::shared_ptr<node>>{nullptr, condition});
         last->setNext(ifNode);
-        std::shared_ptr<node> res = std::make_shared<eventNode>(eventNode(t, condition));
+        std::shared_ptr<node> res = std::make_shared<node>(node(t,Event));
+        res->setNext(condition);
         return res;
     }
 

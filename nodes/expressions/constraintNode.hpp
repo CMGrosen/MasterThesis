@@ -5,29 +5,21 @@
 #ifndef ANTLR_CPP_TUTORIAL_CONSTRAINTNODE_HPP
 #define ANTLR_CPP_TUTORIAL_CONSTRAINTNODE_HPP
 
-#include "binaryExpressionNode.hpp"
-#include <nodes/variableNode.hpp>
+#include <nodes/node.hpp>
 #include <z3++.h>
 
 class constraintNode : public node {
 public:
-    constraintNode(Type t) : node(t, ConstraintNode),
-        _constraints{std::vector<std::shared_ptr<binaryExpressionNode>>{}} {}
-    constraintNode(std::shared_ptr<binaryExpressionNode> constraint) : node(constraint->getType(), ConstraintNode),
-        _constraints{std::vector<std::shared_ptr<binaryExpressionNode>>{std::move(constraint)}} {type = _constraints[0]->getType();}
-    constraintNode(std::vector<std::shared_ptr<binaryExpressionNode>> constraints) : node(constraints[0]->getType(), ConstraintNode),
-        _constraints{std::move(constraints)} {type = _constraints[0]->getType();}
+    constraintNode(Type t) : node(t, ConstraintNode) {}
 
-    std::vector<std::shared_ptr<binaryExpressionNode>> getConstraints() const {return _constraints;}
-
-    std::pair<bool, z3::expr> isSatisfiable() {
+    bool isSatisfiable() {
         z3::context c;
         const char *n = getValue().c_str();
         bool leftConstraint = false;
         bool rightConstraint = false;
         z3::expr name = (type == intType) ? c.int_const(n) : c.bool_const(n);
         //if (checkedAndSatisfiable.first) return std::pair<bool, z3::expr>(checkedAndSatisfiable.second, name);
-        std::pair<bool, z3::expr> satisfiable = std::pair<bool, z3::expr>(true, name);
+        /*bool satisfiable = std::pair<bool, z3::expr>(true, name);
         z3::expr l = name;
         z3::expr r = name;
         z3::solver s(c);
@@ -95,7 +87,7 @@ public:
         checkedAndSatisfiable.second = s.check() == z3::sat;
         checkedAndSatisfiable.first = true;
         //expr = completeExpr;
-        return std::pair<bool, z3::expr>(checkedAndSatisfiable.second, l);
+        return std::pair<bool, z3::expr>(checkedAndSatisfiable.second, l);*/
     }
 
 private:

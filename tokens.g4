@@ -3,21 +3,17 @@ lexer grammar tokens;
 LPAREN 	: '(';
 RPAREN 	: ')';
 
-MAIN    : 'main';
-
 WHILE   : 'while';
 
 FORK    : 'fork';
 
 WHEN    : 'when';
 DO      : 'do';
-PAR     : 'par';
+AND     : 'and';
 IF      : 'if';
 ELSE    : 'else';
 READ    : 'read';
 WRITE   : 'write';
-IN      : '>>';
-OUT     : '<<';
 
 SQUARE_BRACKET_BEGIN: '[';
 SQUARE_BRACKET_END: ']';
@@ -25,16 +21,8 @@ SQUARE_BRACKET_END: ']';
 BEGIN 	: '{';
 END 	: '}';
 
-
 ASSIGN	: '=';
-COMMA	: ',';
-RETURN  : 'return';
-
-TYPE	: 'int'
-        | 'bool'
-        | 'int[' [1-9] [0-9]* ']'
-        | 'bool['[1-9] [0-9]* ']'
-        ;
+COMMA   : ',';
 
 INT_LITERAL: '0' | [1-9] [0-9]*; // no leading zeros
 BOOL_LITERAL: 'true' | 'false';
@@ -55,13 +43,9 @@ OP_DIV : '/' ;
 OP_MOD : '%';
 OP_NOT : '!' ;
 
-
 NAME 	: [a-zA-Z_][0-9a-zA-Z_]*;
 
-
 WS: [ \r\t\n]+ -> skip; // skip spaces, tabs, newlines
-
-
 DELIMETER : ';';
 
 

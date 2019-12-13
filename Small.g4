@@ -5,13 +5,13 @@ import tokens;
 file : stmts EOF;
 
 stmts :
-    stmt stmts
-    | stmt
+    stmt DELIMETER stmts
+    | stmt DELIMETER
     ;    
 
 stmt :
-    assign DELIMETER
-    | write DELIMETER
+    assign
+    | write
     | iter
     | ifs
     | FORK thread
@@ -33,7 +33,7 @@ ifs :
     ;
 
 thread :
-    threads+=scope (PAR threads+=scope)+
+    threads+=scope (AND threads+=scope)+
     ;
     
 event :
