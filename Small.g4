@@ -42,11 +42,11 @@ event :
 scope : BEGIN stmts END;
 
 read :
-    READ LPAREN NAME RPAREN
+    READ LPAREN INT_LITERAL RPAREN
     ;
 
 write :
-    WRITE LPAREN NAME COMMA expr RPAREN
+    WRITE LPAREN INT_LITERAL COMMA expr RPAREN
     ;
 
 expr :
