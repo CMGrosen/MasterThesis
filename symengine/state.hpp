@@ -92,13 +92,14 @@ namespace std {
     template <> struct hash<constraint> {
         size_t operator()(const constraint& c) const {
             size_t seed = 0;
-            if (auto bin = dynamic_cast<binaryExpressionNode *>(c._constraint.get())) {
-                hash_combine(seed, bin->getLeft()->getValue());
-                hash_combine(seed, bin->getOperator());
-                hash_combine(seed, bin->getRight()->getValue());
-            } else {
-                hash_combine(seed, c._constraint->getValue());
-                hash_combine(seed, c._constraint->getOperator());
+            std::shared_ptr<node> n = c._constraint;
+            while (n) {
+                if (n->getNodeType() == BinaryExpression || n->getNodeType() == UnaryExpression) {
+                    hash_combine(seed, n->getOperator());
+                } else {
+                    hash_combine(seed,n->getValue());
+                }
+                n = n->getNexts()[0];
             }
             return seed;
         }

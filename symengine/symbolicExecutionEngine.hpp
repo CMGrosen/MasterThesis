@@ -41,9 +41,20 @@ private:
     std::vector<state> testCases;
 
     std::vector<std::shared_ptr<constraint>> getMinMax(const std::string &name) const {
-        auto min = std::make_shared<constraint>(constraint(intType, std::make_shared<binaryExpressionNode>(binaryExpressionNode(GEQ, name))));
-        auto max = std::make_shared<constraint>(constraint(intType, std::make_shared<binaryExpressionNode>(binaryExpressionNode(LEQ, name))));
-        return std::vector<std::shared_ptr<constraint>>{std::move(min), std::move(max)};
+        std::shared_ptr<node> start = std::make_shared<node>(node(intType,Variable, name));
+        std::shared_ptr<node> last = std::make_shared<node>(node(intType,Literal, std::to_string(INT16_MIN)));
+        start->setNext(last);
+        last->setNext(std::make_shared<node>(node(intType, BinaryExpression, GEQ)));
+
+        std::shared_ptr<node> start2 = std::make_shared<node>(node(intType,Variable, name));
+        std::shared_ptr<node> last2 = std::make_shared<node>(node(intType,Literal, std::to_string(INT16_MAX)));
+        start2->setNext(last2);
+        last2->setNext(std::make_shared<node>(node(intType, BinaryExpression, LEQ)));
+
+        auto leq = std::make_shared<constraint>(constraint(intType, start));
+        auto geq = std::make_shared<constraint>(constraint(intType, start2));
+
+        return std::vector<std::shared_ptr<constraint>>{std::move(leq), std::move(geq)};
     }
     std::vector<z3::expr> compute_statements() {
         while(!frontier.empty()) {
@@ -68,7 +79,7 @@ private:
         if (!n) {return states;}
         std::vector<std::shared_ptr<node>> nexts = n->getNexts();
         while (n->getNodeType() == Literal) {
-            stack.push(n);
+            stack.push(std::make_shared<node>(node(n->getType(), Literal, n->getValue())));
             n = nexts[0];
             nexts = n->getNexts();
         }
@@ -86,18 +97,19 @@ private:
                         auto res = constraints.insert(i);
                         path_condition.push_back(*res.first);
                     }
-                } else if (top->getNodeType() == Variable) {
-                    auto res = constraints.insert(std::make_shared<constraint>(
-                            constraint(top->getType(), std::make_shared<binaryExpressionNode>(
-                                    binaryExpressionNode(top->getType(), ASSIGNED, std::to_string(it->second)+name, top->getValue()))
-                            )
-                    ));
+                } else if (top->getNodeType() == Variable || top->getNodeType() == Literal) {
+                    top->setNext(std::make_shared<node>(node(top->getType(), Assign, std::to_string(it->second) + n->getValue())));
+                    auto res = constraints.insert(std::make_shared<constraint>(constraint(top->getType(),top)));
                     path_condition.push_back(*res.first);
                 } else {
-                    auto res = constraints.insert(std::make_shared<constraint>(constraint(top->getType(), top)));
+                    auto last = top->getLast();
+                    if (!last) last = top;
+                    last->setNext(std::make_shared<node>(node(top->getType(), Assign, std::to_string(it->second)+ n->getValue())));
+                    auto res = constraints.insert(std::make_shared<constraint>(constraint(top->getType(),top)));
                     path_condition.push_back(*res.first);
                 }
-                states.emplace_back(state(nexts[0], table, stack, path_condition, ssa_map));
+                if (!nexts.empty())
+                    states.emplace_back(state(nexts[0], table, stack, path_condition, ssa_map));
                 break;
             }
             case BinaryExpression: {
@@ -111,30 +123,14 @@ private:
                     } else
                         testCases.emplace_back(s);
                 } else {
-                    std::shared_ptr<constraintNode> leftConstraint = nullptr;
-                    std::shared_ptr<constraintNode> rightConstraint = nullptr;
-                    if (left->getNodeType() == ConstraintNode) {
-                        leftConstraint = std::make_shared<constraintNode>(*dynamic_cast<constraintNode*>(left.get()));
-                    }
-                    if (right->getNodeType() == ConstraintNode) {
-                        rightConstraint = std::make_shared<constraintNode>(*dynamic_cast<constraintNode *>(right.get()));
-                    }
-
-                    std::shared_ptr<constraintNode> c;
-/*
-                    if (leftConcrete) {
-                        c = std::make_shared<constraintNode>(std::make_shared<binaryExpressionNode>(binaryExpressionNode(n->getType(), n->getOperator(), left, std::make_shared<constraintNode>(constraintNode(v)))));
-                    } else {
-                        c = std::make_shared<constraintNode>(std::make_shared<binaryExpressionNode>(binaryExpressionNode(n->getType(), n->getOperator(), std::make_shared<constraintNode>(constraintNode(v)), right)));
-                    }
-
-                    if (c->isSatisfiable().first) {
-                        stack.push(c);
-                        states.emplace_back(state(nexts[0],table,stack));
-                    } else {
-                        stack.push(std::make_shared<node>(node(boolType,BinaryExpression,n->getOperator(),"false")));
-                        states.emplace_back(state(nexts[0],table,stack));
-                    }*/
+                    std::shared_ptr<node> last = left->getLast();
+                    if (!last) last = left;
+                    last->setNext(right);
+                    last = right->getLast();
+                    if (!last) last = right;
+                    last->setNext(std::make_shared<node>(node(n->getType(),n->getNodeType(), n->getOperator())));
+                    stack.push(std::make_shared<constraint>(constraint(n->getType(),left)));
+                    states.emplace_back(state(nexts[0], table, stack, path_condition, ssa_map));
                 }
             }
             break;
@@ -148,22 +144,38 @@ private:
                 break;
             }
             case Variable: {
-                stack.push(table.find(n->getValue())->second);
+                auto res = table.find(n->getValue());
+                if (res->second->getNodeType() == Literal)
+                    stack.push(std::make_shared<node>(node(n->getType(),Literal, res->second->getValue())));
+                else
+                    stack.push(std::make_shared<node>(node(n->getType(),Variable,std::to_string(ssa_map.find(n->getValue())->second) + n->getValue())));
                 states.emplace_back(state(nexts[0],table,stack, path_condition, ssa_map));
                 break;
             }
             case If: {
                 std::shared_ptr<node> top = stack.myPop();
                 if (top->getNodeType() == ConstraintNode) {
-                    if (!(dynamic_cast<constraintNode*>(top.get())->isSatisfiable())) {
-                        states.emplace_back(state(nexts[1], table, stack, path_condition, ssa_map));
-                    } else {
+                    auto conNode = dynamic_cast<constraint*>(top.get());
+                    if (conNode->isSatisfiable()) {
+                        auto res = constraints.insert(deepcopy(*conNode));
+                        path_condition.push_back(*res.first);
                         states.emplace_back(state(nexts[0], table, stack, path_condition, ssa_map));
+                        path_condition.pop_back();
+                    }
+                    auto last = conNode->_constraint->getLast();
+                    if (!last) last = conNode->_constraint;
+                    last->setNext(std::make_shared<node>(node(boolType, UnaryExpression, NOT)));
+                    if (conNode->isSatisfiable()) {
+                        auto res = constraints.insert(deepcopy(*conNode));
+                        path_condition.push_back(*res.first);
                         states.emplace_back(state(nexts[1], table, stack, path_condition, ssa_map));
                     }
                 } else {
-                    states.emplace_back(state(nexts[0], table, stack, path_condition, ssa_map));
-                    states.emplace_back(state(nexts[1], table, stack, path_condition, ssa_map));
+                    if (top->getValue() == "true") {
+                        states.emplace_back(state(nexts[0], table, stack, path_condition, ssa_map));
+                    } else {
+                        states.emplace_back(state(nexts[1], table, stack, path_condition, ssa_map));
+                    }
                 }
                 break;
             }
@@ -247,8 +259,21 @@ private:
 
 
 
-
-
+    std::shared_ptr<constraint> deepcopy(const constraint con) {
+        return deepcopy_helper(con._constraint, std::make_shared<constraint>(constraint(con.getType(), nullptr)), nullptr);
+    }
+    std::shared_ptr<constraint> deepcopy_helper(const std::shared_ptr<node> &n, std::shared_ptr<constraint> result, const std::shared_ptr<node> &last) {
+        auto np = std::make_shared<node>(node(n->getType(),n->getNodeType(),n->getOperator(),n->getValue()));
+        if (!result->_constraint) {
+            result->_constraint = np;
+        } else {
+            last->setNext(np);
+        }
+        if (n->getNexts().empty()) {
+            return result;
+        }
+        return deepcopy_helper(n->getNexts()[0], result, np);
+    }
     /*
     int evaluateArithmetic(const std::vector<std::string>& tokens){
         int result = 0;

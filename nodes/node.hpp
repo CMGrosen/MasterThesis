@@ -9,7 +9,7 @@
 
 enum Type { intType, boolType, arrayIntType, arrayBoolType, okType, errorType};
 enum NodeType { Assign, AssignArrField, Concurrent, Sequential, While, If, Write, Read, Literal, ArrayAccess, ArrayLiteral, Event, Variable, BinaryExpression, UnaryExpression, ConstraintNode};
-enum op { PLUS, MINUS, MULT, DIV, MOD, NOT, AND, OR, LE, LEQ, GE, GEQ, EQ, NEQ, NEG, ASSIGNED, NOTUSED};
+enum op { PLUS, MINUS, MULT, DIV, MOD, NOT, AND, OR, LE, LEQ, GE, GEQ, EQ, NEQ, NEG, NOTUSED};
 
 static std::map< Type, const char * > info = {
         {intType, "int"},

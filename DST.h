@@ -75,6 +75,13 @@ public:
             std::shared_ptr<node> result = visitStmt(ctx->stmt());
             std::shared_ptr<node> last = result->getLast();
             if(!last) last = result;
+            if (last->getNodeType() == If) {
+                std::vector<std::shared_ptr<node>> tmp = last->getNexts();
+                tmp[0] = tmp[1];
+                tmp[1] = tmp[2];
+                tmp.pop_back();
+                last->setNexts(tmp);
+            }
             return result;
         }
     }
