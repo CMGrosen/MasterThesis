@@ -12,7 +12,15 @@ public:
             setType(type);
             setNodeType(Concurrent);
         }
+    concurrentNode(Type type, std::vector<std::shared_ptr<node>> threads, node *parent) :
+            node(type, Concurrent),
+            threads{std::move(threads)},
+            orig{parent} {
+        setType(type);
+        setNodeType(Concurrent);
+    }
     std::vector<std::shared_ptr<node>> threads;
+    node *orig = nullptr;
 };
 
 #endif //ANTLR_CPP_TUTORIAL_CONCURRENTNODE_HPP

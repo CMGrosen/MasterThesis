@@ -7,8 +7,9 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CIMG_CFLAGS}")
 # CMake commands for this specific project start here
 
 # to disable some warnings for CImg
+set(CMAKE_CXX_FLAGS  "-std=c++14")
 if (NOT WIN32)
-    set(CMAKE_CXX_FLAGS "-Wdeprecated -Wno-attributes" )
+    set(CMAKE_CXX_FLAGS "-Wdeprecated -Wno-attributes -std=c++14" )
 endif()
 
 if (APPLE)

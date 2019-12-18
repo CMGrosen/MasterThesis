@@ -7,12 +7,25 @@
 
 #include <nodes/node.hpp>
 #include <nodes/expressions/literalNode.hpp>
+#include <limits>
 //#include <nodes/statements/readNode.hpp>
 
 
 
 class binaryExpressionNode : public node {
 public:
+    binaryExpressionNode(op _op, std::string name) :
+        node(intType, BinaryExpression, _op),
+        left{std::make_shared<node>(node(intType, Variable, std::move(name)))} {
+        if (_op == GEQ)
+            right = std::make_shared<node>(node(intType, Literal, std::to_string(INT16_MIN)));
+        else
+            right = std::make_shared<node>(node(intType, Literal, std::to_string(INT16_MAX)));
+    }
+    binaryExpressionNode(Type _type, op _op, std::string name, std::string otherName) :
+            node(_type, BinaryExpression, _op),
+            left{std::make_shared<node>(node(_type, Variable, std::move(name)))},
+            right{std::make_shared<node>(node(_type, Variable, std::move(otherName)))} {}
     binaryExpressionNode(Type _type, op _op, std::shared_ptr<node> _l, std::shared_ptr<node> _r) :
         node(_type, BinaryExpression, _op),
         left{std::move(_l)}, right{std::move(_r)} {}

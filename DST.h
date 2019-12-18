@@ -274,64 +274,13 @@ public:
     }
 
     virtual antlrcpp::Any visitRead(SmallParser::ReadContext *ctx) override {
-        auto symbol = symboltables.find(ctx->NAME()->getText());
-        std::string name = ctx->NAME()->getText();
-        Type type = errorType;
-        Type typeToWrite = errorType;
-        if (symbol != symboltables.end() && symbol->second->getType() == intType) {
-            type = intType;
-        } else if (symbol != symboltables.end() && symbol->second->getType() != errorType) {
-            typeToWrite = symbol->second->getType();
-        }
-        if (type != intType && typeToWrite != errorType) {
-            std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
-                      << "] Type mismatch of variable used to read to. Expected "
-                      << info[intType] << " got " << info[typeToWrite] << "\n";
-        }
-        std::shared_ptr<node> nameNode = std::make_shared<node>(node(type, Variable, name));
-        std::shared_ptr<node> readNode = std::make_shared<node>(node((type == intType) ? intType : errorType, Read));
-        if (type == errorType)
-            updateErrorCount();
-        nameNode->setNext(readNode);
-        return nameNode;
+        std::shared_ptr<node> readNode = std::make_shared<node>(node(intType, Read, ctx->INT_LITERAL()->getText()));
+        return readNode;
     }
 
     virtual antlrcpp::Any visitWrite(SmallParser::WriteContext *ctx) override {
-        auto pair = symboltables.find(ctx->NAME()->getText());
-        Type t = okType;
-        if (pair == symboltables.end()) {
-            t = errorType;
-            std::cout << "[" << ctx->getStart()->getLine() << ":" << ctx->getStop()->getCharPositionInLine() << "] Variable " << ctx->NAME()->getText() << " is undeclared";
-            updateErrorCount();
-        }
-        std::shared_ptr<node> name = std::make_shared<node>(node((t == okType) ? (pair->second->getType() == intType ? intType : errorType) : errorType, Variable, ctx->NAME()->getText()));
-        name->setNext(visitExpr(ctx->expr()));
-        std::shared_ptr<node> last = name->getLast();
-        if (!last) last = name;/*
-        while(last->getNext()) {
-            last = last->getNext();
-        }*/
-        t = (t != errorType && last->getType() == intType) ? okType : errorType;
-        if (last->getType() != intType) {
-            updateErrorCount();
-            std::cout << "[" << ctx->getStart()->getLine() << ":" << ctx->getStart()->getCharPositionInLine() << "] Value being written must be an integer\n";
-        }
-        last->setNext(std::make_shared<node>(node(t, Write)));
-        return name;
-       /* std::shared_ptr<expressionNode> expr = visitExpr(ctx->expr());
-        auto symbol = symboltables.find(ctx->NAME()->getText());
-        Type t = intType;
-        if (symbol == symboltables.end() || symbol->second->getType() != intType) {
-            t = errorType;
-        }
-        if (t != intType && symbol != symboltables.end()) {
-            std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
-                      << "] Type mismatch of variable used to write from. Expected "
-                      << info[t] << " got " << info[symbol->second->getType()] << "\n";
-        }
-        std::shared_ptr<variableNode> var = std::make_shared<variableNode>(variableNode(t, ctx->NAME()->getText()));
-        std::shared_ptr<statementNode> res = std::make_shared<writeNode>(writeNode(var, expr));
-        return res;*/
+        std::shared_ptr<node> writeNode = std::make_shared<node>(node(okType, Write, ctx->INT_LITERAL()->getText()));
+        return writeNode;
     }
 
     virtual antlrcpp::Any visitExpr(SmallParser::ExprContext *ctx) override {

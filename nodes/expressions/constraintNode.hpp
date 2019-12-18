@@ -6,6 +6,7 @@
 #define ANTLR_CPP_TUTORIAL_CONSTRAINTNODE_HPP
 
 #include <nodes/node.hpp>
+#include <symengine/Constraint.hpp>
 #include <z3++.h>
 
 class constraintNode : public node {
@@ -90,8 +91,8 @@ public:
         return std::pair<bool, z3::expr>(checkedAndSatisfiable.second, l);*/
     }
 
+    std::vector<std::shared_ptr<constraint>> constraints;
 private:
-    std::vector<std::shared_ptr<binaryExpressionNode>> _constraints;
     std::pair<bool, bool> checkedAndSatisfiable = std::pair<bool,bool>(false, false);
     //z3::expr expr = z3::expr(z3::context().string_val(""));
 };

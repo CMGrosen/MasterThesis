@@ -1,5 +1,5 @@
 a = 10;
-b = read(a);
+b = read(1);
 
 if (b > 10) {
     a = 2;
