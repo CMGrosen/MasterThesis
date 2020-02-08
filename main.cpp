@@ -5,7 +5,7 @@
 #include "antlr4-runtime/SmallParser.h"
 #include "DST.h"
 #include <antlr4-runtime.h>
-#include <symengine/symbolicExecutionEngine.hpp>
+//#include <symengine/symbolicExecutionEngine.hpp>
 
 using namespace std;
 using namespace antlr4;
@@ -41,7 +41,7 @@ int main(int argc, const char* argv[]) {
     auto treeAndSymbolTable = visitor.getTree(tree);
 
     //auto tmp = treeAndSymbolTable.first->debug_getAllNodes();
-    if(visitor.getNumErrors())
+    if(visitor.getNumErrors() || treeAndSymbolTable.first->getType() == errorType)
         return 0;
 
 //    auto table = std::unordered_map<std::string, std::shared_ptr<expressionNode>>();
@@ -53,8 +53,8 @@ int main(int argc, const char* argv[]) {
     //symbolicExecutionEngine symEngine;
     //auto constraintsToReachBug = symEngine.execute(treeAndSymbolTable);
 
-    symbolicExecutionEngine symEngine;
-    symEngine.execute(treeAndSymbolTable);
+//    symbolicExecutionEngine symEngine;
+//    symEngine.execute(treeAndSymbolTable);
     std::cout << "finished\n";
 
     return 0;

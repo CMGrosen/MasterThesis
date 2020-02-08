@@ -1,6 +1,8 @@
 a = 10;
 b = read(1);
 
+c = (a + a > 8) == true;
+
 if (b > 10) {
     a = 2;
 } else {

@@ -8,9 +8,11 @@
 
 
 #include <nodes/expressions/expressionNodes.hpp>
-#include <nodes/statements/concurrentNode.hpp>
-#include <nodes/statements/eventNode.hpp>
-#include "nodes/expressions/literalNode.hpp"
+#include <nodes/statements/statementNodes.hpp>
+#include "literalNode.hpp"
+#include "arrayLiteralNode.hpp"
+#include "arrayAccessNode.hpp"
 #include "variableNode.hpp"
+#include "scopeNode.hpp"
 
 #endif //ANTLR_CPP_TUTORIAL_NODES_HPP

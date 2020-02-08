@@ -16,21 +16,22 @@
 class  DST : public SmallVisitor {
     int foundErrors = 0;
 public:
-    std::unordered_map<std::string, std::shared_ptr<node>> symboltables;
-
     int getNumErrors() const {return foundErrors;}
     void updateErrorCount() {
         foundErrors++;
     }
-    std::pair<const std::shared_ptr<node>, const std::unordered_map<std::string, std::shared_ptr<node>>> getTree(SmallParser::FileContext *ctx) {
-        std::shared_ptr<node> a = visitStmts(ctx->stmts());
-//        std::shared_ptr<statementNode> aNew = deepCopy(a.get());
-        return std::pair<std::shared_ptr<node>, std::unordered_map<std::string, std::shared_ptr<node>>>(std::move(a), symboltables);
+
+    std::unordered_map<std::string, std::shared_ptr<expressionNode>> symboltables;
+
+    std::pair<const std::shared_ptr<statementNode>, const std::unordered_map<std::string, std::shared_ptr<expressionNode>>> getTree(SmallParser::FileContext *ctx) {
+        std::shared_ptr<statementNode> a = visitStmts(ctx->stmts());
+        //std::shared_ptr<statementNode> aNew = deepCopy(a.get());
+        return std::pair<std::shared_ptr<statementNode>, std::unordered_map<std::string, std::shared_ptr<expressionNode>>>(std::move(a), symboltables);
     }
 
     virtual antlrcpp::Any visitFile(SmallParser::FileContext *ctx) override {
         //antlrcpp::Any result = visitChildren(ctx);
-        std::shared_ptr<node> a = visitStmts(ctx->stmts());
+        std::shared_ptr<statementNode> a = visitStmts(ctx->stmts());
 
         //std::vector<std::shared_ptr<statementNode>> l = a->debug_getAllNodes();
         //std::cout << "\n\n\nwriting out what we have:\n";
@@ -43,67 +44,34 @@ public:
 
     virtual antlrcpp::Any visitStmts(SmallParser::StmtsContext *ctx) override {
         if(ctx->stmts()) {
-            std::shared_ptr<node> first = visitStmt(ctx->stmt());
-            std::shared_ptr<node> last = first->getLast();
-            if (!last) last = first;
-            if (last->getNodeType() == While) {
-                std::vector<std::shared_ptr<node>> tmp = last->getNexts();
-                tmp[1] = visitStmts(ctx->stmts());
-                last->setNexts(tmp);
-            } else if (last->getNodeType() == If) {
-                std::vector<std::shared_ptr<node>> tmp = last->getNexts();
-                tmp[0] = tmp[1];
-                tmp[1] = tmp[2];
-                tmp.pop_back();
-                auto lastTrue = tmp[0]->getLast();
-                auto lastFalse = tmp[1]->getLast();
-                if (!lastTrue) lastTrue = tmp[0];
-                if (!lastFalse) lastFalse = tmp[1];
-                std::shared_ptr<node> remainingStatements = visitStmts(ctx->stmts());
-                lastTrue->setNext(remainingStatements);
-                lastFalse->setNext(remainingStatements);
-                last->setNexts(tmp);
-            } else {
-                last->setNext(visitStmts(ctx->stmts()));
-            }
-            /*
-            while(last->getNext()) {
-                last = last->getNext();
-            }*/
-            return first;
+            std::shared_ptr<statementNode> body = visitStmt(ctx->stmt());
+            std::shared_ptr<statementNode> next = visitStmts(ctx->stmts());
+            std::shared_ptr<statementNode> result = std::make_shared<sequentialNode>(sequentialNode(body, next));
+            return result;
         } else {
-            std::shared_ptr<node> result = visitStmt(ctx->stmt());
-            std::shared_ptr<node> last = result->getLast();
-            if(!last) last = result;
-            if (last->getNodeType() == If) {
-                std::vector<std::shared_ptr<node>> tmp = last->getNexts();
-                tmp[0] = tmp[1];
-                tmp[1] = tmp[2];
-                tmp.pop_back();
-                last->setNexts(tmp);
-            }
+            std::shared_ptr<statementNode> result = visitStmt(ctx->stmt());
             return result;
         }
     }
 
     virtual antlrcpp::Any visitStmt(SmallParser::StmtContext *ctx) override {
         if (ctx->assign()) {
-            std::shared_ptr<node> stmt = visitAssign(ctx->assign());
+            std::shared_ptr<statementNode> stmt =  visitAssign(ctx->assign());
             return stmt;
         } else if (ctx->write()) {
-            std::shared_ptr<node> stmt = visitWrite(ctx->write());
+            std::shared_ptr<statementNode> stmt = visitWrite(ctx->write());
             return stmt;
         } else if (ctx->iter()) {
-            std::shared_ptr<node> stmt = visitIter(ctx->iter());
+            std::shared_ptr<statementNode> stmt = visitIter(ctx->iter());
             return stmt;
         } else if (ctx->ifs()) {
-            std::shared_ptr<node> stmt = visitIfs(ctx->ifs());
+            std::shared_ptr<statementNode> stmt = visitIfs(ctx->ifs());
             return stmt;
         } else if (ctx->thread()) {
-            std::shared_ptr<node> stmt = visitThread(ctx->thread());
+            std::shared_ptr<statementNode> stmt = visitThread(ctx->thread());
             return stmt;
         } else { //only event is remaining
-            std::shared_ptr<node> stmt = visitEvent(ctx->event());
+            std::shared_ptr<statementNode> stmt = visitEvent(ctx->event());
             return stmt;
         }
     }
@@ -111,142 +79,85 @@ public:
     virtual antlrcpp::Any visitAssign(SmallParser::AssignContext *ctx) override {
         Type t;
         if (ctx->arrayAccess()) {
-            std::shared_ptr<node> first = visitExpr(ctx->expr());
-            std::shared_ptr<node> last = first->getLast();
-            if (!last) last = first;/*
-            while (last->getNext()) {
-                last = last->getNext();
-            }*/
-            std::shared_ptr<node> arrAcc = visitArrayAccess(ctx->arrayAccess());
-            std::shared_ptr<node> last2 = arrAcc->getLast();
-            if (!last2) last2 = arrAcc;/*
-            while (last2->getNext()) {
-                last2 = last2->getNext();
-            }*/
-            if (last->getType() == arrayIntType || last->getType() == arrayBoolType) {
-                updateErrorCount();
+            std::shared_ptr<arrayLiteralNode> node = visitArrayLiteral(ctx->arrayLiteral());
+            std::shared_ptr<expressionNode> arrAcc = visitArrayAccess(ctx->arrayAccess());
+            if (node->getType() == arrayIntType || node->getType() == arrayBoolType) {
+                t = errorType;
                 std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
                 << "] Cannot assign an array to a field of an array\n";
-            } else if (last2->getType() != intType) {
-                updateErrorCount();
-                std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
-                << "] Type mismatch in assignment. Expected field accessor to be of type " << info[intType] << " got " << info[last2->getType()] << "\n";
+            } else if (arrAcc->getType() != intType) {
+                t = errorType;
+                if (arrAcc->getType() != errorType) {
+                    std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
+                    << "] Type mismatch in assignment. Expected field accessor to be of type " << info[intType] << " got " << info[arrAcc->getType()] << "\n";
+                }
+            } else if (node->getType() == errorType) {
+                t = errorType;
             } else {
                 t = okType;
             }
-            std::shared_ptr<node> n = std::make_shared<node>(node(t, AssignArrField));
-            last->setNext(arrAcc);
-            last2->setNext(n);
-            return first;
+
+            std::shared_ptr<statementNode> a = std::make_shared<arrayFieldAssignNode>(arrayFieldAssignNode(t, arrAcc, node));
+            return a;
         } else if (ctx->NAME() && ctx->arrayLiteral()) {
-            std::shared_ptr<node> first = visitArrayLiteral(ctx->arrayLiteral());
-            std::shared_ptr<node> last = first->getLast();
-            if (!last) last = first;/*
-            while(last->getNext()) {
-                last = last->getNext();
-            }*/
-            t = last->getType();
-            std::shared_ptr<node> n = std::make_shared<node>(node(t, Assign, ctx->NAME()->getText()));
-            int length = std::stoi(last->getValue());
-            if (symboltables.insert({ctx->NAME()->getText(), std::make_shared<constraintNode>(constraintNode(t))}).second) {
-                while (length-->0)
-                    symboltables.insert({(ctx->NAME()->getText() + "[" + std::to_string(length) + "]"), std::make_shared<constraintNode>(constraintNode(first->getType()))});
-            } else {
-                if (symboltables.find(ctx->NAME()->getText() + "[" + std::to_string(length) + "]") != symboltables.end()
-                || (symboltables.find(ctx->NAME()->getText() + "[" + std::to_string(length-1) + "]") == symboltables.end())
-                ) {
-                    std::cout << "[" << ctx->getStart()->getLine() << ":" << ctx->getStart()->getCharPositionInLine() << "] Attempting to assign new array literal to array of different size\n";
-                    updateErrorCount();
-                    symboltables.find(ctx->NAME()->getText())->second->setType(errorType);
-                }
-                else {
-                    while (length-->0)
-                        symboltables.insert({(ctx->NAME()->getText() + "[" + std::to_string(length) + "]"), std::make_shared<constraintNode>(constraintNode(first->getType()))});
+            std::shared_ptr<arrayLiteralNode> node = visitArrayLiteral(ctx->arrayLiteral());
+            auto arrLit = node.get();
+            std::string name = ctx->NAME()->getText();
+            auto arr = arrLit->getArrLit();
+            //variable name + length
+            auto pair = symboltables.insert({name, std::make_shared<literalNode>(literalNode(intType, std::to_string(arr.size())))});
+
+            if(!pair.second) { //variable already exists
+                auto length = dynamic_cast<literalNode*>(pair.first->second.get())->value;
+                if (arr.size() != std::stoi(length)) {
+                    std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
+                              << "] Attempt to reassign an array to another literal that is not the same size\n";
+                    pair.first->second->setType(errorType);
                 }
             }
-            last->setNext(n);
-            return first;
+
+            return sequentialAssignForArray(name,0, arr);
         } else {
-            std::shared_ptr<node> first = visitExpr(ctx->expr());
-            std::shared_ptr<node> last = first->getLast();
-            if (!last) last = first;/*
-            while(last->getNext()) {
-                last = last->getNext();
-            }*/
-            auto pair = symboltables.find(ctx->NAME()->getText());
-            if (pair == symboltables.end()) {
-                symboltables.insert({ctx->NAME()->getText(), std::make_shared<constraintNode>(constraintNode(last->getType()))});
-                pair = symboltables.find(ctx->NAME()->getText());
-            }
-            if (pair->second->getType() == errorType) t = errorType; else t = okType;
-            last->setNext(std::make_shared<node>(node(t,Assign, ctx->NAME()->getText())));
-            return first;
+            std::shared_ptr<expressionNode> node = visitExpr(ctx->expr());
+            std::string name = ctx->NAME()->getText();
+            auto pair = symboltables.insert({name, std::make_shared<literalNode>(literalNode(node->getType(), node->getType() == intType ? "0" : "false"))});
+
+            //variable changes type
+            if(!pair.second && pair.first->second->getType() != node->getType())
+                pair.first->second->setType(errorType);
+//        std::shared_ptr<assignNode> res = std::make_shared<assignNode>(assignNode(name, node));
+
+            assignNode assNode = assignNode(pair.first->second->getType() == errorType ? errorType : okType, name, node);
+            std::shared_ptr<statementNode> a = std::make_shared<assignNode>(assNode);
+            return a;
         }
     }
 
     virtual antlrcpp::Any visitIter(SmallParser::IterContext *ctx) override {
-        Type t = okType;
-        std::shared_ptr<node> first = visitExpr(ctx->expr());
-        std::shared_ptr<node> lastInBoolExpr = first->getLast();
-        if (!lastInBoolExpr) lastInBoolExpr = first;
-        if (lastInBoolExpr->getType() != boolType) {
-            updateErrorCount();
-            t = errorType;
-            std::cout << "[" << ctx->getStart()->getLine() << ":" << ctx->getStart()->getCharPositionInLine() << "] Condition in while-statement is not a boolean\n";
-        }
-
-        std::shared_ptr<node> firstStmt = visitStmts(ctx->scope()->stmts());
-        std::shared_ptr<node> lastExecutableBitStmt = firstStmt->getLast();
-        if (!lastExecutableBitStmt) lastExecutableBitStmt = firstStmt;
-
-        std::shared_ptr<node> n = std::make_shared<node>(node(t, While));
-        lastExecutableBitStmt->setNext(first);
-        lastInBoolExpr->setNext(n);
-        n->setNexts(std::vector<std::shared_ptr<node>>{first, nullptr});
-        return n;
-        /*std::shared_ptr<expressionNode> condition = visitExpr(ctx->expr());
+        std::shared_ptr<expressionNode> condition = visitExpr(ctx->expr());
+        auto last = condition->getLast();
+        if(!last) last = condition;
         std::shared_ptr<statementNode> body = visitStmts(ctx->scope()->stmts());
         Type t = okType;
-        if (condition->getType() != boolType || body->getType() != okType) t = errorType;
+        if (last->getType() != boolType || body->getType() != okType) t = errorType;
         std::shared_ptr<statementNode> res = std::make_shared<whileNode>(whileNode(t, condition, body));
-        return res;*/
+        return res;
     }
 
     virtual antlrcpp::Any visitIfs(SmallParser::IfsContext *ctx) override {
-        std::shared_ptr<node> firstExpr = visitExpr(ctx->expr());
-        std::shared_ptr<node> lastExpr = firstExpr->getLast();
-        if (!lastExpr) lastExpr = firstExpr;
-
-        std::shared_ptr<node> firstTrue = visitStmts(ctx->scope(0)->stmts());
-        std::shared_ptr<node> lastTrue = firstTrue->getLast();
-        if (!lastTrue) lastTrue = firstTrue;
-
-        std::shared_ptr<node> firstFalse = visitStmts(ctx->scope(1)->stmts());
-        std::shared_ptr<node> lastFalse = firstFalse->getLast();
-        if (!lastFalse) lastFalse = firstFalse;
-
-        Type t = okType;
-        if (lastExpr->getType() != boolType || lastTrue->getType() != okType || lastFalse->getType() != okType){
-            t = errorType;
-            updateErrorCount();
-            std::cout << "[" << ctx->getStart()->getLine() << ":" << ctx->getStart()->getCharPositionInLine() << "] If-condition not correctly typed\n";
-        }
-
-        std::shared_ptr<node> n = std::make_shared<node>(node(t,If));
-        lastExpr->setNext(n);
-        n->setNexts(std::vector<std::shared_ptr<node>>{nullptr, firstTrue, firstFalse});
-        return firstExpr;
-       /* std::shared_ptr<expressionNode> condition = visitExpr(ctx->expr());
+        std::shared_ptr<expressionNode> condition = visitExpr(ctx->expr());
+        auto last = condition->getLast();
+        if(!last) last = condition;
         std::shared_ptr<statementNode> trueBranch = visitStmts(ctx->scope(0)->stmts());
         std::shared_ptr<statementNode> falseBranch = visitStmts(ctx->scope(1)->stmts());
         Type t = okType;
-        if (condition->getType() != boolType || trueBranch->getType() != okType || falseBranch->getType() != okType) t = errorType;
+        if (last->getType() != boolType || trueBranch->getType() != okType || falseBranch->getType() != okType) t = errorType;
         std::shared_ptr<statementNode> res = std::make_shared<ifElseNode>(ifElseNode(t, condition, trueBranch, falseBranch));
-        return res;*/
+        return res;
     }
 
     virtual antlrcpp::Any visitThread(SmallParser::ThreadContext *ctx) override {
-        std::vector<std::shared_ptr<node>> statements;
+        std::vector<std::shared_ptr<statementNode>> statements;
         for (auto scopeContext : ctx->threads) {
             statements.push_back(visitStmts(scopeContext->stmts()));
         }
@@ -257,22 +168,16 @@ public:
                 break;
             }
         }
-        std::shared_ptr<node> res = std::make_shared<concurrentNode>(concurrentNode(t, statements));
+        std::shared_ptr<statementNode> res = std::make_shared<concurrentNode>(concurrentNode(t, statements));
         return res;
     }
 
     virtual antlrcpp::Any visitEvent(SmallParser::EventContext *ctx) override {
-        std::shared_ptr<node> condition = visitExpr(ctx->expr());
-        std::shared_ptr<node> last = condition->getLast();
-        if (!last) last = condition;
+        std::shared_ptr<expressionNode> condition = visitExpr(ctx->expr());
+        auto last = condition->getLast();
+        if(!last) last = condition;
         Type t = (last->getType() == boolType) ? okType : errorType;
-        if (t == errorType)
-            std::cout << "[" << ctx->getStart()->getLine() << ":" << ctx->getStart()->getCharPositionInLine() << "] Condition in event is not of type boolean\n";
-        std::shared_ptr<node> ifNode = std::make_shared<node>(node(t, If));
-        ifNode->setNexts(std::vector<std::shared_ptr<node>>{nullptr, condition});
-        last->setNext(ifNode);
-        std::shared_ptr<node> res = std::make_shared<node>(node(t,Event));
-        res->setNext(condition);
+        std::shared_ptr<statementNode> res = std::make_shared<eventNode>(eventNode(t, condition));
         return res;
     }
 
@@ -281,13 +186,15 @@ public:
     }
 
     virtual antlrcpp::Any visitRead(SmallParser::ReadContext *ctx) override {
-        std::shared_ptr<node> readNode = std::make_shared<node>(node(intType, Read, ctx->INT_LITERAL()->getText()));
-        return readNode;
+        readNode node = readNode(std::stoi(ctx->INT_LITERAL()->getText()));
+        std::shared_ptr<expressionNode> res = std::make_shared<readNode>(node);
+        return res;
     }
 
     virtual antlrcpp::Any visitWrite(SmallParser::WriteContext *ctx) override {
-        std::shared_ptr<node> writeNode = std::make_shared<node>(node(okType, Write, ctx->INT_LITERAL()->getText()));
-        return writeNode;
+        std::shared_ptr<expressionNode> expr = visitExpr(ctx->expr());
+        std::shared_ptr<statementNode> res = std::make_shared<writeNode>(writeNode(std::stoi(ctx->INT_LITERAL()->getText()), expr));
+        return res;
     }
 
     virtual antlrcpp::Any visitExpr(SmallParser::ExprContext *ctx) override {
@@ -299,23 +206,17 @@ public:
             if (ctx->left) {
                 return binary_expression(ctx, MINUS);
             } else {
-                std::shared_ptr<node> n = visitExpr(ctx->expr(0));
+                std::shared_ptr<expressionNode> node = visitExpr(ctx->expr(0));
                 Type t = intType;
-                if (n->getType() != intType) t = errorType;
-                if (t == errorType) {
-                    updateErrorCount();
-                    std::cout << "[" << ctx->getStart()->getLine() << ":" << ctx->getStart()->getCharPositionInLine() << "] Cannot negate a non-integer value\n";
+                if (node->getType() != intType) t = errorType;
+                if (t != errorType && node->getNodeType() == Literal) {
+                    return compute_new_literal(node, node, NEG, t);
                 }
-                if (n->getNodeType() == Literal && n->getNexts().empty()) {
-                    if (t != errorType) {
-                        return compute_new_literal(n, n, NEG, t);
-                    }
-                }
-                std::shared_ptr<node> res = std::make_shared<node>(node(t, UnaryExpression, NEG));
-                std::shared_ptr<node> lastN = n->getLast();
-                if (!lastN) lastN = n;
-                lastN->setNext(res);
-                return n;
+                std::shared_ptr<expressionNode> una = std::make_shared<unaryExpressionNode>(unaryExpressionNode(t, NEG));
+                auto last = node->getLast();
+                if (!last) last = node;
+                last->setNext(una);
+                return node;
             }
         } else if (ctx->OP_MUL()) {
             return binary_expression(ctx, MULT);
@@ -340,43 +241,38 @@ public:
         } else if (ctx->OP_OR()) {
             return binary_expression(ctx, OR);
         } else if (ctx->OP_NOT()) {
-            std::shared_ptr<node> n = visitExpr(ctx->expr(0));
+            std::shared_ptr<expressionNode> node = visitExpr(ctx->expr(0));
             Type t = boolType;
-            if (n->getType() != boolType) t = errorType;
-            if (n->getType() != errorType && n->getType() != boolType) {
-                updateErrorCount();
+            if (node->getType() != boolType) t = errorType;
+            if (node->getType() != errorType && node->getType() != boolType) {
                 std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
-                          << "] Type mismatch in unary expression. Expected "
-                          << info[boolType] << " got " << info[n->getType()] << "\n";
+                      << "] Type mismatch in unary expression. Expected "
+                      << info[boolType] << " got " << info[node->getType()] << "\n";
             }
-            if (n->getNodeType() == Literal && n->getNexts().empty()) {
-                if (t != errorType) {
-                    return compute_new_literal(n,n, NOT, t);
-                }
+            if (t != errorType && node->getNodeType() == Literal) {
+                return compute_new_literal(node, node, NOT, t);
             }
-            std::shared_ptr<node> res = std::make_shared<node>(node(t, UnaryExpression, NOT));
-            std::shared_ptr<node> lastN = n->getLast();
-            if(!lastN) lastN = n;
-            lastN->setNext(res);
-            return n;
+            std::shared_ptr<expressionNode> una = std::make_shared<unaryExpressionNode>(unaryExpressionNode(t, NOT));
+            auto last = node->getLast();
+            if (!last) last = node;
+            last->setNext(una);
+            return node;
         } else if (ctx->literal()) {
-            std::string val = ctx->literal()->getText();
-            std::shared_ptr<node> l = std::make_shared<node>(node((val == "true" || val == "false") ? boolType : intType, Literal, val));
-            return l;
+            std::shared_ptr<expressionNode> p = std::make_shared<literalNode>(literalNode(ctx->literal()->getText()));
+            return p;
         } else if (ctx->arrayAccess()) {
-            std::shared_ptr<node> exp = visitArrayAccess(ctx->arrayAccess());
+            std::shared_ptr<expressionNode> exp = visitArrayAccess(ctx->arrayAccess());
             return exp;
         } else if (ctx->NAME()) {
             auto pair = symboltables.find(ctx->NAME()->getText());
-            Type t = (pair != symboltables.end())
-                    ? (pair->second->getType())
-                    : errorType;
-            if (t == errorType) {
-                updateErrorCount();
+            variableNode node = (pair != symboltables.end())
+                                ? variableNode(pair->second->getType(), ctx->NAME()->getText())
+                                : variableNode(errorType, ctx->NAME()->getText());
+            if (node.getType() == errorType) {
                 std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
                           << "] Attempted to use variable that hasn't been assigned a value\n";
             }
-            std::shared_ptr<node> res = std::make_shared<node>(node(t,Variable,ctx->NAME()->getText()));
+            std::shared_ptr<expressionNode> res = std::make_shared<variableNode>(node);
             return res;
         } else if (ctx->read()) {
             return visitRead(ctx->read());
@@ -384,29 +280,18 @@ public:
     }
 
     virtual antlrcpp::Any visitArrayAccess(SmallParser::ArrayAccessContext *ctx) override {
-        std::shared_ptr<node> first = visitExpr(ctx->expr());
-        std::shared_ptr<node> last = first->getLast();
-        if (!last) last = first;
-        /*
-        while (last->getNext()) {
-            last = last->getNext();
-        }*/
+        std::shared_ptr<expressionNode> node = visitExpr(ctx->expr());
         auto it = symboltables.find(ctx->NAME()->getText());
-        std::string name = ctx->NAME()->getText();
-        auto val = it->second;
         Type t;
-        if (last->getType() != intType || it == symboltables.end()) {
-            updateErrorCount();
-            std::cout << "[" << ctx->getStart()->getLine() << ":" << ctx->getStart()->getCharPositionInLine() << "] Acessor must be of type integer\n";
+        if (node->getType() != intType || it == symboltables.end()) {
             t = errorType;
         } else if (it->second->getType() == arrayIntType) {
             t = intType;
         } else {
             t = boolType;
         }
-        std::shared_ptr<node> n = std::make_shared<node>(node(t, ArrayAccess, ctx->NAME()->getText()));
-        last->setNext(n);
-        return first;
+        std::shared_ptr<expressionNode> res = std::make_shared<arrayAccessNode>(arrayAccessNode(t, node, ctx->NAME()->getText()));
+        return res;
     }
 
     virtual antlrcpp::Any visitLiteral(SmallParser::LiteralContext *ctx) override {
@@ -415,47 +300,23 @@ public:
     }
 
     virtual antlrcpp::Any visitArrayLiteral(SmallParser::ArrayLiteralContext *ctx) override {
-        std::vector<std::shared_ptr<node>> inter;
-        Type t = okType;
+        std::vector<std::shared_ptr<expressionNode>> inter;
+        auto a = ctx->expr();
         for (auto i : ctx->expr()) {
             inter.push_back(visitExpr(i));
         }
-        for (unsigned long l = 0; l < inter.size()-1; l++) {
-            if (inter[l]->getType() != inter[l+1]->getType()) {
-                t = errorType;
-                std::cout << "[" << ctx->getStart()->getLine() << ":" << ctx->getStart()->getCharPositionInLine() << "] Arrayliteral must have all elements be of same type\n";
-                updateErrorCount();
-            }
-            std::shared_ptr<node> tmp = inter[l]->getLast();
-            if(tmp) {
-                inter[l] = tmp;
-            }/*
-            inter[l] = inter[l]->getLast();
-            while (inter[l]->getNext()) {
-                inter[l] = inter[l]->getNext();
-            }*/
-            inter[l]->setNext(inter[l+1]);
-        }
-        if (t == okType) {
-            if (inter[0]->getType() == intType) {
-                t = arrayIntType;
-            } else {
-                t = arrayBoolType;
-            }
-        }
-        std::shared_ptr<node> n = std::make_shared<node>(node(t, ArrayLiteral,std::to_string(inter.size())));
-        inter[inter.size()-1]->setNext(n);
-        return inter[0];
+        std::shared_ptr<arrayLiteralNode> res = std::make_shared<arrayLiteralNode>(arrayLiteralNode(inter));
+        return res;
     }
 
     static std::string btos (bool val) {
         return val ? "true" : "false";
     }
 
-    static std::pair<bool, std::shared_ptr<node>> compute_new_literal (std::shared_ptr<node> l, std::shared_ptr<node> r, op expressionType, Type t) {
-        std::string lVal = l->getValue();
-        std::string rVal = r->getValue();
-        std::shared_ptr<node> n;
+    static std::pair<bool, std::shared_ptr<expressionNode>> compute_new_literal (std::shared_ptr<expressionNode> l, std::shared_ptr<expressionNode> r, op expressionType, Type t) {
+        std::string lVal = dynamic_cast<literalNode*>(l.get())->value;
+        std::string rVal = dynamic_cast<literalNode*>(r.get())->value;
+        std::shared_ptr<expressionNode> n;
         Type nodesType;
         int64_t lIntVal = 0;
         int64_t rIntVal = 0;
@@ -474,29 +335,29 @@ public:
         switch (expressionType) {
             case PLUS:
                 lIntVal += rIntVal;
-                if(lIntVal > INT32_MAX || lIntVal < INT32_MIN) success = false;
-                n = std::make_shared<node>(node(t, Literal, std::to_string((int32_t )lIntVal)));
+                if(lIntVal > INT16_MAX || lIntVal < INT16_MIN) success = false;
+                n = std::make_shared<literalNode>(literalNode(t, std::to_string((int16_t)lIntVal)));
                 break;
             case MINUS:
                 lIntVal -= rIntVal;
-                if(lIntVal > INT32_MAX || lIntVal < INT32_MIN) success = false;
-                n = std::make_shared<node>(node(t, Literal, std::to_string((int32_t)lIntVal)));
+                if(lIntVal > INT16_MAX || lIntVal < INT16_MIN) success = false;
+                n = std::make_shared<literalNode>(literalNode(t, std::to_string((int16_t)lIntVal)));
                 break;
             case MULT:
                 lIntVal *= rIntVal;
-                if(lIntVal > INT32_MAX || lIntVal < INT32_MIN) success = false;
-                n = std::make_shared<node>(node(t, Literal, std::to_string((int32_t)lIntVal)));
+                if(lIntVal > INT16_MAX || lIntVal < INT16_MIN) success = false;
+                n = std::make_shared<literalNode>(literalNode(t, std::to_string((int16_t)lIntVal)));
                 break;
             case DIV:
                 if(rIntVal == 0) {
                     success = false;
                     n = l;
                     l->setNext(r);
-                    r->setNext(std::make_shared<node>(node(t,BinaryExpression, DIV)));
+                    r->setNext(std::make_shared<binaryExpressionNode>(binaryExpressionNode(t, DIV)));
                 }
                 else {
                     lIntVal /= rIntVal;
-                    n = std::make_shared<node>(node(t, Literal, std::to_string((int32_t)lIntVal)));
+                    n = std::make_shared<literalNode>(literalNode(t, std::to_string((int16_t)lIntVal)));
                 }
                 break;
             case MOD:
@@ -504,81 +365,87 @@ public:
                     success = false;
                     n = l;
                     l->setNext(r);
-                    r->setNext(std::make_shared<node>(node(t,BinaryExpression,MOD)));
+                    r->setNext(std::make_shared<binaryExpressionNode>(binaryExpressionNode(t, MOD)));
                 } else {
                     lIntVal %= rIntVal;
-                    n = std::make_shared<node>(node(t, Literal, std::to_string((int32_t)lIntVal)));
+                    n = std::make_shared<literalNode>(literalNode(t, std::to_string((int16_t)lIntVal)));
                 }
                 break;
             case AND:
-                n = std::make_shared<node>(node(t, Literal, btos(lBoolVal && rBoolVal)));
+                n = std::make_shared<literalNode>(literalNode(t,btos(lBoolVal && rBoolVal)));
                 break;
             case OR:
-                n = std::make_shared<node>(node(t, Literal, btos(lBoolVal || rBoolVal)));
+                n = std::make_shared<literalNode>(literalNode(t,btos(lBoolVal || rBoolVal)));
                 break;
             case LE:
                 if (nodesType == intType) {
-                    n = std::make_shared<node>(node(t, Literal, btos(lIntVal < rIntVal)));
+                    n = std::make_shared<literalNode>(literalNode(t,btos(lIntVal < rIntVal)));
                 } else {
-                    n = std::make_shared<node>(node(t, Literal, btos(lBoolVal < rBoolVal)));
+                    n = std::make_shared<literalNode>(literalNode(t,btos(lBoolVal < rBoolVal)));
                 }
                 break;
             case LEQ:
                 if (nodesType == intType) {
-                    n = std::make_shared<node>(node(t, Literal, btos(lIntVal <= rIntVal)));
+                    n = std::make_shared<literalNode>(literalNode(t,btos(lIntVal <= rIntVal)));
                 } else {
-                    n = std::make_shared<node>(node(t, Literal, btos(lBoolVal <= rBoolVal)));
+                    n = std::make_shared<literalNode>(literalNode(t,btos(lBoolVal <= rBoolVal)));
                 }
                 break;
             case GE:
                 if (nodesType == intType) {
-                    n = std::make_shared<node>(node(t, Literal, btos(lIntVal > rIntVal)));
+                    n = std::make_shared<literalNode>(literalNode(t,btos(lIntVal > rIntVal)));
                 } else {
-                    n = std::make_shared<node>(node(t, Literal, btos(lBoolVal > rBoolVal)));
+                    n = std::make_shared<literalNode>(literalNode(t,btos(lBoolVal > rBoolVal)));
                 }
                 break;
             case GEQ:
                 if (nodesType == intType) {
-                    n = std::make_shared<node>(node(t, Literal, btos(lIntVal >= rIntVal)));
+                    n = std::make_shared<literalNode>(literalNode(t,btos(lIntVal >= rIntVal)));
                 } else {
-                    n = std::make_shared<node>(node(t, Literal, btos(lBoolVal >= rBoolVal)));
+                    n = std::make_shared<literalNode>(literalNode(t,btos(lBoolVal >= rBoolVal)));
                 }
                 break;
             case EQ:
                 if (nodesType == intType) {
-                    n = std::make_shared<node>(node(t, Literal, btos(lIntVal == rIntVal)));
+                    n = std::make_shared<literalNode>(literalNode(t,btos(lIntVal == rIntVal)));
                 } else {
-                    n = std::make_shared<node>(node(t, Literal, btos(lBoolVal == rBoolVal)));
+                    n = std::make_shared<literalNode>(literalNode(t,btos(lBoolVal == rBoolVal)));
                 }
                 break;
             case NEQ:
                 if (nodesType == intType) {
-                    n = std::make_shared<node>(node(t, Literal, btos(lIntVal != rIntVal)));
+                    n = std::make_shared<literalNode>(literalNode(t,btos(lIntVal != rIntVal)));
                 } else {
-                    n = std::make_shared<node>(node(t, Literal, btos(lBoolVal != rBoolVal)));
+                    n = std::make_shared<literalNode>(literalNode(t,btos(lBoolVal != rBoolVal)));
                 }
                 break;
             case NOT:
-                n = std::make_shared<node>(node(t, Literal, btos(!lBoolVal)));
+                n = std::make_shared<literalNode>(literalNode(t, btos(!lBoolVal)));
                 break;
             case NEG:
-                if(lIntVal == INT32_MIN) {
+                if(lIntVal == INT16_MIN) {
                     success = false;
-                    n = std::make_shared<node>(node(t, Literal, std::to_string(INT32_MIN)));
+                    n = std::make_shared<literalNode>(literalNode(t,std::to_string(INT16_MIN)));
                 } else {
-                    n = std::make_shared<node>(node(t, Literal, std::to_string(-lIntVal)));
+                    n = std::make_shared<literalNode>(literalNode(t, std::to_string(-lIntVal)));
                 }
                 break;
             default:
                 std::cout << "this shouldn't happen\n";
         }
-        return std::pair<bool, std::shared_ptr<node>>(success, n);
+        return std::pair<bool, std::shared_ptr<expressionNode>>(success, n);
     }
 
-    std::shared_ptr<node> binary_expression (SmallParser::ExprContext *ctx, op expressionType) {
-        std::shared_ptr<node> l = (visitExpr(ctx->left));
-        std::shared_ptr<node> r = (visitExpr(ctx->right));
+    std::shared_ptr<expressionNode> binary_expression (SmallParser::ExprContext *ctx, op expressionType) {
+        std::shared_ptr<expressionNode> l = (visitExpr(ctx->left));
+        std::shared_ptr<expressionNode> r = (visitExpr(ctx->right));
         Type t;
+
+        auto lastL = l->getLast();
+        if(!lastL) lastL = l;
+
+        auto lastR = r->getLast();
+        if(!lastR) lastR = r;
 
         switch (expressionType) {
             case PLUS:
@@ -586,23 +453,23 @@ public:
             case MULT:
             case DIV:
             case MOD:
-                if (l->getType() == r->getType() && l->getType() == intType) {
-                    t = l->getType();
+                if (lastL->getType() == lastR->getType() && lastL->getType() == intType) {
+                    t = lastL->getType();
                 } else {
                     std::cout << "[" << ctx->start->getLine() << ":" << ctx->start->getCharPositionInLine()
-                    << "] Type mismatch in binary expression. Expected " << info[l->getType()] << " got " << info[r->getType()] << "\n";
+                              << "] Type mismatch in binary expression. Expected " << info[lastL->getType()] << " got " << info[lastR->getType()] << "\n";
                     t = errorType;
                     updateErrorCount();
                 }
                 break;
             case AND:
             case OR:
-                if (l->getType() == r->getType() && l->getType() == boolType) {
-                    t = l->getType();
+                if (lastL->getType() == lastR->getType() && lastL->getType() == boolType) {
+                    t = lastL->getType();
                 } else {
                     std::cout << "[" << ctx->start->getLine() << ":" << ctx->start->getCharPositionInLine()
                               << "] Type mismatch in binary expression. Expected " << info[boolType] << " got "
-                              << info[r->getType() != boolType ? r->getType() : l->getType()] << "\n";
+                              << info[lastR->getType() != boolType ? lastR->getType() : lastL->getType()] << "\n";
                     t = errorType;
                     updateErrorCount();
                 }
@@ -611,23 +478,23 @@ public:
             case LEQ:
             case GE:
             case GEQ:
-                if (l->getType() == r->getType() && l->getType() == intType) {
+                if (lastL->getType() == lastR->getType() && lastL->getType() == intType) {
                     t = boolType;
                 } else {
                     std::cout << "[" << ctx->start->getLine() << ":" << ctx->start->getCharPositionInLine()
                               << "] Type mismatch in binary expression. Expected " << info[intType] << " got "
-                              << info[r->getType() != intType ? r->getType() : l->getType()] << "\n";
+                              << info[lastR->getType() != intType ? lastR->getType() : lastL->getType()] << "\n";
                     t = errorType;
                     updateErrorCount();
                 }
                 break;
             case EQ:
             case NEQ:
-                if (l->getType() == r->getType() && (l->getType() == intType || l->getType() == boolType)) {
+                if (lastL->getType() == lastR->getType() && (lastL->getType() == intType || lastL->getType() == boolType)) {
                     t = boolType;
                 } else {
                     std::cout << "[" << ctx->start->getLine() << ":" << ctx->start->getCharPositionInLine()
-                              << "] Type mismatch in binary expression. Expected " << info[l->getType()] << " got " << info[r->getType()] << "\n";
+                              << "] Type mismatch in binary expression. Expected " << info[lastL->getType()] << " got " << info[lastR->getType()] << "\n";
                     t = errorType;
                     updateErrorCount();
                 }
@@ -638,22 +505,17 @@ public:
                 break;
         }
         if (t != errorType) {
-            if ((l->getNodeType() == Literal && r->getNodeType() == Literal) && l->getNexts().empty() && r->getNexts().empty()) {
+            if ((lastL->getNodeType() == Literal && lastR->getNodeType() == Literal) && lastL->getNext() && lastR->getNext()) {
                 return compute_new_literal(l,r, expressionType, t).second;
             }
         }
-        std::shared_ptr<node> lastL = l->getLast();
-        if(!lastL) lastL = l;
-        std::shared_ptr<node> lastR = r->getLast();
-        if(!lastR) lastR = r;
 
-        std::shared_ptr<node> p = std::make_shared<node>(node(t, BinaryExpression, expressionType));
+        std::shared_ptr<expressionNode> p = std::make_shared<binaryExpressionNode>(binaryExpressionNode(t, expressionType));
         lastL->setNext(r);
         lastR->setNext(p);
         return l;
     }
-
-    /*
+/*
     static antlrcpp::Any deepCopy(const node *tree) {
         switch(tree->getNodeType()) {
             case Assign:
@@ -775,8 +637,9 @@ public:
                 }
                 break;
         }
-    }*/
-/*
+    }
+*/
+
     std::shared_ptr<statementNode> sequentialAssignForArray(std::string name, int accessor, std::vector<std::shared_ptr<expressionNode>> n) {
         Type t = n[0]->getType();
         if(n.size() == 1) {
@@ -794,7 +657,7 @@ public:
             }
             return std::make_shared<sequentialNode>(sequentialNode(okType,arrFieldAss,sequentialAssignForArray(name,accessor+1,ne)));
         }
-    }*/
+    }
 };
 
 #endif //DST_H

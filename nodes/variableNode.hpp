@@ -7,10 +7,13 @@
 #include "node.hpp"
 #include <string>
 
-class variableNode : public node {
+class variableNode : public expressionNode {
 public:
-    variableNode(Type _type, std::string n) : node(_type, Variable), name{std::move(n)} {};
+    variableNode(Type _type, std::string n) {
+        type = _type;
+        name = std::move(n);
+        setNodeType(Variable);
+    };
     std::string name;
-    std::string getValue() const override {return name;};
 };
 #endif //ANTLR_CPP_TUTORIAL_NAMENODE_HPP
