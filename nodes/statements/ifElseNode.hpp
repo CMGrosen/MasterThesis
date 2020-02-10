@@ -15,8 +15,8 @@ public:
         setNodeType(If);
     }
     const expressionNode *getCondition() const {return condition.get();}
-    const statementNode *getTrueBranch() const {return trueBranch.get();}
-    const statementNode *getFalseBranch() const {return falseBranch.get();}
+    const std::shared_ptr<statementNode> getTrueBranch() const {return trueBranch;}
+    const std::shared_ptr<statementNode> getFalseBranch() const {return falseBranch;}
 
 private:
     std::shared_ptr<expressionNode> condition;

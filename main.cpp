@@ -4,6 +4,7 @@
 #include "antlr4-runtime/SmallLexer.h"
 #include "antlr4-runtime/SmallParser.h"
 #include "DST.h"
+#include "basicblockTreeConstructor.hpp"
 #include <antlr4-runtime.h>
 //#include <symengine/symbolicExecutionEngine.hpp>
 
@@ -48,6 +49,8 @@ int main(int argc, const char* argv[]) {
 //    table.insert({"a", std::make_shared<binaryExpressionNode>(binaryExpressionNode(intType, PLUS, std::make_shared<literalNode>(literalNode(intType, "2")),std::make_shared<literalNode>(literalNode(intType, "2"))))});
 //    std::vector<state> succStates = no.get_successors(f);
 
+    basicBlockTreeConstructor test = basicBlockTreeConstructor();
+    auto a = test.get_tree(treeAndSymbolTable.first);
     std::cout << "got here" << std::endl;//a << std::endl;
 
     //symbolicExecutionEngine symEngine;

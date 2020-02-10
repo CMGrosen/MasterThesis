@@ -22,7 +22,7 @@ public:
         setNodeType(Sequential);
     };
 
-    statementNode* getBody() const { return _body.get(); }
+    std::shared_ptr<statementNode> getBody() const { return _body; }
     statementNode* getNext() const { return _next.get(); }
 
     std::vector<std::shared_ptr<statementNode>> debug_getAllNodes() override {

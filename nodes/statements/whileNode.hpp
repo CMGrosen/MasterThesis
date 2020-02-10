@@ -14,7 +14,7 @@ public:
         setNodeType(While);
     }
     const expressionNode *getCondition() const {return condition.get();}
-    const statementNode *getBody() const {return body.get();}
+    const std::shared_ptr<statementNode> getBody() const {return body;}
 
 private:
     std::shared_ptr<expressionNode> condition;
