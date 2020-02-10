@@ -5,13 +5,23 @@
 #ifndef ANTLR_CPP_TUTORIAL_LITERALNODE_HPP
 #define ANTLR_CPP_TUTORIAL_LITERALNODE_HPP
 
-#include <nodes/node.hpp>
+#include <nodes/expressions/expressionNode.hpp>
 
-class literalNode : public node {
+class literalNode : public expressionNode {
 public:
-    literalNode(Type t, std::string a) : node(t, Literal), value{std::move(a)} {}
+    literalNode(std::string a) : value{std::move(a)} {
+        if (value == "true" || value == "false") {
+            setType(boolType);
+        } else {
+            setType(intType);
+        }
+        setNodeType(Literal);
+    };
+    literalNode(Type t, std::string a) : value{std::move(a)} {
+        setType(t);
+        setNodeType(Literal);
+    }
 
-    std::string getValue() const override {return value;};
     std::string value;
 };
 #endif //ANTLR_CPP_TUTORIAL_LITERALNODE_HPP

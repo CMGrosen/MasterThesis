@@ -7,7 +7,6 @@
 #include "statementNode.hpp"
 #include <nodes/expressions/expressionNodes.hpp>
 #include <string>
-#include <nodes/variableNode.hpp>
 
 class assignNode : public statementNode {
 public:

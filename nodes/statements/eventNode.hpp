@@ -9,7 +9,7 @@
 
 class eventNode : public statementNode {
 public:
-    eventNode(Type t, std::shared_ptr<expressionNode> condition) : _condition{condition} {
+    eventNode(Type t, std::shared_ptr<expressionNode> condition) : _condition{std::move(condition)} {
         setType(t);
         setNodeType(Event);
     }
