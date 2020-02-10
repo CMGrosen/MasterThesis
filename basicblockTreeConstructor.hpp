@@ -7,6 +7,7 @@
 
 class basicBlockTreeConstructor {
 public:
+    basicBlockTreeConstructor() = default;
     std::shared_ptr<basicblock> get_tree(const std::shared_ptr<statementNode> startTree) {
         if (startTree->getNodeType() == Concurrent) {
             auto n = dynamic_cast<concurrentNode*>(startTree.get());
@@ -22,15 +23,15 @@ public:
             basicblock res = basicblock(std::vector<std::shared_ptr<statementNode>>{std::make_shared<concurrentNode>(node)});
             return std::make_shared<basicblock>(res);
         } else if (startTree->getNodeType() == Sequential) {
-            auto n = dynamic_cast<sequentialNode*>(startTree.get());
-            auto current = n->getBody();
-            auto next = n->getNext();
-            auto vec = std::vector<std::shared_ptr<statementNode>>{current};
+            auto nn = startTree.get();
+            /*auto current = n->getBody();
+            auto next = n->getNext();*/
+            auto vec = std::vector<std::shared_ptr<statementNode>>{};
 
-            while(next->getNodeType() == Sequential) {
-                n = dynamic_cast<sequentialNode*>(next);
-                current = n->getBody();
-                next = n->getNext();
+            while(nn->getNodeType() == Sequential) {
+                auto n = dynamic_cast<sequentialNode*>(nn);
+                auto current = n->getBody();
+                auto next = n->getNext();
                 NodeType nType = current->getNodeType();
                 if (nType == Assign || nType == AssignArrField || nType == Write || nType == Event) {
                     vec.push_back(current);
@@ -52,15 +53,17 @@ public:
                     }
                     vec.clear();
                 }
+                nn = n->getNext();
             }
-            if (next->getNodeType() == Concurrent) {return nullptr;}
-            else {return std::make_shared<basicblock>(std::vector<std::shared_ptr<statementNode>>{startTree});}
+            if (nn->getNodeType() == Concurrent) {return nullptr;}
+            else {return std::make_shared<basicblock>(basicblock(vec));}
         } else {
             return std::make_shared<basicblock>(std::vector<std::shared_ptr<statementNode>>{startTree});
         }
     }
-private:
+
     std::vector<std::shared_ptr<basicblock>> blocks = std::vector<std::shared_ptr<basicblock>>{};
+private:
     uint iterator = -1;
 };
 #endif //ANTLR_CPP_TUTORIAL_BASICBLOCKTREECONSTRUCTOR_HPP
