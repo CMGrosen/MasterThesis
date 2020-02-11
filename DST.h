@@ -47,6 +47,7 @@ public:
             std::shared_ptr<statementNode> body = visitStmt(ctx->stmt());
             std::shared_ptr<statementNode> next = visitStmts(ctx->stmts());
             std::shared_ptr<statementNode> result = std::make_shared<sequentialNode>(sequentialNode(body, next));
+
             return result;
         } else {
             std::shared_ptr<statementNode> result = visitStmt(ctx->stmt());

@@ -53,7 +53,7 @@ set(visitor_SRC
         ${PROJECT_SOURCE_DIR}/main.cpp
         ${PROJECT_SOURCE_DIR}/DST.cpp
         ${visitor-GENERATED_SRC}
-        nodes/nodes.hpp nodes/basicblock.hpp basicblockTreeConstructor.hpp)
+        nodes/nodes.hpp)
 
 if (NOT CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     set (flags_1 "-Wno-overloaded-virtual")

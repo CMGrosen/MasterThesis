@@ -5,6 +5,7 @@ c = (a + a > 8) == true;
 
 if (b > 10) {
     a = 2;
+    b = read(1);
 } else {
     a = 3;
 };

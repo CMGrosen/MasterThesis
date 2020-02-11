@@ -10,10 +10,9 @@ class concurrentNode : public statementNode {
 public:
     concurrentNode(Type type, std::vector<std::shared_ptr<statementNode>> _threads) :
         threads{std::move(_threads)} {
-            setType(type);
-            setNodeType(Concurrent);
-        }
-
+        setType(type);
+        setNodeType(Concurrent);
+    }
     concurrentNode(Type type, const std::vector<std::shared_ptr<basicblock>> &_threads) {
         setType(type);
         setNodeType(Concurrent);

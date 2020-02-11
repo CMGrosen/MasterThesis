@@ -23,7 +23,7 @@ public:
     };
 
     std::shared_ptr<statementNode> getBody() const { return _body; }
-    statementNode* getNext() const { return _next.get(); }
+    std::shared_ptr<statementNode> getNext() const { return _next; }
 
     std::vector<std::shared_ptr<statementNode>> debug_getAllNodes() override {
         std::vector<std::shared_ptr<statementNode>> nexts{_body};

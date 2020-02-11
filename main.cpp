@@ -50,8 +50,9 @@ int main(int argc, const char* argv[]) {
 //    std::vector<state> succStates = no.get_successors(f);
 
     basicBlockTreeConstructor test;
-    auto a = test.get_tree(treeAndSymbolTable.first);
-    auto b = test.blocks;
+    //auto a = test.get_tree(treeAndSymbolTable.first);
+    //auto b = test.blocks;
+    auto a = test.get_ccfg(treeAndSymbolTable.first);
     std::cout << "got here" << std::endl;//a << std::endl;
 
     //symbolicExecutionEngine symEngine;
