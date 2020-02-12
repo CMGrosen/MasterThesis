@@ -71,8 +71,11 @@ public:
         } else if (ctx->thread()) {
             std::shared_ptr<statementNode> stmt = visitThread(ctx->thread());
             return stmt;
-        } else { //only event is remaining
+        } else if (ctx->event()) {
             std::shared_ptr<statementNode> stmt = visitEvent(ctx->event());
+            return stmt;
+        } else { //only skip is remaining
+            std::shared_ptr<statementNode> stmt =  visitSkipStmt(ctx->skipStmt());
             return stmt;
         }
     }
@@ -184,7 +187,8 @@ public:
 
 
     virtual antlrcpp::Any visitSkipStmt(SmallParser::SkipStmtContext *context) override {
-        return std::make_shared<skipNode>(skipNode());
+        std::shared_ptr<statementNode> res = std::make_shared<skipNode>(skipNode());
+        return res;
     }
 
     virtual antlrcpp::Any visitScope(SmallParser::ScopeContext *ctx) override {
