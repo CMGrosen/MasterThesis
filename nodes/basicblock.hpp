@@ -6,21 +6,21 @@
 #define ANTLR_CPP_TUTORIAL_BASICBLOCK_HPP
 
 struct basicblock : public statementNode {
-    basicblock() : statements{}, nexts{} {};
+    basicblock() : statements{}, nexts{} {setNodeType(BasicBlock);};
     basicblock(std::shared_ptr<statementNode> stmt) :
             statements{std::vector<std::shared_ptr<statementNode>>{std::move(stmt)}},
-            nexts{} {};
+            nexts{} {setNodeType(BasicBlock);};
     basicblock(std::vector<std::shared_ptr<statementNode>> stmts) :
         statements{std::move(stmts)},
-        nexts{} {};
+        nexts{} {setNodeType(BasicBlock);};
     basicblock(std::shared_ptr<statementNode> stmt, std::shared_ptr<basicblock> next) :
             statements{std::vector<std::shared_ptr<statementNode>>{std::move(stmt)}},
-            nexts{std::vector<std::shared_ptr<basicblock>>{std::move(next)}} {};
+            nexts{std::vector<std::shared_ptr<basicblock>>{std::move(next)}} {setNodeType(BasicBlock);};
     basicblock(std::vector<std::shared_ptr<statementNode>> stmts, std::shared_ptr<basicblock> next) :
             statements{std::move(stmts)},
-            nexts{std::vector<std::shared_ptr<basicblock>>{std::move(next)}} {};
+            nexts{std::vector<std::shared_ptr<basicblock>>{std::move(next)}} {setNodeType(BasicBlock);};
     basicblock(std::vector<std::shared_ptr<statementNode>> stmts, std::vector<std::shared_ptr<basicblock>> nStmts) :
-        statements{std::move(stmts)}, nexts{std::move(nStmts)} {};
+        statements{std::move(stmts)}, nexts{std::move(nStmts)} {setNodeType(BasicBlock);};
 
 
     std::vector<std::shared_ptr<statementNode>> statements;

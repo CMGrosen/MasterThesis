@@ -182,6 +182,11 @@ public:
         return res;
     }
 
+
+    virtual antlrcpp::Any visitSkipStmt(SmallParser::SkipStmtContext *context) override {
+        return std::make_shared<skipNode>(skipNode());
+    }
+
     virtual antlrcpp::Any visitScope(SmallParser::ScopeContext *ctx) override {
         return nullptr; //not used
     }

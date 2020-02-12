@@ -16,6 +16,7 @@ stmt :
     | ifs
     | FORK thread
     | event
+    | skipStmt
     ;
     
 assign :
@@ -38,6 +39,8 @@ thread :
     
 event :
     WHEN LPAREN expr RPAREN;
+
+skipStmt : SKIPPING;
 
 scope : BEGIN stmts END;
 

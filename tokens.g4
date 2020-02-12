@@ -43,11 +43,15 @@ OP_DIV : '/' ;
 OP_MOD : '%';
 OP_NOT : '!' ;
 
+SKIPPING : 'skip';
+
 NAME 	: [a-zA-Z_][0-9a-zA-Z_]*;
 
 WS: [ \r\t\n]+ -> skip; // skip spaces, tabs, newlines
 DELIMETER : ';';
 
+COMMENT  :  '//' ~[\r\n]* '\r'? '\n' -> skip ;
 
 //WS: [ \r\t]+ -> skip; // skip spaces, tabs, newlines
 //SEMI_COLON: ';';
+
