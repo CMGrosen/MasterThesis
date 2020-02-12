@@ -20,13 +20,14 @@ static std::map< const char *, const char * > files = {
         {"precedence", "../precendenceTest.small"},
         {"temp", "../temp.small"},
         {"oob_race-condition", "../code_examples/out_of_bounds_race-condition.small"},
-        {"testAssign", "../code_examples/testAssign.small"}
+        {"testAssign", "../code_examples/testAssign.small"},
+        {"coffee_maker", "../code_examples/coffee_maker.small"}
 };
 
 int main(int argc, const char* argv[]) {
     std::ifstream stream;
     //stream.open("../code.small");
-    stream.open(files["testAssign"]);
+    stream.open(files["coffee_maker"]);
     //stream.open("shortExpr.small");
 
     ANTLRInputStream input(stream);
@@ -52,7 +53,7 @@ int main(int argc, const char* argv[]) {
     basicBlockTreeConstructor test;
     //auto a = test.get_tree(treeAndSymbolTable.first);
     //auto b = test.blocks;
-    auto a = test.get_ccfg(treeAndSymbolTable.first);
+    auto ccfg = test.get_ccfg(treeAndSymbolTable.first);
     std::cout << "got here" << std::endl;//a << std::endl;
 
     //symbolicExecutionEngine symEngine;

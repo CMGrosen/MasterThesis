@@ -25,6 +25,8 @@ struct basicblock : public statementNode {
 
     std::vector<std::shared_ptr<statementNode>> statements;
     std::vector<std::shared_ptr<basicblock>> nexts;
+
+    std::shared_ptr<basicblock> concurrentBlock = nullptr;
 };
 
 

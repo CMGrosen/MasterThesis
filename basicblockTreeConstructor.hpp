@@ -73,7 +73,7 @@ public:
 
         auto res = get_all_blocks_and_edges(startNode, exit);
 
-        std::unordered_set<edge> edges{res.second[0]};
+        std::unordered_set<edge> edges{!res.second.empty() ? res.second[0] : edge(startNode, std::make_shared<basicblock>(basicblock()))};
         for(auto it : res.second) edges.insert(it);
 
         std::cout << "hej\n";
@@ -139,18 +139,18 @@ public:
                 auto fststmts = std::make_shared<basicblock>(basicblock(vec, blk));
                 if(auto wNode = dynamic_cast<whileNode*>(node.get())) {
                     blk->nexts = std::vector<std::shared_ptr<basicblock>>{get_tree(wNode->getBody())};
-                    std::shared_ptr<basicblock> last = blk->nexts[0];
-                    while (!last->nexts.empty()) last = last->nexts[0];
+                    /*std::shared_ptr<basicblock> last = blk->nexts[0];
+                    while (!last->nexts.empty()) last = last->nexts[0];*/
                     //last->nexts =
                 } else if (auto iNode = dynamic_cast<ifElseNode*>(node.get())) {
                     blk->nexts = std::vector<std::shared_ptr<basicblock>>{get_tree(iNode->getTrueBranch()), get_tree(iNode->getFalseBranch())};
-                    std::shared_ptr<basicblock> lastTrue = blk->nexts[0];
+                    /*std::shared_ptr<basicblock> lastTrue = blk->nexts[0];
                     std::shared_ptr<basicblock> lastFalse = blk->nexts[1];
                     while (!lastTrue->nexts.empty()) lastTrue = lastTrue->nexts[0];
                     while (!lastFalse->nexts.empty()) lastFalse = lastFalse->nexts[0];
                     auto t = std::make_shared<basicblock>(basicblock());
                     lastTrue->nexts = std::vector<std::shared_ptr<basicblock>>{t};
-                    lastFalse->nexts = std::vector<std::shared_ptr<basicblock>>{t};
+                    lastFalse->nexts = std::vector<std::shared_ptr<basicblock>>{t};*/
                 }
                 return fststmts;
             } else {
@@ -159,7 +159,25 @@ public:
             if (node->getNodeType() == Concurrent) {return nullptr;}
             else {return std::make_shared<basicblock>(basicblock(vec));}
         } else {
-            return std::make_shared<basicblock>(std::vector<std::shared_ptr<statementNode>>{startTree});
+            auto blk = std::make_shared<basicblock>(basicblock(startTree));
+            if(auto wNode = dynamic_cast<whileNode*>(startTree.get())) {
+                blk->nexts = std::vector<std::shared_ptr<basicblock>>{get_tree(wNode->getBody())};
+                std::shared_ptr<basicblock> last = blk->nexts[0];
+                while (!last->nexts.empty()) last = last->nexts[0];
+                auto t = std::make_shared<basicblock>(basicblock());
+                last->nexts = std::vector<std::shared_ptr<basicblock>>{t};
+                //last->nexts =
+            } else if (auto iNode = dynamic_cast<ifElseNode*>(startTree.get())) {
+                blk->nexts = std::vector<std::shared_ptr<basicblock>>{get_tree(iNode->getTrueBranch()), get_tree(iNode->getFalseBranch())};
+                std::shared_ptr<basicblock> lastTrue = blk->nexts[0];
+                std::shared_ptr<basicblock> lastFalse = blk->nexts[1];
+                while (!lastTrue->nexts.empty()) lastTrue = lastTrue->nexts[0];
+                while (!lastFalse->nexts.empty()) lastFalse = lastFalse->nexts[0];
+                auto t = std::make_shared<basicblock>(basicblock());
+                lastTrue->nexts = std::vector<std::shared_ptr<basicblock>>{t};
+                lastFalse->nexts = std::vector<std::shared_ptr<basicblock>>{t};
+            }
+            return blk;
         }
     }
 
