@@ -13,7 +13,7 @@ class expressionNode : public node {
 
 public:
     void setNext(std::shared_ptr<expressionNode> n) {_next = std::move(n);}
-    std::shared_ptr<expressionNode> getNext() {return _next;}
+    std::shared_ptr<expressionNode> getNext() const {return _next;}
     std::shared_ptr<expressionNode> getLast() {
         if(!_next) return nullptr;
         auto next = _next;

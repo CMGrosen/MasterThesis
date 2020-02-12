@@ -11,15 +11,18 @@
 
 class arrayFieldAssignNode : public statementNode {
 public:
-    arrayFieldAssignNode (Type t, std::shared_ptr<expressionNode> arrField, std::shared_ptr<expressionNode> n) : field{std::move(arrField)}, expr{std::move(n)} {
+    arrayFieldAssignNode (Type t, std::shared_ptr<arrayAccessNode> arrField, std::shared_ptr<expressionNode> n) : field{std::move(arrField)}, expr{std::move(n)} {
         setType(t);
         setNodeType(AssignArrField);
+        name = field->getName();
     };
 
-    expressionNode* getField() const {return field.get();}
+    arrayAccessNode* getField() const {return field.get();}
     expressionNode* getExpr() const {return expr.get();}
+    std::string getName() const {return name;}
 private:
-    std::shared_ptr<expressionNode> field;
+    std::string name;
+    std::shared_ptr<arrayAccessNode> field;
     std::shared_ptr<expressionNode> expr;
 };
 

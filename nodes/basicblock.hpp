@@ -5,6 +5,10 @@
 #ifndef ANTLR_CPP_TUTORIAL_BASICBLOCK_HPP
 #define ANTLR_CPP_TUTORIAL_BASICBLOCK_HPP
 
+#include <nodes/statements/arrayFieldAssignNode.hpp>
+#include <nodes/statements/writeNode.hpp>
+#include <nodes/statements/eventNode.hpp>
+
 struct basicblock : public statementNode {
     basicblock() : statements{}, nexts{} {setNodeType(BasicBlock);};
     basicblock(std::shared_ptr<statementNode> stmt) :
@@ -38,7 +42,109 @@ struct basicblock : public statementNode {
             }
         }
     }
+
+    void updateUsedVariables() {
+        for (auto stmt : statements) {
+            switch (stmt->getNodeType()) {
+                case Assign: {
+                    auto assStmt = dynamic_cast<assignNode*>(stmt.get());
+                    variables.insert(variableNode(okType, assStmt->getName()));
+                    auto expr = assStmt->getExpr();
+                    auto res = get_variables_from_expression(expr);
+                    for(auto var : res) {
+                        variables.insert(var);
+                    }
+                    break;
+                }
+                case AssignArrField: {
+                    auto assArrStmt = dynamic_cast<arrayFieldAssignNode*>(stmt.get());
+                    variables.insert(variableNode(okType, assArrStmt->getName()));
+                    auto res = get_variables_from_expression(assArrStmt->getField()->getAccessor());
+                    for(auto var : res) {
+                        variables.insert(var);
+                    }
+
+                    res = get_variables_from_expression(assArrStmt->getExpr());
+                    for(auto var : res) {
+                        variables.insert(var);
+                    }
+                    break;
+                }
+                case While: {
+                    auto whileStmt = dynamic_cast<whileNode*>(stmt.get());
+                    auto res = get_variables_from_expression(whileStmt->getCondition());
+                    for(auto var : res) {
+                        variables.insert(var);
+                    }
+                    break;
+                }
+                case If: {
+                    auto ifStmt = dynamic_cast<ifElseNode*>(stmt.get());
+                    auto res = get_variables_from_expression(ifStmt->getCondition());
+                    for(auto var : res) {
+                        variables.insert(var);
+                    }
+                    break;
+                }
+                case Write: {
+                    auto writeStmt = dynamic_cast<writeNode*>(stmt.get());
+                    auto res = get_variables_from_expression(writeStmt->getExpr());
+                    for(auto var : res) {
+                        variables.insert(var);
+                    }
+                    break;
+                }
+                case Event: {
+                    auto eventStmt = dynamic_cast<eventNode*>(stmt.get());
+                    auto res = get_variables_from_expression(eventStmt->getCondition());
+                    for(auto var : res) {
+                        variables.insert(var);
+                    }
+                    break;
+                }
+                default: {
+
+                }
+            }
+        }
+    }
+
+    std::set<variableNode> variables;
+
     std::pair<std::shared_ptr<basicblock>, int> concurrentBlock = std::pair<std::shared_ptr<basicblock>, int>{nullptr, 0};
+
+private:
+    static std::vector<variableNode> get_variables_from_expression(const expressionNode *expr) {
+        std::vector<variableNode> vars{};
+        while (expr) {
+            switch (expr->getNodeType()) {
+                case ArrayAccess: {
+                    auto arrAcc = dynamic_cast<const arrayAccessNode*>(expr);
+                    vars.push_back(variableNode(okType, arrAcc->getName()));
+                    auto res = get_variables_from_expression(arrAcc->getAccessor());
+                    for (auto var : res) vars.emplace_back(var);
+                    break;
+                }
+                case ArrayLiteral: {
+                    auto arrLit = dynamic_cast<const arrayLiteralNode*>(expr);
+                    for (auto xp : arrLit->getArrLit()) {
+                        auto res = get_variables_from_expression(xp.get());
+                        for (auto var : res) vars.emplace_back(var);
+                    }
+                    break;
+                }
+                case Variable: {
+                    vars.push_back(*dynamic_cast<const variableNode*>(expr));
+                    break;
+                }
+                default: {
+                    break;
+                }
+            }
+            if (!expr->getNext()) return vars;
+            else expr = expr->getNext().get();
+        }
+    }
 };
 
 

@@ -83,17 +83,18 @@ public:
     virtual antlrcpp::Any visitAssign(SmallParser::AssignContext *ctx) override {
         Type t;
         if (ctx->arrayAccess()) {
-            std::shared_ptr<arrayLiteralNode> node = visitArrayLiteral(ctx->arrayLiteral());
-            std::shared_ptr<expressionNode> arrAcc = visitArrayAccess(ctx->arrayAccess());
+            std::shared_ptr<expressionNode> node = visitExpr(ctx->expr());
+            std::shared_ptr<expressionNode> tmp = visitArrayAccess(ctx->arrayAccess());
+            std::shared_ptr<arrayAccessNode> arrAcc = std::make_shared<arrayAccessNode>(*dynamic_cast<arrayAccessNode*>(tmp.get()));
             if (node->getType() == arrayIntType || node->getType() == arrayBoolType) {
                 t = errorType;
                 std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
                 << "] Cannot assign an array to a field of an array\n";
-            } else if (arrAcc->getType() != intType) {
+            } else if (arrAcc->getType() == errorType) {
                 t = errorType;
                 if (arrAcc->getType() != errorType) {
                     std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
-                    << "] Type mismatch in assignment. Expected field accessor to be of type " << info[intType] << " got " << info[arrAcc->getType()] << "\n";
+                    << "] Type mismatch in assignment. Expected field accessor to be of type " << info[intType] << "\n";
                 }
             } else if (node->getType() == errorType) {
                 t = errorType;
@@ -654,12 +655,12 @@ public:
         Type t = n[0]->getType();
         if(n.size() == 1) {
             std::shared_ptr<expressionNode> access = std::make_shared<literalNode>(t, std::to_string(accessor));
-            std::shared_ptr<expressionNode> arrAcc = std::make_shared<arrayAccessNode>(arrayAccessNode(t,access,name));
+            std::shared_ptr<arrayAccessNode> arrAcc = std::make_shared<arrayAccessNode>(arrayAccessNode(t,access,name));
             std::shared_ptr<statementNode> arrFieldAss = std::make_shared<arrayFieldAssignNode>(arrayFieldAssignNode(okType,arrAcc,n[0]));
             return arrFieldAss;
         } else {
             std::shared_ptr<expressionNode> access = std::make_shared<literalNode>(t,std::to_string(accessor));
-            std::shared_ptr<expressionNode> arrAcc = std::make_shared<arrayAccessNode>(arrayAccessNode(t,access,name));
+            std::shared_ptr<arrayAccessNode> arrAcc = std::make_shared<arrayAccessNode>(arrayAccessNode(t,access,name));
             std::shared_ptr<statementNode> arrFieldAss = std::make_shared<arrayFieldAssignNode>(arrayFieldAssignNode(okType,arrAcc,n[0]));
             std::vector<std::shared_ptr<expressionNode>> ne;
             for (auto i = 1; i < n.size(); i++) {

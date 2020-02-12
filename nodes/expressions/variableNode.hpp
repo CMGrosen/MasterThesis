@@ -13,6 +13,10 @@ public:
         name = std::move(n);
         setNodeType(Variable);
     };
+
+    bool operator<(const variableNode& s) const {
+        return name < s.name;
+    }
     std::string name;
 };
 #endif //ANTLR_CPP_TUTORIAL_NAMENODE_HPP

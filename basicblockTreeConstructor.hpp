@@ -102,6 +102,7 @@ public:
         for (auto blk : blocksToAdd) res.first.insert(blk);
         for (auto ed : edgesToAdd) edges.insert(ed);
 
+        for (const auto blk : res.first) blk->updateUsedVariables();
         std::cout << "hej\n";
 
         return CCFG(std::move(res.first), std::move(edges), startNode, exit);
