@@ -105,6 +105,7 @@ public:
         for (const auto blk : res.first) blk->updateUsedVariables();
         std::cout << "hej\n";
 
+        add_conflict_edges(&res.first, &edges);
         return CCFG(std::move(res.first), std::move(edges), startNode, exit);
     }
 
@@ -262,6 +263,46 @@ private:
         }
     }
 
+    void add_conflict_edges(std::set<std::shared_ptr<basicblock>> *allBlocks, std::unordered_set<edge> *allEdges) {
+        for (auto blk : *allBlocks) {
+            for (auto cmp : *allBlocks) {
+                if (concurrent(blk, cmp)) {
+                    auto vars = blk->variables;
+                    for (const auto var : vars) {
+                        if ((cmp->variables.find(var)) != cmp->variables.end()) {
+                            //blocks are concurrent
+                            // and have a variable in common,
+                            // thus there's a conflict
+                            allEdges->insert(edge(conflict, blk, cmp));
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
 
+    bool concurrent(std::shared_ptr<basicblock> a, std::shared_ptr<basicblock> b) {
+        if (a == b) return false; //same nodes aren't concurrent
+        if (a->concurrentBlock.second == b->concurrentBlock.second) { //If they're in the same thread, they're not concurrent
+            return false;
+        }
+        std::vector<std::shared_ptr<basicblock>> concurrentNodesForA;
+        std::shared_ptr<basicblock> tmp = a->concurrentBlock.first;
+        while (tmp) {
+            concurrentNodesForA.push_back(tmp);
+            tmp = a->concurrentBlock.first->concurrentBlock.first;
+        }
+        tmp = b->concurrentBlock.first;
+        while (tmp) {
+            for (const auto n : concurrentNodesForA) {
+                if (tmp == n) { // common fork ancestor between nodes, making them concurrent
+                    return true;
+                }
+            }
+            tmp = b->concurrentBlock.first->concurrentBlock.first;
+        }
+        return false; //if we get here, no conditions were met, thus not concurrent
+    }
 };
 #endif //ANTLR_CPP_TUTORIAL_BASICBLOCKTREECONSTRUCTOR_HPP
