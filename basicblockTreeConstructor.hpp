@@ -76,6 +76,9 @@ public:
         std::unordered_set<edge> edges{!res.second.empty() ? res.second[0] : edge(startNode, std::make_shared<basicblock>(basicblock()))};
         for(auto it : res.second) edges.insert(it);
 
+        for(const auto &it : res.first)
+            if (!it->statements.empty() && it->statements[0]->getNodeType() == Concurrent)
+                it->setConcurrentBlock(it);
         std::cout << "hej\n";
         return CCFG(std::move(res.first), std::move(edges), startNode, exit);
     }
@@ -93,7 +96,7 @@ public:
             }
 
             concurrentNode node = concurrentNode(okType, vec);
-            basicblock res = basicblock(std::vector<std::shared_ptr<statementNode>>{std::make_shared<concurrentNode>(node)});
+            basicblock res = basicblock(std::vector<std::shared_ptr<statementNode>>{std::make_shared<concurrentNode>(node)}, vec);
             return std::make_shared<basicblock>(res);
         } else if (startTree->getNodeType() == Sequential) {
             auto node = startTree;
