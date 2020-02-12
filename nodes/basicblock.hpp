@@ -26,13 +26,19 @@ struct basicblock : public statementNode {
     std::vector<std::shared_ptr<statementNode>> statements;
     std::vector<std::shared_ptr<basicblock>> nexts;
 
-    void setConcurrentBlock(const std::shared_ptr<basicblock> &blk) {
-        concurrentBlock = blk;
-        for (const auto &nxt : nexts) {
-            nxt->setConcurrentBlock(blk);
+    void setConcurrentBlock(const std::shared_ptr<basicblock> &blk, int threadNum) {
+        concurrentBlock = std::pair<std::shared_ptr<basicblock>, int>{blk, threadNum};
+        if (!blk->statements.empty() && blk->statements[0]->getNodeType() == Concurrent) {
+            for (int i = 0; i < nexts.size(); ++i) {
+                nexts[i]->setConcurrentBlock(blk, threadNum+i);
+            }
+        } else {
+            for (const auto &nxt : nexts) {
+                nxt->setConcurrentBlock(blk, threadNum);
+            }
         }
     }
-    std::shared_ptr<basicblock> concurrentBlock = nullptr;
+    std::pair<std::shared_ptr<basicblock>, int> concurrentBlock = std::pair<std::shared_ptr<basicblock>, int>{nullptr, 0};
 };
 
 

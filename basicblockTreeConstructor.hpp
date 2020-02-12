@@ -76,15 +76,15 @@ public:
         std::unordered_set<edge> edges{!res.second.empty() ? res.second[0] : edge(startNode, std::make_shared<basicblock>(basicblock()))};
         for(auto it : res.second) edges.insert(it);
 
-        for(const auto &it : res.first)
-            if (!it->statements.empty() && it->statements[0]->getNodeType() == Concurrent)
-                it->setConcurrentBlock(it);
+        for(const auto &it : res.first) //add threadnum to blocks. Don't want to add to children already visited
+            if (!it->statements.empty() && it->statements[0]->getNodeType() == Concurrent && !it->concurrentBlock.first)
+                it->setConcurrentBlock(it, 0);
 
         std::vector<std::shared_ptr<basicblock>> blocksToAdd;
         std::vector<edge> edgesToAdd;
 
         for(const auto &it : res.first) {
-            if (it->concurrentBlock && it->statements.size() > 1) {
+            if (it->concurrentBlock.first && it->statements.size() > 1) {
                 std::list<std::shared_ptr<statementNode>> stmts;
                 for(auto stmt : it->statements) {
                     stmts.push_back(stmt);
@@ -103,6 +103,7 @@ public:
         for (auto ed : edgesToAdd) edges.insert(ed);
 
         std::cout << "hej\n";
+
         return CCFG(std::move(res.first), std::move(edges), startNode, exit);
     }
 
@@ -240,13 +241,13 @@ private:
         }
     }
 
-    std::shared_ptr<basicblock> split_up_concurrent_basicblocks(std::vector<std::shared_ptr<basicblock>> *blocksToAdd, std::vector<edge> *edgesToAdd, std::vector<std::shared_ptr<basicblock>> it, std::list<std::shared_ptr<statementNode>> stmts, std::shared_ptr<basicblock> conBlock) {
+    std::shared_ptr<basicblock> split_up_concurrent_basicblocks(std::vector<std::shared_ptr<basicblock>> *blocksToAdd, std::vector<edge> *edgesToAdd, std::vector<std::shared_ptr<basicblock>> it, std::list<std::shared_ptr<statementNode>> stmts, std::pair<std::shared_ptr<basicblock>, int> conBlock) {
         if (stmts.size() == 1) {
             std::shared_ptr<basicblock> blk = std::make_shared<basicblock>(basicblock(stmts.front()));
             blk->nexts = it;
             for (auto ed : it) edgesToAdd->push_back(edge(blk, ed));
             blocksToAdd->push_back(blk);
-            blk->setConcurrentBlock(conBlock);
+            blk->setConcurrentBlock(conBlock.first, conBlock.second);
             return blk;
         } else {
             auto firstStmt = stmts.front();
@@ -255,7 +256,7 @@ private:
             std::shared_ptr<basicblock> blk = std::make_shared<basicblock>(basicblock(firstStmt, nxt));
             edgesToAdd->push_back(edge(blk, nxt));
             blocksToAdd->push_back(blk);
-            blk->setConcurrentBlock(conBlock);
+            blk->setConcurrentBlock(conBlock.first, conBlock.second);
             return blk;
         }
     }
