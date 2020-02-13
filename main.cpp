@@ -61,7 +61,7 @@ int main(int argc, const char* argv[]) {
 
 //    symbolicExecutionEngine symEngine;
 //    symEngine.execute(treeAndSymbolTable);
-    std::cout << "\n" << ccfg.startNode->draw_picture() << "\n";
+    std::cout << "\n" << ccfg.startNode->draw_picture(&ccfg.edges) << "\n";
     std::cout << "finished\n";
 
     return 0;

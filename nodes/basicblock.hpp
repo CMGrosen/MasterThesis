@@ -11,6 +11,51 @@
 #include <string>
 #include <algorithm>
 
+struct basicblock;
+enum edgeType {flow, conflict};
+
+struct edge {
+    edgeType type;
+    std::vector<std::shared_ptr<basicblock>> neighbours;
+    bool operator<(const edge& s) const { return neighbours[0] < s.neighbours[1];
+        if (neighbours[0] == s.neighbours[1] || neighbours[1] == s.neighbours[0])
+            return neighbours[0] < s.neighbours[1] && neighbours[1] < s.neighbours[0] && type < s.type;
+        else
+            return neighbours[0] < s.neighbours[0] && neighbours[1] < s.neighbours[1] && type < s.type;
+    }
+    bool operator==(const edge& s) const {
+        if (neighbours[0] == s.neighbours[1])
+            return neighbours[0] == s.neighbours[1] && neighbours[1] == s.neighbours[0] && type == s.type;
+        else
+            return neighbours[0] == s.neighbours[0] && neighbours[1] == s.neighbours[1] && type == s.type;
+    }
+    edge() : type{flow} {neighbours.reserve(2);}
+    edge(std::shared_ptr<basicblock> lB, std::shared_ptr<basicblock> rB) :
+            type{flow}, neighbours{std::vector<std::shared_ptr<basicblock>>{std::move(lB), std::move(rB)}} {}
+    edge(edgeType typeOfEdge, std::shared_ptr<basicblock> lB, std::shared_ptr<basicblock> rB) :
+            type{typeOfEdge}, neighbours{std::vector<std::shared_ptr<basicblock>>{std::move(lB), std::move(rB)}} {}
+};
+
+template <class T>
+inline void hash_combine(std::size_t& seed, T const& v)
+{
+    seed ^= std::hash<T>()(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+}
+
+
+namespace std {
+
+    template<> struct hash<edge> {
+        size_t operator()(const edge& s) const {
+            size_t seed = 0;
+            if (s.neighbours[0] < s.neighbours[1]) hash_combine(seed, s.neighbours[0]);
+            else hash_combine(seed, s.neighbours[1]);
+            hash_combine(seed, s.type);
+            return seed;
+        }
+    };
+}
+
 struct basicblock : public statementNode {
     basicblock() : statements{}, nexts{} {setNodeType(BasicBlock);};
     basicblock(std::shared_ptr<statementNode> stmt) :
@@ -116,20 +161,20 @@ struct basicblock : public statementNode {
         }
     }
 
-    std::string draw_picture() {
+    std::string draw_picture(std::unordered_set<edge> *edges) {
         using std::string;
-
         std::string res = string("\\usetikzlibrary{automata,positioning}\n") + string("\\begin{tikzpicture}[shorten >=1pt, node distance=2cm, on grid, auto]\n");
 
         std::pair<std::string, std::int32_t> statementsStringAndMaxWidth = statements_as_string();
-        res += "\\node[state] (" + name + ") [text width = " + std::to_string(statementsStringAndMaxWidth.second * 6 + 12) + "pt, rectangle] { \\texttt{" + statementsStringAndMaxWidth.first + "}};\n";
+        res += "\\node[state] (" + get_address() + ") [text width = " + std::to_string(statementsStringAndMaxWidth.second * 6 + 12) + "pt, rectangle] { \\texttt{" + statementsStringAndMaxWidth.first + "}};\n";
 
         res += draw_children(this);
-
-        //drawEdges
-
+        res += "\n";
+        for (auto i = edges->begin(); i != edges->end(); ++i) {
+            res += "\\path[->] ("+ i->neighbours[0]->get_address() +") edge (" + i->neighbours[1]->get_address() + ");\n";
+        }
         //res += "\n\n" + "\\path[->]";
-        res += "\n\\end{tikzpicture}";
+        res += "\\end{tikzpicture}";
         return res;
     }
 
@@ -137,29 +182,29 @@ struct basicblock : public statementNode {
         using std::string;
 
         std::pair<std::string, std::int32_t> statementsStringAndMaxWidth = statements_as_string();
+        int len = statementsStringAndMaxWidth.second * 6 + 12;
 
         string position;
         if (total > 2 && current != 0) {
-            position = "right=of " + parent->nexts[current-1]->name;
+            position = "right=of " + parent->nexts[current-1]->get_address();
         } else if (total > 2) {
-            position = "below left=" + std::to_string(distanceToNeighbour) + "pt of " + parent->name;
+            position = "below left=" + std::to_string(distanceToNeighbour+len) + "pt of " + parent->get_address();
         } else if (total == 2) {
             if (current == 0) {
-                position = "below left=of " + parent->name;
+                position = "below left=of " + parent->get_address();
             } else {
-                position = "right=" + std::to_string(distanceToNeighbour) + "pt of " + parent->nexts[0]->name;
+                position = "right=" + std::to_string(distanceToNeighbour+len) + "pt of " + parent->nexts[0]->get_address();
             }
         } else if (total == 1) {
             if (current == 0) {
-                position = "below left=of " + parent->name;
+                position = "below left=of " + parent->get_address();
             } else {
-                position = "right=" + std::to_string(distanceToNeighbour) + "pt of " + parent->nexts[0]->name;
+                position = "right=" + std::to_string(distanceToNeighbour+len) + "pt of " + parent->nexts[0]->get_address();
             }
         } else {
-            position = "below=of " + parent->name;
+            position = "below=of " + parent->get_address();
         }
-        int len = statementsStringAndMaxWidth.second * 6 + 12;
-        string res = "\\node[state] (" + name + ") [text width = " + std::to_string(len) + "pt, rectangle, " + position + "]";
+        string res = "\\node[state] (" + get_address() + ") [text width = " + std::to_string(len) + "pt, rectangle, " + position + "]";
         res += " {\\texttt{"  + statementsStringAndMaxWidth.first +  "}};\n";
         res += draw_children(this);
         return std::pair<std::string, int>{res, len};
@@ -186,10 +231,12 @@ struct basicblock : public statementNode {
 
 private:
     std::string get_address() {
-        const void * address = static_cast<const void*>(this);
-        std::stringstream ss;
-        ss << address;
-        return ss.str();
+        if (name.empty()) {
+            const void *address = static_cast<const void *>(this);
+            std::stringstream ss;
+            ss << address;
+            return ss.str();
+        } else return name;
     }
 
     std::pair<std::string, std::int32_t> statements_as_string() {
@@ -205,7 +252,7 @@ private:
         return std::pair<std::string, std::int32_t>{res, length};
     }
 
-    std::string name = get_address();
+    std::string name = std::string{};
 
     static std::vector<variableNode> get_variables_from_expression(const expressionNode *expr) {
         std::vector<variableNode> vars{};
@@ -239,6 +286,5 @@ private:
         }
     }
 };
-
 
 #endif //ANTLR_CPP_TUTORIAL_BASICBLOCK_HPP
