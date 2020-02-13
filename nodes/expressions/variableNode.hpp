@@ -22,7 +22,7 @@ public:
     }
 
     std::string to_string() override {
-        std::string res = name + " ";
+        std::string res = nameToTikzName(name) + " ";
         if (getNext()) res += getNext()->to_string();
         return res;
     }

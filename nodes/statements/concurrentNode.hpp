@@ -21,7 +21,7 @@ public:
     }
     std::vector<std::shared_ptr<statementNode>> threads;
     std::string to_string() override {
-        return "fork with " + std::to_string(threads.size()) + "threads";
+        return "fork with " + std::to_string(threads.size()) + " threads";
     }
 };
 

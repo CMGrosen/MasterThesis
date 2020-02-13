@@ -22,7 +22,7 @@ public:
     std::string getName() const {return name;}
 
     std::string to_string() override {
-        return name + "[" + field->to_string() + "] = " + expr->to_string();
+        return nameToTikzName(name) + "[" + field->to_string() + "] = " + expr->to_string();
     }
 
 private:

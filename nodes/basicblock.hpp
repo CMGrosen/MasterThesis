@@ -9,6 +9,7 @@
 #include <nodes/statements/writeNode.hpp>
 #include <nodes/statements/eventNode.hpp>
 #include <string>
+#include <algorithm>
 
 struct basicblock : public statementNode {
     basicblock() : statements{}, nexts{} {setNodeType(BasicBlock);};
@@ -121,9 +122,9 @@ struct basicblock : public statementNode {
         std::string res = string("\\usetikzlibrary{automata,positioning}\n") + string("\\begin{tikzpicture}[shorten >=1pt, node distance=2cm, on grid, auto]\n");
 
         std::pair<std::string, std::int32_t> statementsStringAndMaxWidth = statements_as_string();
-        res += "\\node[state] (" + name + ") [text width = " + std::to_string(statementsStringAndMaxWidth.second * 5) + "pt, rectangle] { \\texttt{" + statementsStringAndMaxWidth.first + "}};";
+        res += "\\node[state] (" + name + ") [text width = " + std::to_string(statementsStringAndMaxWidth.second * 6 + 12) + "pt, rectangle] { \\texttt{" + statementsStringAndMaxWidth.first + "}};\n";
 
-        //drawChildren
+        res += draw_children(this);
 
         //drawEdges
 
@@ -132,10 +133,52 @@ struct basicblock : public statementNode {
         return res;
     }
 
-    std::string draw_blocks() {
+    std::pair<std::string, int> draw_block(basicblock *parent, int current, int total, int distanceToNeighbour) {
         using std::string;
 
+        std::pair<std::string, std::int32_t> statementsStringAndMaxWidth = statements_as_string();
+
+        string position;
+        if (total > 2 && current != 0) {
+            position = "right=of " + parent->nexts[current-1]->name;
+        } else if (total > 2) {
+            position = "below left=" + std::to_string(distanceToNeighbour) + "pt of " + parent->name;
+        } else if (total == 2) {
+            if (current == 0) {
+                position = "below left=of " + parent->name;
+            } else {
+                position = "right=" + std::to_string(distanceToNeighbour) + "pt of " + parent->nexts[0]->name;
+            }
+        } else if (total == 1) {
+            if (current == 0) {
+                position = "below left=of " + parent->name;
+            } else {
+                position = "right=" + std::to_string(distanceToNeighbour) + "pt of " + parent->nexts[0]->name;
+            }
+        } else {
+            position = "below=of " + parent->name;
+        }
+        int len = statementsStringAndMaxWidth.second * 6 + 12;
+        string res = "\\node[state] (" + name + ") [text width = " + std::to_string(len) + "pt, rectangle, " + position + "]";
+        res += " {\\texttt{"  + statementsStringAndMaxWidth.first +  "}};\n";
+        res += draw_children(this);
+        return std::pair<std::string, int>{res, len};
     }
+
+    std::string draw_children(basicblock *parent) {
+        using std::string;
+
+        string res;
+        int dist = 0;
+        for (auto i = 0; i < nexts.size(); i++) {
+            auto pair = nexts[i]->draw_block(parent, i, nexts.size()-1, dist);
+            res += pair.first;
+            dist = pair.second;
+        }
+
+        return res;
+    }
+
     std::set<variableNode> variables;
 
     std::pair<std::shared_ptr<basicblock>, int> concurrentBlock = std::pair<std::shared_ptr<basicblock>, int>{nullptr, 0};
@@ -159,13 +202,10 @@ private:
             res += tmp + "; \\\\ ";
         }
         //call children
-        return std::pair<std::string, std::int32_t>{res, length+4};
+        return std::pair<std::string, std::int32_t>{res, length};
     }
 
     std::string name = get_address();
-    std::string draw_children(basicblock *parent) {
-
-    }
 
     static std::vector<variableNode> get_variables_from_expression(const expressionNode *expr) {
         std::vector<variableNode> vars{};

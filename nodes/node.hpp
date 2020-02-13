@@ -45,6 +45,20 @@ public:
     virtual NodeType getNodeType() const {return nodetype;};
     virtual void setNodeType(NodeType t) {nodetype = t;};
 
+    static std::string nameToTikzName(std::string name) {
+        std::string newName = name;
+        int length = newName.length();
+        for (int i = 0; i < length; i++) {
+            if (newName[i] == '_') {
+                newName[i] = '\\';
+                i++;
+                newName = newName.substr(0, i) + '_' + newName.substr(i);
+                length += 1;
+            }
+        }
+        return newName;
+    }
+
 protected:
     Type type;
     NodeType nodetype;

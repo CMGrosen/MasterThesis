@@ -15,7 +15,7 @@ public:
     std::string getName() const { return name;}
 
     std::string to_string() override {
-        std::string res = name + "[" + value->to_string() + "] ";
+        std::string res = nameToTikzName(name) + "[" + value->to_string() + "] ";
         if (getNext()) {
             res += getNext()->to_string();
         }
