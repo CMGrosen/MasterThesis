@@ -35,6 +35,9 @@ public:
         }
         return nexts;
     }
+    std::string to_string() override {
+        return "";
+    }
 
 private:
     std::shared_ptr<statementNode> _body;

@@ -30,6 +30,18 @@ public:
         setNodeType(ArrayLiteral);
     };
 
+    std::string to_string() override {
+        std::string res = "[";
+        for (int i = 0; i < value.size(); ++i) {
+            res += value[i]->to_string();
+            if (i != value.size()) res += ", ";
+        }
+        if (getNext()) {
+            res += " " + getNext()->to_string();
+        }
+        return res;
+    }
+
     const std::vector<std::shared_ptr<expressionNode>> getArrLit() const {return value;};
 private:
     std::vector<std::shared_ptr<expressionNode>> value;

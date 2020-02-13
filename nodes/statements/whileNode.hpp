@@ -16,6 +16,10 @@ public:
     const expressionNode *getCondition() const {return condition.get();}
     const std::shared_ptr<statementNode> getBody() const {return body;}
 
+    std::string to_string() override {
+        return "while(" + condition->to_string() + ")";
+    }
+
 private:
     std::shared_ptr<expressionNode> condition;
     std::shared_ptr<statementNode> body;

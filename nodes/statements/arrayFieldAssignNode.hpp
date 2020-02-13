@@ -20,6 +20,11 @@ public:
     arrayAccessNode* getField() const {return field.get();}
     expressionNode* getExpr() const {return expr.get();}
     std::string getName() const {return name;}
+
+    std::string to_string() override {
+        return name + "[" + field->to_string() + "] = " + expr->to_string();
+    }
+
 private:
     std::string name;
     std::shared_ptr<arrayAccessNode> field;

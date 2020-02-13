@@ -13,6 +13,14 @@ public:
 
     expressionNode *getAccessor() const {return value.get();};
     std::string getName() const { return name;}
+
+    std::string to_string() override {
+        std::string res = name + "[" + value->to_string() + "] ";
+        if (getNext()) {
+            res += getNext()->to_string();
+        }
+        return res;
+    }
 private:
     std::shared_ptr<expressionNode> value;
     std::string name;

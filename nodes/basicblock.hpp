@@ -8,6 +8,7 @@
 #include <nodes/statements/arrayFieldAssignNode.hpp>
 #include <nodes/statements/writeNode.hpp>
 #include <nodes/statements/eventNode.hpp>
+#include <string>
 
 struct basicblock : public statementNode {
     basicblock() : statements{}, nexts{} {setNodeType(BasicBlock);};
@@ -114,11 +115,58 @@ struct basicblock : public statementNode {
         }
     }
 
+    std::string draw_picture() {
+        using std::string;
+
+        std::string res = string("\\usetikzlibrary{automata,positioning}\n") + string("\\begin{tikzpicture}[shorten >=1pt, node distance=2cm, on grid, auto]\n");
+
+        std::pair<std::string, std::int32_t> statementsStringAndMaxWidth = statements_as_string();
+        res += "\\node[state] (" + name + ") [text width = " + std::to_string(statementsStringAndMaxWidth.second * 5) + "pt, rectangle] { \\texttt{" + statementsStringAndMaxWidth.first + "}};";
+
+        //drawChildren
+
+        //drawEdges
+
+        //res += "\n\n" + "\\path[->]";
+        res += "\n\\end{tikzpicture}";
+        return res;
+    }
+
+    std::string draw_blocks() {
+        using std::string;
+
+    }
     std::set<variableNode> variables;
 
     std::pair<std::shared_ptr<basicblock>, int> concurrentBlock = std::pair<std::shared_ptr<basicblock>, int>{nullptr, 0};
 
+
 private:
+    std::string get_address() {
+        const void * address = static_cast<const void*>(this);
+        std::stringstream ss;
+        ss << address;
+        return ss.str();
+    }
+
+    std::pair<std::string, std::int32_t> statements_as_string() {
+        std::string res;
+        std::string tmp = "";
+        int32_t length = 0;
+        for (auto stmt : statements) {
+            tmp = stmt->to_string();
+            if (tmp.length() > length) length = tmp.length();
+            res += tmp + "; \\\\ ";
+        }
+        //call children
+        return std::pair<std::string, std::int32_t>{res, length+4};
+    }
+
+    std::string name = get_address();
+    std::string draw_children(basicblock *parent) {
+
+    }
+
     static std::vector<variableNode> get_variables_from_expression(const expressionNode *expr) {
         std::vector<variableNode> vars{};
         while (expr) {

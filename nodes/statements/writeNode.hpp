@@ -22,6 +22,10 @@ public:
     int16_t getPin() const {return _pin;};
     expressionNode *getExpr() const {return _e.get();};
 
+    std::string to_string() override {
+        return "write(" + std::to_string(_pin) + ", " + _e->to_string() + ")";
+    }
+
 private:
     const int16_t _pin;
     std::shared_ptr <expressionNode> _e;

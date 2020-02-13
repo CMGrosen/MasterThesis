@@ -8,6 +8,10 @@
 class skipNode : public statementNode {
 public:
     skipNode() {setNodeType(Skip); setType(okType);}
+
+    std::string to_string() override {
+        return "skip;";
+    }
 };
 
 #endif //ANTLR_CPP_TUTORIAL_SKIPNODE_HPP

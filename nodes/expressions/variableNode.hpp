@@ -20,6 +20,13 @@ public:
     bool operator==(const variableNode& s) const {
         return name < s.name;
     }
+
+    std::string to_string() override {
+        std::string res = name + " ";
+        if (getNext()) res += getNext()->to_string();
+        return res;
+    }
+
     std::string name;
 };
 #endif //ANTLR_CPP_TUTORIAL_NAMENODE_HPP

@@ -22,6 +22,11 @@ public:
         setNodeType(Literal);
     }
 
+    std::string to_string() override {
+        std::string res = value + " ";
+        if (getNext()) res += getNext()->to_string();
+        return res;
+    }
     std::string value;
 };
 #endif //ANTLR_CPP_TUTORIAL_LITERALNODE_HPP

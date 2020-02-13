@@ -8,6 +8,23 @@
 
 enum op { PLUS, MINUS, MULT, DIV, MOD, NOT, AND, OR, LE, LEQ, GE, GEQ, EQ, NEQ, NEG, NOTUSED};
 
+static std::map<op, std::string> operatorToString {
+        {PLUS, "+"},
+        {MINUS, "-"},
+        {MULT, "*"},
+        {DIV, "/"},
+        {MOD, "%"},
+        {AND, "&&"},
+        {OR, "||"},
+        {LE, "<"},
+        {LEQ, "<="},
+        {GE, ">"},
+        {GEQ, ">="},
+        {EQ, "=="},
+        {NEQ, "!="},
+        {NEG, "-"}
+};
+
 class expressionNode : public node {
     std::shared_ptr<expressionNode> _next = nullptr;
 
@@ -20,5 +37,6 @@ public:
         while(next->getNext()) next = next->getNext();
         return next;
     }
+    virtual std::string to_string() {};
 };
 #endif //ANTLR_CPP_TUTORIAL_EXPRESSIONNODE_HPP

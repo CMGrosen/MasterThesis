@@ -17,6 +17,9 @@ public:
 
     std::string getName() const {return name;}
     expressionNode* getExpr() const {return expr.get();}
+    std::string to_string() override {
+        return name + " = " + expr->to_string();
+    }
 private:
     std::string name;
     std::shared_ptr<expressionNode> expr;

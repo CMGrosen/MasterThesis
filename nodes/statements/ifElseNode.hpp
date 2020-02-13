@@ -18,6 +18,11 @@ public:
     const std::shared_ptr<statementNode> getTrueBranch() const {return trueBranch;}
     const std::shared_ptr<statementNode> getFalseBranch() const {return falseBranch;}
 
+    std::string to_string() override {
+        return "if(" + condition->to_string() + ")";
+    }
+
+
 private:
     std::shared_ptr<expressionNode> condition;
     std::shared_ptr<statementNode> trueBranch;

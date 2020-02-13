@@ -12,6 +12,10 @@ public:
     readNode(int16_t pin) : _pin{pin} {setNodeType(Read); setType(intType);}
 
     int16_t getPin() const {return _pin;};
+
+    std::string to_string() override {
+        return "read(" + std::to_string(_pin) + ")";
+    }
 private:
     int16_t _pin;
 };
