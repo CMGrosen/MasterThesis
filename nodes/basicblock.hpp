@@ -171,7 +171,7 @@ struct basicblock : public statementNode {
         res += draw_children(this);
         res += "\n";
         for (auto i = edges->begin(); i != edges->end(); ++i) {
-            res += "\\path[->] ("+ i->neighbours[0]->get_address() +") edge (" + i->neighbours[1]->get_address() + ");\n";
+            res += "\\path[" + (i->type == conflict ? string("->, red") : string("->")) + "] ("+ i->neighbours[0]->get_address() +") edge (" + i->neighbours[1]->get_address() + ");\n";
         }
         //res += "\n\n" + "\\path[->]";
         res += "\\end{tikzpicture}";
