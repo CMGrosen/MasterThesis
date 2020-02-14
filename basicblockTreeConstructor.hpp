@@ -237,16 +237,19 @@ private:
         std::shared_ptr<basicblock> tmp = a->concurrentBlock.first;
         while (tmp) {
             concurrentNodesForA.push_back(tmp);
-            tmp = a->concurrentBlock.first->concurrentBlock.first;
+            tmp = tmp->concurrentBlock.first;
         }
         tmp = b->concurrentBlock.first;
         while (tmp) {
             for (const auto n : concurrentNodesForA) {
+                if(tmp->concurrentBlock.second == n->concurrentBlock.second) {
+                    return false;
+                }
                 if (tmp == n) { // common fork ancestor between nodes, making them concurrent
                     return true;
                 }
             }
-            tmp = b->concurrentBlock.first->concurrentBlock.first;
+            tmp = tmp->concurrentBlock.first;
         }
         return false; //if we get here, no conditions were met, thus not concurrent
     }
