@@ -10,7 +10,7 @@ public:
     skipNode() {setNodeType(Skip); setType(okType);}
 
     std::string to_string() override {
-        return "skip;";
+        return "skip";
     }
 };
 

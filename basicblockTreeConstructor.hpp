@@ -26,22 +26,22 @@ public:
     basicBlockTreeConstructor() = default;
 
     CCFG get_ccfg(const std::shared_ptr<statementNode> &startTree) {
-        const std::shared_ptr<basicblock> startNode = get_tree(startTree);
-        std::shared_ptr<basicblock> current = startNode;
+        std::shared_ptr<basicblock> exitNode = std::make_shared<basicblock>(basicblock());
+        const std::shared_ptr<basicblock> startNode = get_tree(startTree, exitNode);
         //std::unordered_set<edge> edges{};
-        while(!current->nexts.empty()) {
+        /*while(!current->nexts.empty()) {
             current = current->nexts[current->nexts.size()-1];
-        }
-        std::shared_ptr<basicblock> exit = current;
+        }*/
+        //std::shared_ptr<basicblock> exit = current;
 
-        auto res = get_all_blocks_and_edges(startNode, exit);
+        auto res = get_all_blocks_and_edges(startNode, exitNode, nullptr);
 
         std::unordered_set<edge> edges{!res.second.empty() ? res.second[0] : edge(startNode, std::make_shared<basicblock>(basicblock()))};
         for(auto it : res.second) edges.insert(it);
 
         for(const auto &it : res.first) //add threadnum to blocks. Don't want to add to children already visited
             if (!it->statements.empty() && it->statements[0]->getNodeType() == Concurrent && !it->concurrentBlock.first)
-                it->setConcurrentBlock(it, 0);
+                it->setConcurrentBlock(it, 0, nullptr);
 
         std::vector<std::shared_ptr<basicblock>> blocksToAdd;
         std::vector<edge> edgesToAdd;
@@ -66,121 +66,96 @@ public:
         for (auto ed : edgesToAdd) edges.insert(ed);
 
         for (const auto blk : res.first) blk->updateUsedVariables();
-        std::cout << "hej\n";
+        //std::cout << "hej\n";
 
         add_conflict_edges(&res.first, &edges);
-        return CCFG(std::move(res.first), std::move(edges), startNode, exit);
+        return CCFG(std::move(res.first), std::move(edges), startNode, exitNode);
     }
 
-    std::shared_ptr<basicblock> get_tree(const std::shared_ptr<statementNode> startTree) {
-        if (startTree->getNodeType() == Concurrent) {
-            auto n = dynamic_cast<concurrentNode*>(startTree.get());
-            auto length = n->threads.size();
-            std::vector<std::shared_ptr<basicblock>> vec = std::vector<std::shared_ptr<basicblock>>();
-            vec.reserve(length);
-
-            for(auto i = 0; i < length; ++i) {
-                auto res = get_tree(n->threads[i]);
-                vec.push_back(res);
+    std::shared_ptr<basicblock> get_tree(const std::shared_ptr<statementNode> startTree, const std::shared_ptr<basicblock> nxt) {
+        std::shared_ptr<basicblock> block;
+        switch (startTree->getNodeType()) {
+            case Assign:
+            case AssignArrField:
+            case Write:
+            case Event:
+            case Skip:
+                block = std::make_shared<basicblock>(basicblock(startTree, nxt));
+                break;
+            case Concurrent: {
+                auto conNode = dynamic_cast<concurrentNode *>(startTree.get());
+                std::vector<std::shared_ptr<basicblock>> threads;
+                for (const auto &t : conNode->threads) {
+                    threads.push_back(get_tree(t, nxt));
+                }
+                auto concNode = std::make_shared<concurrentNode>(concurrentNode(okType, threads));
+                block = std::make_shared<basicblock>(std::vector<std::shared_ptr<statementNode>>{concNode}, threads);
+                break;
             }
-
-            concurrentNode node = concurrentNode(okType, vec);
-            basicblock res = basicblock(std::vector<std::shared_ptr<statementNode>>{std::make_shared<concurrentNode>(node)}, vec);
-            return std::make_shared<basicblock>(res);
-        } else if (startTree->getNodeType() == Sequential) {
-            auto node = startTree;
-            /*auto current = n->getBody();
-            auto next = n->getNext();*/
-            auto vec = std::vector<std::shared_ptr<statementNode>>{};
-
-            while(node->getNodeType() == Sequential) {
-                auto n = dynamic_cast<sequentialNode*>(node.get());
-                auto body = n->getBody();
-                auto next = n->getNext();
-                NodeType nType = body->getNodeType();
-                if (nType == Assign || nType == AssignArrField || nType == Write || nType == Event) {
-                    vec.push_back(body);
-                } else if (nType == While || nType == If) {
-                    auto blk = std::make_shared<basicblock>(basicblock(body));
-                    blocks.push_back(std::make_shared<basicblock>(basicblock(vec, blk)));
-                    blocks.push_back(blk);
-                    if(auto wNode = dynamic_cast<whileNode*>(body.get())) {
-                        blk->nexts = std::vector<std::shared_ptr<basicblock>>{get_tree(wNode->getBody()), get_tree(next)};
-                        std::shared_ptr<basicblock> last = blk->nexts[0];
-                        while (!last->nexts.empty()) last = last->nexts[0];
-                        //last->nexts =
-                    } else if (auto iNode = dynamic_cast<ifElseNode*>(body.get())) {
-                        blk->nexts = std::vector<std::shared_ptr<basicblock>>{get_tree(iNode->getTrueBranch()), get_tree(iNode->getFalseBranch())};
-                        std::shared_ptr<basicblock> lastTrue = blk->nexts[0];
-                        std::shared_ptr<basicblock> lastFalse = blk->nexts[1];
-                        while (!lastTrue->nexts.empty()) lastTrue = lastTrue->nexts[0];
-                        while (!lastFalse->nexts.empty()) lastFalse = lastFalse->nexts[0];
-                        auto res = get_tree(next);
-                        lastTrue->nexts = std::vector<std::shared_ptr<basicblock>>{res};
-                        lastFalse->nexts = std::vector<std::shared_ptr<basicblock>>{res};
+            case Sequential: {
+                auto seqNode = dynamic_cast<sequentialNode*>(startTree.get());
+                auto rest = get_tree(seqNode->getNext(), nxt);
+                block = get_tree(seqNode->getBody(), rest);
+                block->nexts = std::vector<std::shared_ptr<basicblock>>{rest};
+                NodeType nType = seqNode->getBody()->getNodeType();
+                if (nType == Assign || nType == AssignArrField || nType == Write || nType == Event || nType == Skip) {
+                    std::vector<std::shared_ptr<statementNode>> remainingStmts;
+                    int stmtsRemoved = 0;
+                    for (const auto stmt : rest->statements) {
+                        nType = stmt->getNodeType();
+                        if (nType == Assign || nType == AssignArrField || nType == Write || nType == Event ||
+                            nType == Skip) {
+                            block->statements.push_back(stmt);
+                            stmtsRemoved++;
+                        } else {
+                            break;
+                        }
                     }
-                    vec.clear();
+                    if (stmtsRemoved == rest->statements.size()) {
+                        block->nexts = rest->nexts;
+                    } else if (stmtsRemoved > 0) {
+                        for (auto i = stmtsRemoved; i < rest->statements.size(); ++i)
+                            remainingStmts.push_back(rest->statements[i]);
+                        rest->statements = remainingStmts;
+                    }
                 }
-                node = next;
+                break;
             }
-            NodeType nType = node->getNodeType();
-            if (nType == Assign || nType == AssignArrField || nType == Write || nType == Event) {
-                vec.push_back(node);
-            } else if (nType == While || nType == If) {
-                auto blk = std::make_shared<basicblock>(basicblock(node));
-                auto fststmts = std::make_shared<basicblock>(basicblock(vec, blk));
-                if(auto wNode = dynamic_cast<whileNode*>(node.get())) {
-                    blk->nexts = std::vector<std::shared_ptr<basicblock>>{get_tree(wNode->getBody())};
-                    /*std::shared_ptr<basicblock> last = blk->nexts[0];
-                    while (!last->nexts.empty()) last = last->nexts[0];*/
-                    //last->nexts =
-                } else if (auto iNode = dynamic_cast<ifElseNode*>(node.get())) {
-                    blk->nexts = std::vector<std::shared_ptr<basicblock>>{get_tree(iNode->getTrueBranch()), get_tree(iNode->getFalseBranch())};
-                    /*std::shared_ptr<basicblock> lastTrue = blk->nexts[0];
-                    std::shared_ptr<basicblock> lastFalse = blk->nexts[1];
-                    while (!lastTrue->nexts.empty()) lastTrue = lastTrue->nexts[0];
-                    while (!lastFalse->nexts.empty()) lastFalse = lastFalse->nexts[0];
-                    auto t = std::make_shared<basicblock>(basicblock());
-                    lastTrue->nexts = std::vector<std::shared_ptr<basicblock>>{t};
-                    lastFalse->nexts = std::vector<std::shared_ptr<basicblock>>{t};*/
-                }
-                return fststmts;
-            } else {
-                return std::make_shared<basicblock>(basicblock(vec,get_tree(node)));
+            case While: {
+                auto wNode = dynamic_cast<whileNode*>(startTree.get());
+                block = std::make_shared<basicblock>(basicblock(std::vector<std::shared_ptr<statementNode>>{startTree}, std::vector<std::shared_ptr<basicblock>>{nullptr, nxt}));
+                block->nexts[0] = get_tree(wNode->getBody(), block);
+                break;
             }
-            if (node->getNodeType() == Concurrent) {return nullptr;}
-            else {return std::make_shared<basicblock>(basicblock(vec));}
-        } else {
-            auto blk = std::make_shared<basicblock>(basicblock(startTree));
-            if(auto wNode = dynamic_cast<whileNode*>(startTree.get())) {
-                blk->nexts = std::vector<std::shared_ptr<basicblock>>{get_tree(wNode->getBody())};
-                std::shared_ptr<basicblock> last = blk->nexts[0];
-                while (!last->nexts.empty()) last = last->nexts[0];
-                auto t = std::make_shared<basicblock>(basicblock());
-                last->nexts = std::vector<std::shared_ptr<basicblock>>{t};
-                //last->nexts =
-            } else if (auto iNode = dynamic_cast<ifElseNode*>(startTree.get())) {
-                blk->nexts = std::vector<std::shared_ptr<basicblock>>{get_tree(iNode->getTrueBranch()), get_tree(iNode->getFalseBranch())};
-                std::shared_ptr<basicblock> lastTrue = blk->nexts[0];
-                std::shared_ptr<basicblock> lastFalse = blk->nexts[1];
-                while (!lastTrue->nexts.empty()) lastTrue = lastTrue->nexts[0];
-                while (!lastFalse->nexts.empty()) lastFalse = lastFalse->nexts[0];
-                auto t = std::make_shared<basicblock>(basicblock());
-                lastTrue->nexts = std::vector<std::shared_ptr<basicblock>>{t};
-                lastFalse->nexts = std::vector<std::shared_ptr<basicblock>>{t};
+            case If: {
+                auto ifNode = dynamic_cast<ifElseNode*>(startTree.get());
+                auto trueBranch = get_tree(ifNode->getTrueBranch(), nxt);
+                auto falseBranch = get_tree(ifNode->getFalseBranch(), nxt);
+                auto nxts = std::vector<std::shared_ptr<basicblock>>{trueBranch, falseBranch};
+                block = std::make_shared<basicblock>(basicblock(std::vector<std::shared_ptr<statementNode>>{startTree}, nxts));
+                break;
             }
-            return blk;
+            default:
+                break;
         }
+        return block;
     }
 
-    std::vector<std::shared_ptr<basicblock>> blocks = std::vector<std::shared_ptr<basicblock>>{};
+    //std::vector<std::shared_ptr<basicblock>> blocks = std::vector<std::shared_ptr<basicblock>>{};
 
 private:
     uint iterator = -1;
 
-    std::pair<std::set<std::shared_ptr<basicblock>>, std::vector<edge>> get_all_blocks_and_edges(const std::shared_ptr<basicblock> &startTree, const std::shared_ptr<basicblock> &exitNode) {
+    std::shared_ptr<basicblock> handle_while(std::shared_ptr<statementNode> tree, std::shared_ptr<basicblock> last) {
+
+    }
+
+    std::pair<std::set<std::shared_ptr<basicblock>>, std::vector<edge>> get_all_blocks_and_edges(const std::shared_ptr<basicblock> &startTree, const std::shared_ptr<basicblock> &exitNode, const std::shared_ptr<basicblock> &whileLoop) {
         std::set<std::shared_ptr<basicblock>> basicblocks;
         std::vector<edge> edges;
+        if (!startTree) return std::pair<std::set<std::shared_ptr<basicblock>>, std::vector<edge>>{basicblocks, edges};
+        if (startTree == whileLoop) return std::pair<std::set<std::shared_ptr<basicblock>>, std::vector<edge>>{basicblocks, edges};
+
         if (startTree != exitNode) {
             auto blockInsertion = basicblocks.insert(startTree);
             for(auto i = 0; i < startTree->nexts.size(); ++i) {
@@ -191,7 +166,15 @@ private:
             }
 */
             for (auto i = 0; i < startTree->nexts.size(); ++i) {
-                auto res = get_all_blocks_and_edges(startTree->nexts[i], exitNode);
+                std::pair<std::set<std::shared_ptr<basicblock>>, std::vector<edge>> res;
+                if (startTree->statements[0] && startTree->statements[0]->getNodeType() == While) {
+                    if (startTree == whileLoop) {
+                        return res;
+                    }
+                    res = get_all_blocks_and_edges(startTree->nexts[i], exitNode, startTree);
+                } else {
+                    res = get_all_blocks_and_edges(startTree->nexts[i], exitNode, whileLoop);
+                }
                 for (const auto &it : res.first) {
                     basicblocks.insert(it);
                 }
@@ -212,7 +195,7 @@ private:
             blk->nexts = it;
             for (auto ed : it) edgesToAdd->push_back(edge(blk, ed));
             blocksToAdd->push_back(blk);
-            blk->setConcurrentBlock(conBlock.first, conBlock.second);
+            blk->setConcurrentBlock(conBlock.first, conBlock.second, blk.get());
             return blk;
         } else {
             auto firstStmt = stmts.front();
@@ -221,7 +204,7 @@ private:
             std::shared_ptr<basicblock> blk = std::make_shared<basicblock>(basicblock(firstStmt, nxt));
             edgesToAdd->push_back(edge(blk, nxt));
             blocksToAdd->push_back(blk);
-            blk->setConcurrentBlock(conBlock.first, conBlock.second);
+            blk->setConcurrentBlock(conBlock.first, conBlock.second, nullptr);
             return blk;
         }
     }

@@ -77,20 +77,22 @@ struct basicblock : public statementNode {
     std::vector<std::shared_ptr<statementNode>> statements;
     std::vector<std::shared_ptr<basicblock>> nexts;
 
-    void setConcurrentBlock(const std::shared_ptr<basicblock> &blk, int threadNum) {
+    void setConcurrentBlock(const std::shared_ptr<basicblock> &blk, int threadNum, const basicblock *whileLoop) {
         if (!statements.empty() && statements[0]->getNodeType() == Concurrent && this != blk.get()) {
             concurrentBlock = std::pair<std::shared_ptr<basicblock>, int>{blk, threadNum};
             for (int i = 0; i < nexts.size(); ++i) {
-                nexts[i]->setConcurrentBlock(std::shared_ptr<basicblock>{this}, threadNum+i);
+                nexts[i]->setConcurrentBlock(std::shared_ptr<basicblock>{this}, threadNum+i, whileLoop);
             }
         } else if (!statements.empty() && statements[0]->getNodeType() == Concurrent) {
             for (int i = 0; i < nexts.size(); ++i) {
-                nexts[i]->setConcurrentBlock(blk, threadNum + i);
+                nexts[i]->setConcurrentBlock(blk, threadNum + i, whileLoop);
             }
         } else {
+            if (this == whileLoop) {return;}
             concurrentBlock = std::pair<std::shared_ptr<basicblock>, int>{blk, threadNum};
+            if (!statements.empty() && statements[0]->getNodeType() == While) whileLoop = this;
             for (const auto &nxt : nexts) {
-                nxt->setConcurrentBlock(blk, threadNum);
+                nxt->setConcurrentBlock(blk, threadNum, whileLoop);
             }
         }
     }
@@ -168,7 +170,8 @@ struct basicblock : public statementNode {
         std::pair<std::string, std::int32_t> statementsStringAndMaxWidth = statements_as_string();
         res += "\\node[state] (" + get_address() + ") [text width = " + std::to_string(statementsStringAndMaxWidth.second * 6 + 12) + "pt, rectangle] { \\texttt{" + statementsStringAndMaxWidth.first + "}};\n";
 
-        res += draw_children(this);
+        store_draw_info_on_children();
+        res += draw_children(this, nullptr);
         res += "\n";
         for (auto i = edges->begin(); i != edges->end(); ++i) {
             res += "\\path[" + (i->type == conflict ? string("->, red") : string("->")) + "] ("+ i->neighbours[0]->get_address() +") edge (" + i->neighbours[1]->get_address() + ");\n";
@@ -178,8 +181,10 @@ struct basicblock : public statementNode {
         return res;
     }
 
-    std::pair<std::string, int> draw_block(basicblock *parent, int current, int total, int distanceToNeighbour) {
+    std::pair<std::string, int> draw_block(basicblock *parent, int current, int total, int distanceToNeighbour, const basicblock *whileLoop) {
         using std::string;
+
+        if (this == whileLoop) return std::pair<std::string, int>{"", 0};
 
         std::pair<std::string, std::int32_t> statementsStringAndMaxWidth = statements_as_string();
         int len = statementsStringAndMaxWidth.second * 6 + 12;
@@ -206,17 +211,19 @@ struct basicblock : public statementNode {
         }
         string res = "\\node[state] (" + get_address() + ") [text width = " + std::to_string(len) + "pt, rectangle, " + position + "]";
         res += " {\\texttt{"  + statementsStringAndMaxWidth.first +  "}};\n";
-        res += draw_children(this);
+        if (!statements.empty() && statements[0]->getNodeType() == While)
+            res += draw_children(this, this);
+        else res += draw_children(this, whileLoop);
         return std::pair<std::string, int>{res, len};
     }
 
-    std::string draw_children(basicblock *parent) {
+    std::string draw_children(basicblock *parent, const basicblock *maybeWhile) {
         using std::string;
 
         string res;
         int dist = 0;
         for (auto i = 0; i < nexts.size(); i++) {
-            auto pair = nexts[i]->draw_block(parent, i, nexts.size()-1, dist);
+            auto pair = nexts[i]->draw_block(parent, i, nexts.size()-1, dist, maybeWhile);
             res += pair.first;
             dist = pair.second;
         }
@@ -230,6 +237,9 @@ struct basicblock : public statementNode {
 
 
 private:
+    void store_draw_info_on_children() {
+
+    }
     std::string get_address() {
         if (name.empty()) {
             const void *address = static_cast<const void *>(this);
