@@ -96,7 +96,6 @@ public:
                 auto seqNode = dynamic_cast<sequentialNode*>(startTree.get());
                 auto rest = get_tree(seqNode->getNext(), nxt);
                 block = get_tree(seqNode->getBody(), rest);
-                block->nexts = std::vector<std::shared_ptr<basicblock>>{rest};
                 NodeType nType = seqNode->getBody()->getNodeType();
                 if (nType == Assign || nType == AssignArrField || nType == Write || nType == Event || nType == Skip) {
                     std::vector<std::shared_ptr<statementNode>> remainingStmts;
