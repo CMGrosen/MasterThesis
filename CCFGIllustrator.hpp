@@ -24,6 +24,18 @@ public:
     }
 
     std::string to_string(){
+        std::string result = draw_node();
+        for(const auto& child : children){
+            result += child->draw_node();
+        }
+        result += draw_edges();
+        for(const auto& child : children){
+            result += child->draw_edges();
+        }
+        return result;
+    }
+
+    std::string draw_node(){
         std::string result;
         result = "\\node[state] (" + name + ") [text width = " + std::to_string(node_size) + "pt, rectangle";
         if(parent){
@@ -36,9 +48,14 @@ public:
             }
             result +=  parent->name;
         }
-        result += "] { \\texttt{" + content +"}};";
+        result += "] { \\texttt{" + content +"}};\n";
+        return result;
+    }
+
+    std::string draw_edges(){
+        std::string result;
         for(const auto& child : children){
-            result += child->to_string();
+            result += "\\path[->] (" + name + ") edge (" + child->name + ");\n";
         }
         return result;
     }
