@@ -77,7 +77,7 @@ struct basicblock : public statementNode {
     std::vector<std::shared_ptr<statementNode>> statements;
     std::vector<std::shared_ptr<basicblock>> nexts;
 
-    void setConcurrentBlock(const std::shared_ptr<basicblock> &blk, int threadNum, const basicblock *whileLoop) {
+    void setConcurrentBlock(const std::shared_ptr<basicblock> &blk, int threadNum, std::set<basicblock *> *whileLoop) {
         if (!statements.empty() && statements[0]->getNodeType() == Concurrent && this != blk.get()) {
             concurrentBlock = std::pair<std::shared_ptr<basicblock>, int>{blk, threadNum};
             for (int i = 0; i < nexts.size(); ++i) {
@@ -88,9 +88,9 @@ struct basicblock : public statementNode {
                 nexts[i]->setConcurrentBlock(blk, threadNum + i, whileLoop);
             }
         } else {
-            if (this == whileLoop) {return;}
+            //If this block has already been visited (while loop), then stop recursion
+            if (whileLoop && !this->statements.empty() && this->statements[0]->getNodeType() == While && !whileLoop->insert(this).second) {return;}
             concurrentBlock = std::pair<std::shared_ptr<basicblock>, int>{blk, threadNum};
-            if (!statements.empty() && statements[0]->getNodeType() == While) whileLoop = this;
             for (const auto &nxt : nexts) {
                 nxt->setConcurrentBlock(blk, threadNum, whileLoop);
             }
@@ -185,6 +185,7 @@ struct basicblock : public statementNode {
     std::pair<std::string, int> draw_block(basicblock *parent, int current, int total, int distanceToNeighbour, std::set<basicblock *> *drawnBlocks) {
         using std::string;
 
+        //If this block has already been visited (while loop), then stop recursion
         auto inserted = drawnBlocks->insert(this).second;
         if (!inserted) return std::pair<std::string, int>{"", 0};
 

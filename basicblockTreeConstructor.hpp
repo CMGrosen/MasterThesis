@@ -34,20 +34,22 @@ public:
         }*/
         //std::shared_ptr<basicblock> exit = current;
 
-        auto tmpSet = std::set<std::shared_ptr<basicblock>>();
+        auto tmpSet = std::set<basicblock *>();
         auto res = get_all_blocks_and_edges(startNode, exitNode, &tmpSet);
 
         //tmpSet;
         std::unordered_set<edge> edges{!res.second.empty() ? res.second[0] : edge(startNode, std::make_shared<basicblock>(basicblock()))};
         for(auto it : res.second) edges.insert(it);
 
+        tmpSet = std::set<basicblock *>();
         for(const auto &it : res.first) //add threadnum to blocks. Don't want to add to children already visited
             if (!it->statements.empty() && it->statements[0]->getNodeType() == Concurrent && !it->concurrentBlock.first)
-                it->setConcurrentBlock(it, 0, nullptr);
+                it->setConcurrentBlock(it, 0, &tmpSet);
 
         std::vector<std::shared_ptr<basicblock>> blocksToAdd;
         std::vector<edge> edgesToAdd;
 
+        tmpSet = std::set<basicblock *>();
         for(const auto &it : res.first) {
             if (it->concurrentBlock.first && it->statements.size() > 1) {
                 std::list<std::shared_ptr<statementNode>> stmts;
@@ -55,7 +57,7 @@ public:
                     stmts.push_back(stmt);
                 }
                 stmts.pop_front();
-                auto blk = split_up_concurrent_basicblocks(&blocksToAdd, &edgesToAdd, it->nexts, stmts, it->concurrentBlock);
+                auto blk = split_up_concurrent_basicblocks(&blocksToAdd, &edgesToAdd, it->nexts, stmts, it->concurrentBlock, &tmpSet);
                 edgesToAdd.push_back(edge(it, blk));
                 for (auto nxt : it->nexts)
                     edges.erase(edge(it, nxt));
@@ -151,11 +153,12 @@ private:
 
     }
 
-    std::pair<std::set<std::shared_ptr<basicblock>>, std::vector<edge>> get_all_blocks_and_edges(const std::shared_ptr<basicblock> &startTree, const std::shared_ptr<basicblock> &exitNode, std::set<std::shared_ptr<basicblock>> *whileLoops) {
+    std::pair<std::set<std::shared_ptr<basicblock>>, std::vector<edge>> get_all_blocks_and_edges(const std::shared_ptr<basicblock> &startTree, const std::shared_ptr<basicblock> &exitNode, std::set<basicblock *> *whileLoops) {
         std::set<std::shared_ptr<basicblock>> basicblocks;
         std::vector<edge> edges;
         if (!startTree) return std::pair<std::set<std::shared_ptr<basicblock>>, std::vector<edge>>{basicblocks, edges};
-        if (!startTree->statements.empty() && startTree->statements[0]->getNodeType() == While && !whileLoops->insert(startTree).second) return std::pair<std::set<std::shared_ptr<basicblock>>, std::vector<edge>>{basicblocks, edges};
+        //If this block has already been visited (while loop), then stop recursion
+        if (!startTree->statements.empty() && startTree->statements[0]->getNodeType() == While && !whileLoops->insert(startTree.get()).second) return std::pair<std::set<std::shared_ptr<basicblock>>, std::vector<edge>>{basicblocks, edges};
 
         if (startTree != exitNode) {
             auto blockInsertion = basicblocks.insert(startTree);
@@ -168,14 +171,6 @@ private:
 */
             for (auto i = 0; i < startTree->nexts.size(); ++i) {
                 std::pair<std::set<std::shared_ptr<basicblock>>, std::vector<edge>> res;
-                /*if (startTree->statements[0] && startTree->statements[0]->getNodeType() == While) {
-                    if (startTree == whileLoop) {
-                        return res;
-                    }
-                    res = get_all_blocks_and_edges(startTree->nexts[i], exitNode, startTree);
-                } else {
-                    res = get_all_blocks_and_edges(startTree->nexts[i], exitNode, whileLoop);
-                }*/
                 res = get_all_blocks_and_edges(startTree->nexts[i], exitNode, whileLoops);
                 for (const auto &it : res.first) {
                     basicblocks.insert(it);
@@ -191,22 +186,22 @@ private:
         }
     }
 
-    std::shared_ptr<basicblock> split_up_concurrent_basicblocks(std::vector<std::shared_ptr<basicblock>> *blocksToAdd, std::vector<edge> *edgesToAdd, std::vector<std::shared_ptr<basicblock>> it, std::list<std::shared_ptr<statementNode>> stmts, std::pair<std::shared_ptr<basicblock>, int> conBlock) {
+    std::shared_ptr<basicblock> split_up_concurrent_basicblocks(std::vector<std::shared_ptr<basicblock>> *blocksToAdd, std::vector<edge> *edgesToAdd, std::vector<std::shared_ptr<basicblock>> it, std::list<std::shared_ptr<statementNode>> stmts, std::pair<std::shared_ptr<basicblock>, int> conBlock, std::set<basicblock *> *whileloops) {
         if (stmts.size() == 1) {
             std::shared_ptr<basicblock> blk = std::make_shared<basicblock>(basicblock(stmts.front()));
             blk->nexts = it;
             for (auto ed : it) edgesToAdd->push_back(edge(blk, ed));
             blocksToAdd->push_back(blk);
-            blk->setConcurrentBlock(conBlock.first, conBlock.second, nullptr);
+            blk->setConcurrentBlock(conBlock.first, conBlock.second, whileloops);
             return blk;
         } else {
             auto firstStmt = stmts.front();
             stmts.pop_front();
-            auto nxt = split_up_concurrent_basicblocks(blocksToAdd, edgesToAdd, it, stmts, conBlock);
+            auto nxt = split_up_concurrent_basicblocks(blocksToAdd, edgesToAdd, it, stmts, conBlock, whileloops);
             std::shared_ptr<basicblock> blk = std::make_shared<basicblock>(basicblock(firstStmt, nxt));
             edgesToAdd->push_back(edge(blk, nxt));
             blocksToAdd->push_back(blk);
-            blk->setConcurrentBlock(conBlock.first, conBlock.second, nullptr);
+            blk->setConcurrentBlock(conBlock.first, conBlock.second, whileloops);
             return blk;
         }
     }

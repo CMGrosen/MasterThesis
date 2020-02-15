@@ -3,6 +3,7 @@ i = 0;
 start = 0;
 end = 29;
 
+fork {
 while (end > start) {
     i = 0;
     while (i < end) {
@@ -15,3 +16,4 @@ while (end > start) {
     };
     end = end - 1;
 };
+} and { skip; };

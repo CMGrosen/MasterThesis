@@ -48,6 +48,7 @@ public:
             add_child(std::make_shared<CCFGNode>(CCFGNode(parent, child)));
         }
         for (auto child : children) {
+            //If child has already been visited (while loop), then don't add again, thus stopping recursion
             if (addedBlocks->insert(child->basicblockInfo.get()).second)
                 child->construct_graph(child,addedBlocks);
         }
@@ -69,6 +70,7 @@ public:
     }
 
     std::string draw_node(std::set<CCFGNode *> *drawnBlocks){
+        //If this block has already been visited (while loop), then stop recursion
         if (!drawnBlocks->insert(this).second) return "";
         std::string result;
         result = "\\node[state] (" + name + ") [text width = " + std::to_string(node_size) + "pt, rectangle";
