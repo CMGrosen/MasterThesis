@@ -62,8 +62,15 @@ int main(int argc, const char* argv[]) {
 
 //    symbolicExecutionEngine symEngine;
 //    symEngine.execute(treeAndSymbolTable);
-    std::cout << "\n" << ccfg.startNode->draw_picture(&ccfg.edges) << "\n";
-    //std::cout << "finished\n";
+//    std::cout << "\n" << ccfg.startNode->draw_picture(&ccfg.edges) << "\n";
+
+
+    auto first = std::make_shared<CCFGNode>(CCFGNode(nullptr, ccfg.startNode));
+
+    std::set<basicblock *> addedBlocks = std::set<basicblock *>{ccfg.startNode.get()};
+    first->construct_graph(first, &addedBlocks);
+    std::cout << "\n" << first->to_string();
+    std::cout << "finished\n";
 
     return 0;
 }

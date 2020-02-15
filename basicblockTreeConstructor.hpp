@@ -194,7 +194,7 @@ private:
             blk->nexts = it;
             for (auto ed : it) edgesToAdd->push_back(edge(blk, ed));
             blocksToAdd->push_back(blk);
-            blk->setConcurrentBlock(conBlock.first, conBlock.second, blk.get());
+            blk->setConcurrentBlock(conBlock.first, conBlock.second, nullptr);
             return blk;
         } else {
             auto firstStmt = stmts.front();
@@ -241,9 +241,9 @@ private:
         tmp = b->concurrentBlock.first;
         while (tmp) {
             for (const auto n : concurrentNodesForA) {
-                if(tmp->concurrentBlock.second == n->concurrentBlock.second) {
+                /*if(tmp->concurrentBlock.second == n->concurrentBlock.second) {
                     return false;
-                }
+                }*/
                 if (tmp == n) { // common fork ancestor between nodes, making them concurrent
                     return true;
                 }

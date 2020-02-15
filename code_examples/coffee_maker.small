@@ -50,3 +50,5 @@ fork {
         } else { skip; };
     };
 };
+write(2, 3);
+write(3,4);

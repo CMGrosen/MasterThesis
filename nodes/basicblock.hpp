@@ -165,13 +165,14 @@ struct basicblock : public statementNode {
 
     std::string draw_picture(std::unordered_set<edge> *edges) {
         using std::string;
+        std::set<basicblock *> drawnblocks;
         std::string res = string("\\usetikzlibrary{automata,positioning}\n") + string("\\begin{tikzpicture}[shorten >=1pt, node distance=2cm, on grid, auto]\n");
 
         std::pair<std::string, std::int32_t> statementsStringAndMaxWidth = statements_as_string();
         res += "\\node[state] (" + get_address() + ") [text width = " + std::to_string(statementsStringAndMaxWidth.second * 6 + 12) + "pt, rectangle] { \\texttt{" + statementsStringAndMaxWidth.first + "}};\n";
-
+        drawnblocks.insert(this);
         store_draw_info_on_children();
-        res += draw_children(this, nullptr);
+        res += draw_children(this, &drawnblocks);
         res += "\n";
         for (auto i = edges->begin(); i != edges->end(); ++i) {
             res += "\\path[" + (i->type == conflict ? string("->, red") : string("->")) + "] ("+ i->neighbours[0]->get_address() +") edge (" + i->neighbours[1]->get_address() + ");\n";
@@ -181,10 +182,11 @@ struct basicblock : public statementNode {
         return res;
     }
 
-    std::pair<std::string, int> draw_block(basicblock *parent, int current, int total, int distanceToNeighbour, const basicblock *whileLoop) {
+    std::pair<std::string, int> draw_block(basicblock *parent, int current, int total, int distanceToNeighbour, std::set<basicblock *> *drawnBlocks) {
         using std::string;
 
-        if (this == whileLoop) return std::pair<std::string, int>{"", 0};
+        auto inserted = drawnBlocks->insert(this).second;
+        if (!inserted) return std::pair<std::string, int>{"", 0};
 
         std::pair<std::string, std::int32_t> statementsStringAndMaxWidth = statements_as_string();
         int len = statementsStringAndMaxWidth.second * 6 + 12;
@@ -211,19 +213,17 @@ struct basicblock : public statementNode {
         }
         string res = "\\node[state] (" + get_address() + ") [text width = " + std::to_string(len) + "pt, rectangle, " + position + "]";
         res += " {\\texttt{"  + statementsStringAndMaxWidth.first +  "}};\n";
-        if (!statements.empty() && statements[0]->getNodeType() == While)
-            res += draw_children(this, this);
-        else res += draw_children(this, whileLoop);
+        res += draw_children(this, drawnBlocks);
         return std::pair<std::string, int>{res, len};
     }
 
-    std::string draw_children(basicblock *parent, const basicblock *maybeWhile) {
+    std::string draw_children(basicblock *parent, std::set<basicblock *> *drawnBlocks) {
         using std::string;
 
         string res;
         int dist = 0;
         for (auto i = 0; i < nexts.size(); i++) {
-            auto pair = nexts[i]->draw_block(parent, i, nexts.size()-1, dist, maybeWhile);
+            auto pair = nexts[i]->draw_block(parent, i, nexts.size()-1, dist, drawnBlocks);
             res += pair.first;
             dist = pair.second;
         }
@@ -235,6 +235,9 @@ struct basicblock : public statementNode {
 
     std::pair<std::shared_ptr<basicblock>, int> concurrentBlock = std::pair<std::shared_ptr<basicblock>, int>{nullptr, 0};
 
+    std::string get_name() {
+        return get_address();
+    }
 
 private:
     void store_draw_info_on_children() {

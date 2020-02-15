@@ -23,32 +23,70 @@ public:
         size = node_size;
     }
 
-    std::string to_string(){
-        std::string result = draw_node();
-        for(const auto& child : children){
-            result += child->draw_node();
+    CCFGNode(std::shared_ptr<CCFGNode> _parent, std::shared_ptr<basicblock> blk) : basicblockInfo{blk}, parent{std::move(_parent)}, name{blk->get_name()} {
+        //addedBlocks->insert(blk.get());
+        int longestStr = 0;
+        std::string stmtStr;
+        for (auto stmt : blk->statements) {
+            stmtStr = stmt->to_string();
+            if (longestStr < stmtStr.length()) longestStr = stmtStr.length();
+            content += (stmtStr + "\\\\");
         }
+        node_size = (longestStr * 6) + 6;
+        distance = 0;
+        size = node_size;
+        /*
+        for (auto child : blk->nexts) {
+            if (addedBlocks->insert(child.get()).second) {
+                add_child(std::make_shared<CCFGNode>(CCFGNode(std::shared_ptr<CCFGNode>(this), child, addedBlocks)));
+            }
+        }*/
+    }
+
+    void construct_graph(std::shared_ptr<CCFGNode> parent, std::set<basicblock *> *addedBlocks) {
+        for (auto child : basicblockInfo->nexts) {
+            add_child(std::make_shared<CCFGNode>(CCFGNode(parent, child)));
+        }
+        for (auto child : children) {
+            if (addedBlocks->insert(child->basicblockInfo.get()).second)
+                child->construct_graph(child,addedBlocks);
+        }
+    }
+
+    std::string to_string(){
+        std::set<CCFGNode *> drawnBlocks;
+        std::string result = std::string("\\usetikzlibrary{automata,positioning}\n") +
+                std::string("\\begin{tikzpicture}[shorten >=1pt, node distance=2cm, on grid, auto]\n");
+
+        result += draw_node(&drawnBlocks);
+
         result += draw_edges();
         for(const auto& child : children){
             result += child->draw_edges();
         }
+        result += "\\end{tikzpicture}\n";
         return result;
     }
 
-    std::string draw_node(){
+    std::string draw_node(std::set<CCFGNode *> *drawnBlocks){
+        if (!drawnBlocks->insert(this).second) return "";
         std::string result;
         result = "\\node[state] (" + name + ") [text width = " + std::to_string(node_size) + "pt, rectangle";
         if(parent){
             if(distance == 0){
-                result += "below = " + std::to_string(vertical_padding) + "pt of ";
+                result += ", below = " + std::to_string(vertical_padding) + "pt of ";
             } else if(distance < 0){
-                result+= "below left = " + std::to_string(vertical_padding) + "pt and " + std::to_string(distance*-1) + "pt of ";
+                result+= ", below left = " + std::to_string(vertical_padding) + "pt and " + std::to_string(distance*-1) + "pt of ";
             } else {
-                result+= "below right = " + std::to_string(vertical_padding) + "pt and " + std::to_string(distance) + "pt of ";
+                result+= ", below right = " + std::to_string(vertical_padding) + "pt and " + std::to_string(distance) + "pt of ";
             }
             result +=  parent->name;
         }
         result += "] { \\texttt{" + content +"}};\n";
+
+        for(const auto& child : children){
+            result += child->draw_node(drawnBlocks);
+        }
         return result;
     }
 
@@ -87,6 +125,7 @@ private:
     int size;
     std::vector<std::shared_ptr<CCFGNode>> children;
     std::shared_ptr<CCFGNode> parent;
+    std::shared_ptr<basicblock> basicblockInfo;
 
     int calc_children_size(){
         int result;
