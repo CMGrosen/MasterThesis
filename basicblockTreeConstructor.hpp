@@ -34,8 +34,10 @@ public:
         }*/
         //std::shared_ptr<basicblock> exit = current;
 
-        auto res = get_all_blocks_and_edges(startNode, exitNode, nullptr);
+        auto tmpSet = std::set<std::shared_ptr<basicblock>>();
+        auto res = get_all_blocks_and_edges(startNode, exitNode, &tmpSet);
 
+        //tmpSet;
         std::unordered_set<edge> edges{!res.second.empty() ? res.second[0] : edge(startNode, std::make_shared<basicblock>(basicblock()))};
         for(auto it : res.second) edges.insert(it);
 
@@ -149,11 +151,11 @@ private:
 
     }
 
-    std::pair<std::set<std::shared_ptr<basicblock>>, std::vector<edge>> get_all_blocks_and_edges(const std::shared_ptr<basicblock> &startTree, const std::shared_ptr<basicblock> &exitNode, const std::shared_ptr<basicblock> &whileLoop) {
+    std::pair<std::set<std::shared_ptr<basicblock>>, std::vector<edge>> get_all_blocks_and_edges(const std::shared_ptr<basicblock> &startTree, const std::shared_ptr<basicblock> &exitNode, std::set<std::shared_ptr<basicblock>> *whileLoops) {
         std::set<std::shared_ptr<basicblock>> basicblocks;
         std::vector<edge> edges;
         if (!startTree) return std::pair<std::set<std::shared_ptr<basicblock>>, std::vector<edge>>{basicblocks, edges};
-        if (startTree == whileLoop) return std::pair<std::set<std::shared_ptr<basicblock>>, std::vector<edge>>{basicblocks, edges};
+        if (!startTree->statements.empty() && startTree->statements[0]->getNodeType() == While && !whileLoops->insert(startTree).second) return std::pair<std::set<std::shared_ptr<basicblock>>, std::vector<edge>>{basicblocks, edges};
 
         if (startTree != exitNode) {
             auto blockInsertion = basicblocks.insert(startTree);
@@ -166,14 +168,15 @@ private:
 */
             for (auto i = 0; i < startTree->nexts.size(); ++i) {
                 std::pair<std::set<std::shared_ptr<basicblock>>, std::vector<edge>> res;
-                if (startTree->statements[0] && startTree->statements[0]->getNodeType() == While) {
+                /*if (startTree->statements[0] && startTree->statements[0]->getNodeType() == While) {
                     if (startTree == whileLoop) {
                         return res;
                     }
                     res = get_all_blocks_and_edges(startTree->nexts[i], exitNode, startTree);
                 } else {
                     res = get_all_blocks_and_edges(startTree->nexts[i], exitNode, whileLoop);
-                }
+                }*/
+                res = get_all_blocks_and_edges(startTree->nexts[i], exitNode, whileLoops);
                 for (const auto &it : res.first) {
                     basicblocks.insert(it);
                 }

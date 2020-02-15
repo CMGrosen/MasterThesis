@@ -110,7 +110,7 @@ public:
             std::string name = ctx->NAME()->getText();
             auto arr = arrLit->getArrLit();
             //variable name + length
-            auto pair = symboltables.insert({name, std::make_shared<literalNode>(literalNode(intType, std::to_string(arr.size())))});
+            auto pair = symboltables.insert({name, std::make_shared<literalNode>(literalNode(node->getType(), std::to_string(arr.size())))});
 
             if(!pair.second) { //variable already exists
                 auto length = dynamic_cast<literalNode*>(pair.first->second.get())->value;
@@ -292,8 +292,10 @@ public:
 
     virtual antlrcpp::Any visitArrayAccess(SmallParser::ArrayAccessContext *ctx) override {
         std::shared_ptr<expressionNode> node = visitExpr(ctx->expr());
+        std::string name = ctx->NAME()->getText();
         auto it = symboltables.find(ctx->NAME()->getText());
         Type t;
+        auto tmp = it->second;
         if (node->getType() != intType || it == symboltables.end()) {
             t = errorType;
         } else if (it->second->getType() == arrayIntType) {
