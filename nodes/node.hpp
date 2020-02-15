@@ -8,7 +8,7 @@
 #include <typeinfo>
 
 enum Type { intType, boolType, arrayIntType, arrayBoolType, okType, errorType};
-enum NodeType { Assign, AssignArrField, Concurrent, Sequential, While, If, Write, Read, Literal, ArrayAccess, ArrayLiteral, Event, Variable, BinaryExpression, UnaryExpression, Skip, BasicBlock};
+enum NodeType { Assign, AssignArrField, Concurrent, Sequential, While, If, Write, Read, Literal, ArrayAccess, ArrayLiteral, Event, Variable, BinaryExpression, UnaryExpression, Skip, BasicBlock, Phi, Pi};
 
 static std::map< Type, const char * > info = {
         {intType, "int"},
