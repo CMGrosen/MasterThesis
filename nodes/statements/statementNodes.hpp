@@ -16,6 +16,6 @@
 #include "skipNode.hpp"
 #include "arrayFieldAssignNode.hpp"
 #include "piNode.hpp"
-
+#include "endConcNode.hpp"
 
 #endif //ANTLR_CPP_TUTORIAL_STATEMENTNODE_H

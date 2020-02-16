@@ -89,11 +89,15 @@ public:
             case Concurrent: {
                 auto conNode = dynamic_cast<concurrentNode *>(startTree.get());
                 std::vector<std::shared_ptr<basicblock>> threads;
-                for (const auto &t : conNode->threads) {
-                    threads.push_back(get_tree(t, nxt));
-                }
                 auto concNode = std::make_shared<concurrentNode>(concurrentNode(okType, threads));
-                block = std::make_shared<basicblock>(std::vector<std::shared_ptr<statementNode>>{concNode}, threads);
+                block = std::make_shared<basicblock>(std::vector<std::shared_ptr<statementNode>>{concNode});
+                auto endConc = std::make_shared<basicblock>(
+                        basicblock(std::make_shared<endConcNode>(endConcNode(conNode->threads.size(), block)), nxt));
+                for (const auto &t : conNode->threads) {
+                    threads.push_back(get_tree(t, endConc));
+                }
+                for (auto blk : threads) concNode->threads.push_back(blk);
+                block->nexts = std::move(threads);
                 break;
             }
             case Sequential: {
