@@ -38,6 +38,12 @@ public:
     std::string to_string() override {
         return "";
     }
+    std::shared_ptr<statementNode> copy_statement() const override {
+        std::shared_ptr<statementNode> __body = _body->copy_statement();
+        std::shared_ptr<statementNode> __next = _next->copy_statement();
+        std::shared_ptr<statementNode> _this = std::make_shared<sequentialNode>(sequentialNode(type, __body, __next));
+        return _this;
+    }
 
 private:
     std::shared_ptr<statementNode> _body;

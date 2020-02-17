@@ -6,9 +6,6 @@
 #define ANTLR_CPP_TUTORIAL_BINARYEXPRESSIONNODE_H
 
 #include <nodes/expressions/expressionNode.hpp>
-#include <nodes/statements/readNode.hpp>
-
-
 
 class binaryExpressionNode : public expressionNode {
 public:
@@ -23,6 +20,12 @@ public:
             res += getNext()->to_string();
         }
         return res;
+    }
+
+    std::shared_ptr<expressionNode> copy_expression() const override {
+        std::shared_ptr<expressionNode> _this = std::make_shared<binaryExpressionNode>(binaryExpressionNode(type, _operator));
+        _this->setNext(this->copy_next());
+        return _this;
     }
     op getOperator() const {return _operator;};
 

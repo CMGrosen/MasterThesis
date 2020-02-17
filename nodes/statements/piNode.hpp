@@ -26,5 +26,14 @@ public:
         res += ")";
         return res;
     }
+
+    std::shared_ptr<statementNode> copy_statement() const override {
+        std::vector<std::shared_ptr<variableNode>> _pos_vars;
+        for (auto v : _possible_variables) {
+            _pos_vars.push_back(std::make_shared<variableNode>(variableNode(v->getType(), v->name)));
+        }
+        auto _this = std::make_shared<piNode>(piNode(std::make_shared<variableNode>(variableNode(_variable->getType(), _variable->name)), std::move(_pos_vars)));
+        return _this;
+    }
 };
 #endif //ANTLR_CPP_TUTORIAL_PINODE_HPP

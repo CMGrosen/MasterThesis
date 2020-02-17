@@ -5,8 +5,6 @@
 #ifndef ANTLR_CPP_TUTORIAL_READNODE_HPP
 #define ANTLR_CPP_TUTORIAL_READNODE_HPP
 
-#include <nodes/expressions/variableNode.hpp>
-
 class readNode : public expressionNode {
 public:
     readNode(int16_t pin) : _pin{pin} {setNodeType(Read); setType(intType);}
@@ -15,6 +13,11 @@ public:
 
     std::string to_string() override {
         return "read(" + std::to_string(_pin) + ")";
+    }
+    std::shared_ptr<expressionNode> copy_expression() const override {
+        std::shared_ptr<expressionNode> _this = std::make_shared<readNode>(readNode(_pin));
+        _this->setNext(this->copy_next());
+        return _this;
     }
 private:
     int16_t _pin;

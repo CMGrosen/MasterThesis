@@ -20,6 +20,13 @@ public:
         return "while(" + condition->to_string() + ")";
     }
 
+    std::shared_ptr<statementNode> copy_statement() const override {
+        std::shared_ptr<expressionNode> _c = condition->copy_expression();
+        std::shared_ptr<statementNode> _b = body->copy_statement();
+        std::shared_ptr<statementNode> _this = std::make_shared<whileNode>(whileNode(type, _c, _b));
+        return _this;
+    }
+
 private:
     std::shared_ptr<expressionNode> condition;
     std::shared_ptr<statementNode> body;

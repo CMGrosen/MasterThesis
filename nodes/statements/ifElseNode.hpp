@@ -22,6 +22,13 @@ public:
         return "if(" + condition->to_string() + ")";
     }
 
+    std::shared_ptr<statementNode> copy_statement() const override {
+        std::shared_ptr<expressionNode> _condition = condition->copy_expression();
+        std::shared_ptr<statementNode> _trueBranch = trueBranch->copy_statement();
+        std::shared_ptr<statementNode> _falseBranch = falseBranch->copy_statement();
+        std::shared_ptr<statementNode> _this = std::make_shared<ifElseNode>(ifElseNode(type, _condition, _trueBranch, _falseBranch));
+        return _this;
+    }
 
 private:
     std::shared_ptr<expressionNode> condition;

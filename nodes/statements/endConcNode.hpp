@@ -10,6 +10,10 @@ class endConcNode : public statementNode {
     const std::shared_ptr<basicblock> concNode;
 
 public:
+    endConcNode(int number_of_threads) : threadCount{number_of_threads} {
+        setNodeType(EndConcurrent);
+        setType(okType);
+    }
     endConcNode(int number_of_threads, std::shared_ptr<basicblock> concurrent_node)
         : threadCount{number_of_threads}, concNode{std::move(concurrent_node)} {
         setNodeType(EndConcurrent);
@@ -20,6 +24,10 @@ public:
 
     std::string to_string() override {
         return "end conc-node of " + std::to_string(threadCount) + " threads";
+    }
+    std::shared_ptr<statementNode> copy_statement() const override {
+        std::shared_ptr<statementNode> _this = std::make_shared<endConcNode>(endConcNode(threadCount));
+        return _this;
     }
 };
 

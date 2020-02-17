@@ -42,6 +42,17 @@ public:
         return res;
     }
 
+    std::shared_ptr<expressionNode> copy_expression() const override {
+        std::vector<std::shared_ptr<expressionNode>> _values;
+        _values.reserve(value.size());
+        for(const auto val : value) {
+            _values.push_back(val->copy_expression());
+        }
+        std::shared_ptr<expressionNode> _this = std::make_shared<arrayLiteralNode>(arrayLiteralNode(getType(), std::move(_values)));
+        _this->setNext(this->copy_next());
+        return _this;
+    }
+
     const std::vector<std::shared_ptr<expressionNode>> getArrLit() const {return value;};
 private:
     std::vector<std::shared_ptr<expressionNode>> value;

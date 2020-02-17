@@ -11,7 +11,6 @@
 #include "sequentialNode.hpp"
 #include "concurrentNode.hpp"
 #include "writeNode.hpp"
-#include "readNode.hpp"
 #include "eventNode.hpp"
 #include "skipNode.hpp"
 #include "arrayFieldAssignNode.hpp"

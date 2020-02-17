@@ -38,5 +38,10 @@ public:
         return next;
     }
     virtual std::string to_string() {};
+    virtual std::shared_ptr<expressionNode> copy_expression() const {};
+    std::shared_ptr<expressionNode> copy_next() const {
+        if(getNext()) return getNext()->copy_expression();
+        else return nullptr;
+    }
 };
 #endif //ANTLR_CPP_TUTORIAL_EXPRESSIONNODE_HPP

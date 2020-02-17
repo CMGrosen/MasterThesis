@@ -18,8 +18,12 @@ public:
     std::string getName() const {return name;}
     expressionNode* getExpr() const {return expr.get();}
     std::string to_string() override {
-
         return nameToTikzName(name) + " = " + expr->to_string();
+    }
+    std::shared_ptr<statementNode> copy_statement() const override {
+        std::shared_ptr<expressionNode> _expr = expr->copy_expression();
+        std::shared_ptr<statementNode> _this = std::make_shared<assignNode>(assignNode(type, name, _expr));
+        return _this;
     }
 private:
     std::string name;

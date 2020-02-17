@@ -19,6 +19,12 @@ public:
         return res;
     }
 
+    std::shared_ptr<expressionNode> copy_expression() const override {
+        std::shared_ptr<expressionNode> _this = std::make_shared<unaryExpressionNode>(unaryExpressionNode(type, _operator));
+        _this->setNext(this->copy_next());
+        return _this;
+    }
+
 private:
     op _operator;
 };

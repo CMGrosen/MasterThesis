@@ -12,6 +12,10 @@ public:
     std::string to_string() override {
         return "skip";
     }
+    std::shared_ptr<statementNode> copy_statement() const override {
+        std::shared_ptr<statementNode> _this = std::make_shared<skipNode>(skipNode());
+        return _this;
+    }
 };
 
 #endif //ANTLR_CPP_TUTORIAL_SKIPNODE_HPP

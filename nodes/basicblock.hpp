@@ -298,6 +298,7 @@ private:
             if (!expr->getNext()) return vars;
             else expr = expr->getNext().get();
         }
+        return vars;
     }
 };
 

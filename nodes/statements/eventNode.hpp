@@ -17,6 +17,11 @@ public:
     std::string to_string() override {
         return "event(" + _condition->to_string() + ")";
     }
+    std::shared_ptr<statementNode> copy_statement() const override {
+        std::shared_ptr<expressionNode> _expr = _condition->copy_expression();
+        std::shared_ptr<statementNode> _this = std::make_shared<eventNode>(eventNode(type, _expr));
+        return _this;
+    }
 private:
     std::shared_ptr<expressionNode> _condition;
 };

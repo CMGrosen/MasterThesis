@@ -21,6 +21,14 @@ public:
         }
         return res;
     }
+
+    std::shared_ptr<expressionNode> copy_expression() const override {
+        std::shared_ptr<expressionNode> _val = value->copy_expression();
+        _val->setNext(value->copy_next());
+        std::shared_ptr<expressionNode> _this = std::make_shared<arrayAccessNode>(arrayAccessNode(getType(), _val, name));
+        _this->setNext(copy_next());
+        return _this;
+    }
 private:
     std::shared_ptr<expressionNode> value;
     std::string name;

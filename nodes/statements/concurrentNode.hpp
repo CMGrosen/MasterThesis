@@ -23,6 +23,15 @@ public:
     std::string to_string() override {
         return "fork with " + std::to_string(threads.size()) + " threads";
     }
+    std::shared_ptr<statementNode> copy_statement() const override {
+        std::vector<std::shared_ptr<statementNode>> _threads;
+        for (auto thread : threads) {
+            _threads.push_back(thread->copy_statement());
+        }
+        std::shared_ptr<statementNode> _this = std::make_shared<concurrentNode>(concurrentNode(type, std::move(_threads)));
+        return _this;
+    }
 };
+
 
 #endif //ANTLR_CPP_TUTORIAL_CONCURRENTNODE_HPP

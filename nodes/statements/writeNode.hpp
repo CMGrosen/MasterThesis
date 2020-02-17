@@ -26,6 +26,11 @@ public:
         return "write(" + std::to_string(_pin) + ", " + _e->to_string() + ")";
     }
 
+    std::shared_ptr<statementNode> copy_statement() const override {
+        std::shared_ptr<expressionNode> _expr = _e->copy_expression();
+        std::shared_ptr<statementNode> _this = std::make_shared<writeNode>(writeNode(type, _pin, _expr));
+        return _this;
+    }
 private:
     const int16_t _pin;
     std::shared_ptr <expressionNode> _e;
