@@ -23,6 +23,35 @@ struct CCFG {
     }
 
     CCFG(const CCFG& a) : startNode{std::make_shared<basicblock>(basicblock(*(a.startNode)))}, exitNode{std::make_shared<basicblock>(basicblock(*(a.exitNode)))} {
+        construct_rest(a);
+    }
+
+    CCFG(CCFG&& o) noexcept
+            : nodes{std::move(o.nodes)}, edges{std::move(o.edges)}, startNode{std::move(o.startNode)}, exitNode{std::move(o.exitNode)} {
+
+    }
+
+    CCFG& operator=(const CCFG& a) {
+        startNode = std::make_shared<basicblock>(basicblock(*(a.startNode)));
+        exitNode = std::make_shared<basicblock>(basicblock(*(a.exitNode)));
+        construct_rest(a);
+        return *this;
+    }
+
+    CCFG& operator=(CCFG&& other) noexcept {
+        nodes = std::move(other.nodes);
+        edges = std::move(other.edges);
+        startNode = std::move(other.startNode);
+        exitNode = std::move(other.exitNode);
+        return *this;
+    }
+
+
+
+
+
+private:
+    void construct_rest(const CCFG& a) {
         std::unordered_map<basicblock *, std::shared_ptr<basicblock>> visited_blocks;
         std::vector<std::shared_ptr<basicblock>> vec;
         std::set<basicblock *> foundBlocks;
@@ -35,17 +64,11 @@ struct CCFG {
         visited_blocks.insert({a.startNode.get(), startNode});
         for(auto ed : a.edges) {
             edges.insert(edge(ed.type,
-          visited_blocks.find(ed.neighbours[0].get())->second,
-          visited_blocks.find(ed.neighbours[1].get())->second));
+                    visited_blocks.find(ed.neighbours[0].get())->second,
+                    visited_blocks.find(ed.neighbours[1].get())->second));
         }
     }
 
-    CCFG(CCFG&& o) noexcept
-        : nodes{std::move(o.nodes)}, edges{std::move(o.edges)}, startNode{std::move(o.startNode)}, exitNode{std::move(o.exitNode)} {
-
-    }
-
-private:
     std::shared_ptr<basicblock> copy_block(const std::shared_ptr<basicblock> &child, std::set<basicblock *> *foundBlocks, std::unordered_map<basicblock *, std::shared_ptr<basicblock>> *visited_blocks, std::shared_ptr<basicblock> oldExitNode) {
         std::vector<std::shared_ptr<basicblock>> vec;
         std::shared_ptr<basicblock> blk;
