@@ -28,7 +28,7 @@ static std::map< const char *, const char * > files = {
 int main(int argc, const char* argv[]) {
     std::ifstream stream;
     //stream.open("../code.small");
-    stream.open(files["coffee_maker"]);
+    stream.open(files["bubblesort"]);
     //stream.open("shortExpr.small");
 
     ANTLRInputStream input(stream);
@@ -68,7 +68,8 @@ int main(int argc, const char* argv[]) {
 
     auto first = std::make_shared<CCFGNode>(CCFGNode(nullptr, ccfg.startNode));
     std::set<basicblock *> addedBlocks = std::set<basicblock *>{ccfg.startNode.get()};
-    first->construct_graph(first, &addedBlocks);
+    std::unordered_map<std::shared_ptr<basicblock>,std::shared_ptr<CCFGNode>> creatednodes;
+    first->construct_graph(first, &addedBlocks, &creatednodes);
     std::cout << "\n" << first->to_string(&ccfg.edges);
 
     std::cout << "finished\n";
