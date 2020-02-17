@@ -6,10 +6,6 @@
 #define ANTLR_CPP_TUTORIAL_CCFGILLUSTRATOR_HPP
 #include <basicblockTreeConstructor.hpp>
 
-static std::string DrawCCFG(CCFG ccfg){
-
-}
-
 class CCFGNode {
     static const int padding = 10;
     static const int vertical_padding = 50;
@@ -168,5 +164,15 @@ private:
     }
 
 };
+
+std::string DrawCCFG(CCFG ccfg){
+    CCFGNode start {nullptr, "start", "asdad", 5};
+
+
+    std::string result = "\\usetikzlibrary{automata,positioning}\n "
+                         "\\begin{tikzpicture}[shorten >=1pt, node distance=2cm, on grid, auto]\n" +
+            start.to_string() +
+            "\\end{tikzpicture}";
+}
 
 #endif //ANTLR_CPP_TUTORIAL_CCFGILLUSTRATOR_HPP
