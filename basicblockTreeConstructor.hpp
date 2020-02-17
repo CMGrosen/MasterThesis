@@ -46,10 +46,6 @@ struct CCFG {
         return *this;
     }
 
-
-
-
-
 private:
     void construct_rest(const CCFG& a) {
         std::unordered_map<basicblock *, std::shared_ptr<basicblock>> visited_blocks;
@@ -96,53 +92,6 @@ private:
         blk->nexts = std::move(vec);
         return blk;
     }
-/*
-    CCFG copy_ccfg() {
-        std::unordered_map<basicblock *, std::shared_ptr<basicblock>> visited_blocks;
-
-        std::vector<edge> edges;
-        edges.reserve(ccfg->edges.size());
-        std::vector<std::shared_ptr<basicblock>> children;
-
-        std::set<std::shared_ptr<basicblock>> blocks;
-        std::unordered_set<edge> new_edges;
-        std::shared_ptr<basicblock> exitnode = ccfg->exitNode;
-
-        for (auto child : ccfg->startNode->nexts) {
-            children.push_back(copy_child(child, &visited_blocks, &blocks, &edges, &exitnode));
-        }
-
-        std::shared_ptr<basicblock> startNode = std::make_shared<basicblock>(basicblock(copy_statements(ccfg->startNode->statements), children));
-
-        for(auto ed : edges) {
-            new_edges.insert(std::move(ed));
-        }
-*/
-//        ccfg = std::make_shared<CCFG>(CCFG(blocks, new_edges, startNode, exitnode));
-        /*
-        std::set<std::shared_ptr<basicblock>> blocks;
-        std::unordered_set<std::shared_ptr<basicblock>>
-        std::shared_ptr<basicblock> blk = copy_node(&visited_blocks);
-        ccfg = std::make_shared<CCFG>(CCFG())*/
- /*   }
-
-private:
-    std::shared_ptr<basicblock> copy_node(std::shared_ptr<basicblock> child, std::unordered_map<basicblock *, std::shared_ptr<basicblock>> *visited_blocks, std::set<std::shared_ptr<basicblock>> *blocks, std::vector<edge> *edges, std::shared_ptr<basicblock> *exitNode) {
-
-    }
-
-    std::shared_ptr<basicblock> copy_child(std::shared_ptr<basicblock> child, std::unordered_map<basicblock *, std::shared_ptr<basicblock>> *visited_blocks, std::set<std::shared_ptr<basicblock>> *blocks, std::vector<edge> *edges, std::shared_ptr<basicblock> *exitNode) {
-        return copy_node(child, visited_blocks, blocks, edges, exitNode);
-    }
-
-    std::vector<std::shared_ptr<statementNode>> copy_statements(std::vector<std::shared_ptr<statementNode>> stmts) {
-        std::vector<std::shared_ptr<statementNode>> copied_statements;
-        copied_statements.reserve(stmts.size());
-        for (auto stmt : stmts) {
-            copied_statements.push_back(stmt->copy_statement());
-        }
-        return std::move(copied_statements);
-    };*/
 };
 
 class basicBlockTreeConstructor {
@@ -152,11 +101,6 @@ public:
     CCFG get_ccfg(const std::shared_ptr<statementNode> &startTree) {
         std::shared_ptr<basicblock> exitNode = std::make_shared<basicblock>(basicblock());
         const std::shared_ptr<basicblock> startNode = get_tree(startTree, exitNode);
-        //std::unordered_set<edge> edges{};
-        /*while(!current->nexts.empty()) {
-            current = current->nexts[current->nexts.size()-1];
-        }*/
-        //std::shared_ptr<basicblock> exit = current;
 
         auto tmpSet = std::set<basicblock *>();
         auto res = get_all_blocks_and_edges(startNode, exitNode, &tmpSet);
@@ -272,11 +216,7 @@ public:
         return block;
     }
 
-    //std::vector<std::shared_ptr<basicblock>> blocks = std::vector<std::shared_ptr<basicblock>>{};
-
 private:
-    uint iterator = -1;
-
     std::shared_ptr<basicblock> handle_while(std::shared_ptr<statementNode> tree, std::shared_ptr<basicblock> last) {
 
     }
@@ -293,10 +233,7 @@ private:
             for(auto i = 0; i < startTree->nexts.size(); ++i) {
                 edges.push_back(edge(startTree, startTree->nexts[i]));
             }
-/*            if (!blockInsertion.second || !edgeInsertionSuccessfull) {
-                return std::pair<std::set<std::shared_ptr<basicblock>>, std::set<edge>>{basicblocks, edges};
-            }
-*/
+
             for (auto i = 0; i < startTree->nexts.size(); ++i) {
                 std::pair<std::set<std::shared_ptr<basicblock>>, std::vector<edge>> res;
                 res = get_all_blocks_and_edges(startTree->nexts[i], exitNode, whileLoops);
