@@ -18,7 +18,108 @@ struct CCFG {
     std::shared_ptr<basicblock> startNode;
     std::shared_ptr<basicblock> exitNode;
     CCFG(std::set<std::shared_ptr<basicblock>> nodes, std::unordered_set<edge> edges, std::shared_ptr<basicblock> start, std::shared_ptr<basicblock> exit)
-        : nodes{std::move(nodes)}, edges{std::move(edges)}, startNode{std::move(start)}, exitNode{std::move(exit)} {}
+        : nodes{std::move(nodes)}, edges{std::move(edges)}, startNode{std::move(start)}, exitNode{std::move(exit)} {
+
+    }
+
+    CCFG(const CCFG& a) : startNode{std::make_shared<basicblock>(basicblock(*(a.startNode)))}, exitNode{std::make_shared<basicblock>(basicblock(*(a.exitNode)))} {
+        std::unordered_map<basicblock *, std::shared_ptr<basicblock>> visited_blocks;
+        std::vector<std::shared_ptr<basicblock>> vec;
+        std::set<basicblock *> foundBlocks;
+        for (auto child : a.startNode->nexts) {
+            if (child == a.exitNode) {vec.push_back(exitNode);}
+            vec.push_back(copy_block(child, &foundBlocks, &visited_blocks, a.exitNode));
+        }
+        startNode->nexts = std::move(vec);
+
+        visited_blocks.insert({a.startNode.get(), startNode});
+        for(auto ed : a.edges) {
+            edges.insert(edge(ed.type,
+          visited_blocks.find(ed.neighbours[0].get())->second,
+          visited_blocks.find(ed.neighbours[1].get())->second));
+        }
+    }
+
+    CCFG(CCFG&& o) noexcept
+        : nodes{std::move(o.nodes)}, edges{std::move(o.edges)}, startNode{std::move(o.startNode)}, exitNode{std::move(o.exitNode)} {
+
+    }
+
+private:
+    std::shared_ptr<basicblock> copy_block(const std::shared_ptr<basicblock> &child, std::set<basicblock *> *foundBlocks, std::unordered_map<basicblock *, std::shared_ptr<basicblock>> *visited_blocks, std::shared_ptr<basicblock> oldExitNode) {
+        std::vector<std::shared_ptr<basicblock>> vec;
+        std::shared_ptr<basicblock> blk;
+        if (child == oldExitNode) {vec.push_back(exitNode);}
+        for (const auto &t : child->nexts) {
+            if (foundBlocks->insert(t.get()).second) {
+                vec.push_back(copy_block(t, foundBlocks, visited_blocks, oldExitNode));
+            } else if (visited_blocks->find(t.get()) != visited_blocks->end() && t != oldExitNode) {
+                vec.push_back(visited_blocks->find(t.get())->second);
+            } else {
+                blk = std::make_shared<basicblock>(basicblock(*t));
+                nodes.insert(blk);
+                visited_blocks->insert({t.get(), blk});
+                vec.push_back(blk);
+            }
+        }
+        auto res = visited_blocks->find(child.get());
+        if (res != visited_blocks->end() && child != oldExitNode && res->second->nexts.empty()) {
+            blk = res->second;
+        } else {
+            blk = std::make_shared<basicblock>(basicblock(*child));
+            nodes.insert(blk);
+            visited_blocks->insert({child.get(), blk});
+        }
+        blk->nexts = std::move(vec);
+        return blk;
+    }
+/*
+    CCFG copy_ccfg() {
+        std::unordered_map<basicblock *, std::shared_ptr<basicblock>> visited_blocks;
+
+        std::vector<edge> edges;
+        edges.reserve(ccfg->edges.size());
+        std::vector<std::shared_ptr<basicblock>> children;
+
+        std::set<std::shared_ptr<basicblock>> blocks;
+        std::unordered_set<edge> new_edges;
+        std::shared_ptr<basicblock> exitnode = ccfg->exitNode;
+
+        for (auto child : ccfg->startNode->nexts) {
+            children.push_back(copy_child(child, &visited_blocks, &blocks, &edges, &exitnode));
+        }
+
+        std::shared_ptr<basicblock> startNode = std::make_shared<basicblock>(basicblock(copy_statements(ccfg->startNode->statements), children));
+
+        for(auto ed : edges) {
+            new_edges.insert(std::move(ed));
+        }
+*/
+//        ccfg = std::make_shared<CCFG>(CCFG(blocks, new_edges, startNode, exitnode));
+        /*
+        std::set<std::shared_ptr<basicblock>> blocks;
+        std::unordered_set<std::shared_ptr<basicblock>>
+        std::shared_ptr<basicblock> blk = copy_node(&visited_blocks);
+        ccfg = std::make_shared<CCFG>(CCFG())*/
+ /*   }
+
+private:
+    std::shared_ptr<basicblock> copy_node(std::shared_ptr<basicblock> child, std::unordered_map<basicblock *, std::shared_ptr<basicblock>> *visited_blocks, std::set<std::shared_ptr<basicblock>> *blocks, std::vector<edge> *edges, std::shared_ptr<basicblock> *exitNode) {
+
+    }
+
+    std::shared_ptr<basicblock> copy_child(std::shared_ptr<basicblock> child, std::unordered_map<basicblock *, std::shared_ptr<basicblock>> *visited_blocks, std::set<std::shared_ptr<basicblock>> *blocks, std::vector<edge> *edges, std::shared_ptr<basicblock> *exitNode) {
+        return copy_node(child, visited_blocks, blocks, edges, exitNode);
+    }
+
+    std::vector<std::shared_ptr<statementNode>> copy_statements(std::vector<std::shared_ptr<statementNode>> stmts) {
+        std::vector<std::shared_ptr<statementNode>> copied_statements;
+        copied_statements.reserve(stmts.size());
+        for (auto stmt : stmts) {
+            copied_statements.push_back(stmt->copy_statement());
+        }
+        return std::move(copied_statements);
+    };*/
 };
 
 class basicBlockTreeConstructor {
@@ -89,14 +190,14 @@ public:
             case Concurrent: {
                 auto conNode = dynamic_cast<concurrentNode *>(startTree.get());
                 std::vector<std::shared_ptr<basicblock>> threads;
-                auto concNode = std::make_shared<concurrentNode>(concurrentNode(okType, threads));
-                block = std::make_shared<basicblock>(std::vector<std::shared_ptr<statementNode>>{concNode});
+                //auto concNode = std::make_shared<concurrentNode>(concurrentNode(okType, threads));
+                block = std::make_shared<basicblock>(basicblock(startTree));
                 auto endConc = std::make_shared<basicblock>(
                         basicblock(std::make_shared<endConcNode>(endConcNode(conNode->threads.size(), block)), nxt));
                 for (const auto &t : conNode->threads) {
                     threads.push_back(get_tree(t, endConc));
                 }
-                for (auto blk : threads) concNode->threads.push_back(blk);
+                //for (auto blk : threads) concNode->threads.push_back(blk);
                 block->nexts = std::move(threads);
                 break;
             }

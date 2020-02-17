@@ -56,22 +56,36 @@ namespace std {
     };
 }
 
-struct basicblock : public statementNode {
-    basicblock() : statements{}, nexts{} {setNodeType(BasicBlock);};
+struct basicblock {
+    basicblock() : statements{}, nexts{} {};
     basicblock(std::shared_ptr<statementNode> stmt) :
             statements{std::vector<std::shared_ptr<statementNode>>{std::move(stmt)}},
-            nexts{} {setNodeType(BasicBlock);};
+            nexts{} {};
     basicblock(std::vector<std::shared_ptr<statementNode>> stmts) :
         statements{std::move(stmts)},
-        nexts{} {setNodeType(BasicBlock);};
+        nexts{} {};
     basicblock(std::shared_ptr<statementNode> stmt, std::shared_ptr<basicblock> next) :
             statements{std::vector<std::shared_ptr<statementNode>>{std::move(stmt)}},
-            nexts{std::vector<std::shared_ptr<basicblock>>{std::move(next)}} {setNodeType(BasicBlock);};
+            nexts{std::vector<std::shared_ptr<basicblock>>{std::move(next)}} {};
     basicblock(std::vector<std::shared_ptr<statementNode>> stmts, std::shared_ptr<basicblock> next) :
             statements{std::move(stmts)},
-            nexts{std::vector<std::shared_ptr<basicblock>>{std::move(next)}} {setNodeType(BasicBlock);};
+            nexts{std::vector<std::shared_ptr<basicblock>>{std::move(next)}} {};
     basicblock(std::vector<std::shared_ptr<statementNode>> stmts, std::vector<std::shared_ptr<basicblock>> nStmts) :
-        statements{std::move(stmts)}, nexts{std::move(nStmts)} {setNodeType(BasicBlock);};
+        statements{std::move(stmts)}, nexts{std::move(nStmts)} {};
+
+
+    basicblock(const basicblock &o) {
+        for (auto stmt : o.statements) {
+            statements.push_back(stmt->copy_statement());
+        }/*
+        for (auto nxt : o.nexts) {
+            nexts.push_back(std::make_shared<basicblock>(basicblock(*nxt)));
+        }*/
+    }
+
+    basicblock(basicblock&& o) noexcept : statements{std::move(o.statements)}, nexts{std::move(o.nexts)} {
+
+    }
 
 
     std::vector<std::shared_ptr<statementNode>> statements;

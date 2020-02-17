@@ -8,6 +8,7 @@
 #include <antlr4-runtime.h>
 #include <CCFGIllustrator.hpp>
 //#include <symengine/symbolicExecutionEngine.hpp>
+#include <CSSA_CFG.hpp>
 
 using namespace std;
 using namespace antlr4;
@@ -28,7 +29,7 @@ static std::map< const char *, const char * > files = {
 int main(int argc, const char* argv[]) {
     std::ifstream stream;
     //stream.open("../code.small");
-    stream.open(files["bubblesort"]);
+    stream.open(files["coffee_maker"]);
     //stream.open("shortExpr.small");
 
     ANTLRInputStream input(stream);
@@ -70,7 +71,15 @@ int main(int argc, const char* argv[]) {
     std::set<basicblock *> addedBlocks = std::set<basicblock *>{ccfg.startNode.get()};
     std::unordered_map<std::shared_ptr<basicblock>,std::shared_ptr<CCFGNode>> creatednodes;
     first->construct_graph(first, &addedBlocks, &creatednodes);
-    std::cout << "\n" << first->to_string(&ccfg.edges);
+    std::cout << "\n" << first->to_string(&ccfg.edges) << "\n\n\n\n\n";
+
+    CSSA_CFG cssa = CSSA_CFG(ccfg);
+
+    auto asdf = std::make_shared<CCFGNode>(CCFGNode(nullptr, cssa.ccfg->startNode));
+    addedBlocks = std::set<basicblock *>{cssa.ccfg->startNode.get()};
+    creatednodes.clear();
+    asdf->construct_graph(asdf, &addedBlocks, &creatednodes);
+    std::cout << "\n" << asdf->to_string(&cssa.ccfg->edges) << "\n\n\n\n\n";
 
     std::cout << "finished\n";
 

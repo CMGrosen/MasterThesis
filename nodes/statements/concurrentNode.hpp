@@ -12,13 +12,13 @@ public:
         threads{std::move(_threads)} {
         setType(type);
         setNodeType(Concurrent);
-    }
+    }/*
     concurrentNode(Type type, const std::vector<std::shared_ptr<basicblock>> &_threads) {
         setType(type);
         setNodeType(Concurrent);
         threads.reserve(_threads.size());
         for(auto _thread : _threads) threads.push_back(_thread);
-    }
+    }*/
     std::vector<std::shared_ptr<statementNode>> threads;
     std::string to_string() override {
         return "fork with " + std::to_string(threads.size()) + " threads";
