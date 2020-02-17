@@ -50,17 +50,30 @@ public:
         }
     }
 
-    std::string to_string(){
+    std::string to_string(const std::unordered_set<edge> *edges){
         std::set<CCFGNode *> drawnBlocks;
+        std::set<CCFGNode *> resizedBlocks;
         std::string result = std::string("\\usetikzlibrary{automata,positioning}\n") +
                 std::string("\\begin{tikzpicture}[shorten >=1pt, node distance=2cm, on grid, auto]\n");
-
+        resizeAll(&resizedBlocks);
         result += draw_node(&drawnBlocks);
 
+        /*
         result += draw_edges();
         for(const auto& child : children){
             result += child->draw_edges();
         }
+        */
+
+        for(const auto& ed : *edges){
+            if(ed.type == conflict){
+                result += "\\path[->, red] (";
+            } else {
+                result += "\\path[->] (" ;
+            }
+            result += ed.neighbours[0]->get_name() + ") edge (" + ed.neighbours[1]->get_name() + ");\n";
+        }
+
         result += "\\end{tikzpicture}\n";
         return result;
     }
@@ -100,6 +113,14 @@ public:
         children.emplace_back(child);
     }
 
+    void resizeAll(std::set<CCFGNode *> *resizedBlocks){
+        for(const auto& child : children){
+            if (resizedBlocks->insert(this).second) {
+                child->resizeAll(resizedBlocks);
+            }
+        }
+        resize();
+    }
     void resize(){
         int temp = calc_children_size();
         if(temp > node_size){
@@ -139,14 +160,14 @@ private:
         int dist;
         int left, right;
         if(count % 2 == 1){
-            left = count/2;
-            int mid = count /2+1;
-            right = count/2+2;
+            left = count/2-1;
+            int mid = count /2;
+            right = count/2+1;
             dist = children[mid]->get_size()/2+padding;
             children[mid]->distance = 0;
         } else {
-            left = count/2;
-            right = count/2+1;
+            left = count/2-1;
+            right = count/2;
             dist = 0;
         }
         while(left >= 0){
@@ -166,13 +187,13 @@ private:
 };
 
 std::string DrawCCFG(CCFG ccfg){
-    CCFGNode start {nullptr, "start", "asdad", 5};
+    /*CCFGNode start {nullptr, "start", "asdad", 5};
 
 
     std::string result = "\\usetikzlibrary{automata,positioning}\n "
                          "\\begin{tikzpicture}[shorten >=1pt, node distance=2cm, on grid, auto]\n" +
             start.to_string() +
-            "\\end{tikzpicture}";
+            "\\end{tikzpicture}";*/
 }
 
 #endif //ANTLR_CPP_TUTORIAL_CCFGILLUSTRATOR_HPP
