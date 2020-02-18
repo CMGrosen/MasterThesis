@@ -6,6 +6,9 @@
 #define ANTLR_CPP_TUTORIAL_NODE_HPP
 
 #include <typeinfo>
+#include <map>
+#include <vector>
+#include <memory>
 
 enum Type { intType, boolType, arrayIntType, arrayBoolType, okType, errorType};
 enum NodeType { Assign, AssignArrField, Concurrent, EndConcurrent, Sequential, While, If, Write, Read, Literal, ArrayAccess, ArrayLiteral, Event, Variable, BinaryExpression, UnaryExpression, Skip, BasicBlock, Phi, Pi};

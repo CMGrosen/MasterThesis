@@ -26,6 +26,32 @@ static std::map< const char *, const char * > files = {
         {"coffee_maker", "../code_examples/coffee_maker.small"}
 };
 
+void do_stuff(basicBlockTreeConstructor test, const std::shared_ptr<statementNode> tree) {
+    auto ccfg = test.get_ccfg(tree);
+
+    std::cout << "got here  " << std::to_string(ccfg.startNode->get_number_of_blocks()) << "\n\n";//a << std::endl;
+
+    //symbolicExecutionEngine symEngine;
+    //auto constraintsToReachBug = symEngine.execute(treeAndSymbolTable);
+
+//    symbolicExecutionEngine symEngine;
+//    symEngine.execute(treeAndSymbolTable);
+    std::cout << ccfg.startNode->draw_picture(&ccfg.edges) << "\n\n\n";
+
+    auto first = CCFGTree(ccfg);
+    std::cout << "made first:  " << std::to_string(ccfg.startNode->get_number_of_blocks()) << "\n";
+
+    std::cout << first.DrawCCFG() << "\n";
+
+    CSSA_CFG cssa = CSSA_CFG(ccfg);
+
+    int c = cssa.ccfg->startNode->get_number_of_blocks();
+    std::cout << "cssa: " << std::to_string(c) << "\n";
+
+    std::cout << "finished\nAfter: " << std::to_string(cssa.ccfg->startNode->get_number_of_blocks()) << "\n";
+
+}
+
 int main(int argc, const char* argv[]) {
     std::ifstream stream;
     //stream.open("../code.small");
@@ -48,40 +74,15 @@ int main(int argc, const char* argv[]) {
     if(visitor.getNumErrors() || treeAndSymbolTable.first->getType() == errorType)
         return 0;
 
-//    auto table = std::unordered_map<std::string, std::shared_ptr<expressionNode>>();
-//    table.insert({"a", std::make_shared<binaryExpressionNode>(binaryExpressionNode(intType, PLUS, std::make_shared<literalNode>(literalNode(intType, "2")),std::make_shared<literalNode>(literalNode(intType, "2"))))});
-//    std::vector<state> succStates = no.get_successors(f);
 
     basicBlockTreeConstructor test;
-    //auto a = test.get_tree(treeAndSymbolTable.first);
-    //auto b = test.blocks;
-    auto ccfg = test.get_ccfg(treeAndSymbolTable.first);
-    std::cout << "got here" << std::endl;//a << std::endl;
 
-    //symbolicExecutionEngine symEngine;
-    //auto constraintsToReachBug = symEngine.execute(treeAndSymbolTable);
+    do_stuff(test, treeAndSymbolTable.first);
 
-//    symbolicExecutionEngine symEngine;
-//    symEngine.execute(treeAndSymbolTable);
-    //std::cout << "\n" << ccfg.startNode->draw_picture(&ccfg.edges) << "\n";
+    std::shared_ptr<expressionNode> expr = std::make_shared<literalNode>(literalNode(intType, "10"));
+    std::shared_ptr<statementNode> stmt = std::make_shared<assignNode>(assignNode(intType, "a", expr));
+    basicblock b = basicblock(stmt);
 
-
-
-    auto first = std::make_shared<CCFGNode>(CCFGNode(nullptr, ccfg.startNode));
-    std::set<basicblock *> addedBlocks = std::set<basicblock *>{ccfg.startNode.get()};
-    std::unordered_map<std::shared_ptr<basicblock>,std::shared_ptr<CCFGNode>> creatednodes;
-    first->construct_graph(first, &addedBlocks, &creatednodes);
-    std::cout << "\n" << first->to_string(&ccfg.edges) << "\n\n\n\n\n";
-
-    CSSA_CFG cssa = CSSA_CFG(ccfg);
-
-    auto asdf = std::make_shared<CCFGNode>(CCFGNode(nullptr, cssa.ccfg->startNode));
-    addedBlocks = std::set<basicblock *>{cssa.ccfg->startNode.get()};
-    creatednodes.clear();
-    asdf->construct_graph(asdf, &addedBlocks, &creatednodes);
-    std::cout << "\n" << asdf->to_string(&cssa.ccfg->edges) << "\n\n\n\n\n";
-
-    std::cout << "finished\n";
-
+    std::cout << "done: " << std::to_string(b.get_number_of_blocks()) << "\n";
     return 0;
 }

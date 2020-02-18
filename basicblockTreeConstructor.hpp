@@ -6,11 +6,7 @@
 #define ANTLR_CPP_TUTORIAL_BASICBLOCKTREECONSTRUCTOR_HPP
 
 #include <nodes/basicblock.hpp>
-
-
-
-
-
+#include <unordered_set>
 
 struct CCFG {
     std::set<std::shared_ptr<basicblock>> nodes;
@@ -24,17 +20,20 @@ struct CCFG {
 
     CCFG(const CCFG& a) : startNode{std::make_shared<basicblock>(basicblock(*(a.startNode)))}, exitNode{std::make_shared<basicblock>(basicblock(*(a.exitNode)))} {
         construct_rest(a);
+        nodes.insert(startNode);
+        nodes.insert(exitNode);
     }
 
     CCFG(CCFG&& o) noexcept
             : nodes{std::move(o.nodes)}, edges{std::move(o.edges)}, startNode{std::move(o.startNode)}, exitNode{std::move(o.exitNode)} {
-
     }
 
     CCFG& operator=(const CCFG& a) {
         startNode = std::make_shared<basicblock>(basicblock(*(a.startNode)));
         exitNode = std::make_shared<basicblock>(basicblock(*(a.exitNode)));
         construct_rest(a);
+        nodes.insert(startNode);
+        nodes.insert(exitNode);
         return *this;
     }
 
@@ -44,6 +43,12 @@ struct CCFG {
         startNode = std::move(other.startNode);
         exitNode = std::move(other.exitNode);
         return *this;
+    }
+
+    ~CCFG() {
+        for (auto &blk : nodes) {
+            blk->nexts.clear();
+        }
     }
 
 private:
@@ -68,13 +73,14 @@ private:
     std::shared_ptr<basicblock> copy_block(const std::shared_ptr<basicblock> &child, std::set<basicblock *> *foundBlocks, std::unordered_map<basicblock *, std::shared_ptr<basicblock>> *visited_blocks, std::shared_ptr<basicblock> oldExitNode) {
         std::vector<std::shared_ptr<basicblock>> vec;
         std::shared_ptr<basicblock> blk;
-        if (child == oldExitNode) {vec.push_back(exitNode);}
+        if (child == oldExitNode) {vec.push_back(exitNode); visited_blocks->insert({child.get(), exitNode});}
         for (const auto &t : child->nexts) {
-            if (foundBlocks->insert(t.get()).second) {
+            if (t == oldExitNode) {vec.push_back(exitNode); visited_blocks->insert({t.get(), exitNode});}
+            else if (foundBlocks->insert(t.get()).second) { //If can be inserted
                 vec.push_back(copy_block(t, foundBlocks, visited_blocks, oldExitNode));
-            } else if (visited_blocks->find(t.get()) != visited_blocks->end() && t != oldExitNode) {
+            } else if (visited_blocks->find(t.get()) != visited_blocks->end()) { //If exists
                 vec.push_back(visited_blocks->find(t.get())->second);
-            } else {
+            } else { //We have a while node, since we have not yet constructed this node, but have already found it (loop)
                 blk = std::make_shared<basicblock>(basicblock(*t));
                 nodes.insert(blk);
                 visited_blocks->insert({t.get(), blk});
@@ -217,10 +223,6 @@ public:
     }
 
 private:
-    std::shared_ptr<basicblock> handle_while(std::shared_ptr<statementNode> tree, std::shared_ptr<basicblock> last) {
-
-    }
-
     std::pair<std::set<std::shared_ptr<basicblock>>, std::vector<edge>> get_all_blocks_and_edges(const std::shared_ptr<basicblock> &startTree, const std::shared_ptr<basicblock> &exitNode, std::set<basicblock *> *whileLoops) {
         std::set<std::shared_ptr<basicblock>> basicblocks;
         std::vector<edge> edges;
