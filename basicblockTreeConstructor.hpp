@@ -13,9 +13,15 @@ struct CCFG {
     std::unordered_set<edge> edges;
     std::shared_ptr<basicblock> startNode;
     std::shared_ptr<basicblock> exitNode;
-    CCFG(std::set<std::shared_ptr<basicblock>> nodes, std::unordered_set<edge> edges, std::shared_ptr<basicblock> start, std::shared_ptr<basicblock> exit)
-        : nodes{std::move(nodes)}, edges{std::move(edges)}, startNode{std::move(start)}, exitNode{std::move(exit)} {
-
+    CCFG(std::set<std::shared_ptr<basicblock>> _nodes, std::unordered_set<edge> _edges, std::shared_ptr<basicblock> _start, std::shared_ptr<basicblock> _exit)
+        : nodes{std::move(_nodes)}, edges{std::move(_edges)}, startNode{std::move(_start)}, exitNode{std::move(_exit)} {
+        for (const auto it : nodes) {
+            if (!it->nexts.empty()) {
+                for (const auto child : it->nexts) {
+                    child->parents.push_back(it);
+                }
+            }
+        }
     }
 
     CCFG(const CCFG& a) : startNode{std::make_shared<basicblock>(basicblock(*(a.startNode)))}, exitNode{std::make_shared<basicblock>(basicblock(*(a.exitNode)))} {

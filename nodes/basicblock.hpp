@@ -36,6 +36,7 @@ struct basicblock {
     ~basicblock();
 
     std::vector<std::shared_ptr<statementNode>> statements;
+    std::vector<std::weak_ptr<basicblock>> parents;
     std::vector<std::shared_ptr<basicblock>> nexts;
 
     void setConcurrentBlock(const std::shared_ptr<basicblock> &blk, int threadNum, std::set<basicblock *> *whileLoop);
