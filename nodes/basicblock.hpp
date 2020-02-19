@@ -13,6 +13,8 @@
 #include <unordered_set>
 #include <set>
 #include "edge.hpp"
+#include "nodes/nodes.hpp"
+#include <sstream>
 
 struct basicblock {
     basicblock();
