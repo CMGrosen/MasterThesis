@@ -30,6 +30,8 @@ static std::map< const char *, const char * > files = {
 void do_stuff(basicBlockTreeConstructor test, const std::shared_ptr<statementNode> tree) {
     auto ccfg = test.get_ccfg(tree);
 
+    DominatorTree dominatorTree = DominatorTree(std::make_shared<CCFG>(ccfg));
+
     std::cout << "got here  " << std::to_string(ccfg.startNode->get_number_of_blocks()) << "\n\n";//a << std::endl;
 
     //symbolicExecutionEngine symEngine;
@@ -85,5 +87,8 @@ int main(int argc, const char* argv[]) {
     basicblock b = basicblock(stmt);
 
     std::cout << "done: " << std::to_string(b.get_number_of_blocks()) << "\n";
+    int a = 50, p = 2, s = 1;
+    a = p = s = 3;
+    std::cout << std::to_string(a) << std::to_string(p) << std::to_string(s) << std::endl;
     return 0;
 }
