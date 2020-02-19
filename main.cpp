@@ -9,6 +9,7 @@
 #include <CCFGIllustrator.hpp>
 //#include <symengine/symbolicExecutionEngine.hpp>
 #include <CSSA_CFG.hpp>
+#include <dominatorTreeConstructor.hpp>
 
 using namespace std;
 using namespace antlr4;
