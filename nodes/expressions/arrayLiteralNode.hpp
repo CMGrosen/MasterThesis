@@ -53,6 +53,19 @@ public:
         return _this;
     }
 
+    bool operator==(const expressionNode *expr) const override {
+        if (nodetype == expr->getNodeType()) {
+            const std::vector<std::shared_ptr<expressionNode>> arrlit = dynamic_cast<const arrayLiteralNode*>(expr)->getArrLit();
+            if (value.size() != arrlit.size()) {
+                for (auto i = 0; i < value.size(); ++i) {
+                    return true; // doesn't work
+                    //if (!(*value[i] == (*(arrlit[i])))) return false;
+                }
+                return true;
+            } else return false;
+        } else return false;
+    }
+
     const std::vector<std::shared_ptr<expressionNode>> getArrLit() const {return value;};
 private:
     std::vector<std::shared_ptr<expressionNode>> value;

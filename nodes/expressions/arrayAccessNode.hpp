@@ -29,6 +29,12 @@ public:
         _this->setNext(copy_next());
         return _this;
     }
+
+    bool operator==(const expressionNode *expr) const override {
+        //doesn't work
+        return (nodetype == expr->getNodeType() && name == dynamic_cast<const arrayAccessNode*>(expr)->getName());
+    }
+
 private:
     std::shared_ptr<expressionNode> value;
     std::string name;

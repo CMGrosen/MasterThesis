@@ -8,7 +8,7 @@
 //#include <nodes/basicblock.hpp>
 
 class DFSNode;
-public class DominatorTree {
+class DominatorTree {
 public:
 
     std::shared_ptr<DFSNode> createDFSTree(){

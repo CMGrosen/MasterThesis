@@ -33,5 +33,9 @@ public:
         return _this;
     }
     std::string name;
+
+    bool operator==(const expressionNode *expr) const override {
+        return (nodetype == expr->getNodeType() && name == dynamic_cast<const variableNode *>(expr)->name);
+    }
 };
 #endif //ANTLR_CPP_TUTORIAL_NAMENODE_HPP

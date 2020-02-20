@@ -19,6 +19,11 @@ public:
         _this->setNext(this->copy_next());
         return _this;
     }
+
+    bool operator==(const expressionNode *expr) const override {
+        return (nodetype == expr->getNodeType() && _pin == dynamic_cast<const readNode *>(expr)->getPin());
+    }
+
 private:
     int16_t _pin;
 };

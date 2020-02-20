@@ -33,6 +33,17 @@ public:
         _this->setNext(this->copy_next());
         return _this;
     }
+
+    bool operator==(const expressionNode *expr) const override {
+        if (nodetype == expr->getNodeType()) {
+            const auto vec = dynamic_cast<const phiNode *>(expr)->_variables;
+            if (vec.size() != _variables.size()) return false;
+            for (auto i = 0; i < _variables.size(); ++i) {
+                if (!(_variables[i]->name == vec[i]->name)) return false;
+            }
+            return true;
+        } else return false;
+    }
 };
 
 #endif //ANTLR_CPP_TUTORIAL_PHINODE_HPP

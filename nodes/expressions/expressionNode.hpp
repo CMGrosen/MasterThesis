@@ -39,6 +39,7 @@ public:
     }
     virtual std::string to_string() {};
     virtual std::shared_ptr<expressionNode> copy_expression() const {};
+    virtual bool operator==(const expressionNode *expr) const {};
     std::shared_ptr<expressionNode> copy_next() const {
         if(getNext()) return getNext()->copy_expression();
         else return nullptr;

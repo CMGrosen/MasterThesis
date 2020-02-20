@@ -33,6 +33,10 @@ public:
         _this->setNext(this->copy_next());
         return _this;
     }
+
+    bool operator==(const expressionNode *expr) const override {
+        return (nodetype == expr->getNodeType() && value == dynamic_cast<const literalNode*>(expr)->value);
+    }
     std::string value;
 };
 #endif //ANTLR_CPP_TUTORIAL_LITERALNODE_HPP

@@ -25,6 +25,10 @@ public:
         return _this;
     }
 
+    bool operator==(const expressionNode *expr) const override {
+        return (nodetype == expr->getNodeType() && _operator == dynamic_cast<const binaryExpressionNode *>(expr)->getOperator());
+    }
+
 private:
     op _operator;
 };
