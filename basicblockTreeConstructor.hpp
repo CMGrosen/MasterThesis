@@ -15,19 +15,14 @@ struct CCFG {
     std::shared_ptr<basicblock> exitNode;
     CCFG(std::set<std::shared_ptr<basicblock>> _nodes, std::unordered_set<edge> _edges, std::shared_ptr<basicblock> _start, std::shared_ptr<basicblock> _exit)
         : nodes{std::move(_nodes)}, edges{std::move(_edges)}, startNode{std::move(_start)}, exitNode{std::move(_exit)} {
-        for (const auto it : nodes) {
-            if (!it->nexts.empty()) {
-                for (const auto child : it->nexts) {
-                    child->parents.push_back(it);
-                }
-            }
-        }
+        assign_parents();
     }
 
     CCFG(const CCFG& a) : startNode{std::make_shared<basicblock>(basicblock(*(a.startNode)))}, exitNode{std::make_shared<basicblock>(basicblock(*(a.exitNode)))} {
         construct_rest(a);
         nodes.insert(startNode);
         nodes.insert(exitNode);
+        assign_parents();
     }
 
     CCFG(CCFG&& o) noexcept
@@ -40,6 +35,7 @@ struct CCFG {
         construct_rest(a);
         nodes.insert(startNode);
         nodes.insert(exitNode);
+        assign_parents();
         return *this;
     }
 
@@ -73,6 +69,16 @@ private:
             edges.insert(edge(ed.type,
                     visited_blocks.find(ed.neighbours[0].get())->second,
                     visited_blocks.find(ed.neighbours[1].get())->second));
+        }
+    }
+
+    void assign_parents() {
+        for (const auto it : nodes) {
+            if (!it->nexts.empty()) {
+                for (const auto child : it->nexts) {
+                    child->parents.push_back(it);
+                }
+            }
         }
     }
 

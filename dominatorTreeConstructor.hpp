@@ -65,7 +65,7 @@ public:
             }
             v = &dfsTree->ancestors.find(*v)->second;
         }
-        return u;
+        return u; //ikke lovligt. Memory der refereres til er stack. n som bliver passed har anden værdi end v som ellers er n
     }
 
     static std::shared_ptr<basicblock>* AncestorWithLowerDFNum(std::shared_ptr<basicblock>* v, DFSTree* dfsTree, int s_dfnum){
