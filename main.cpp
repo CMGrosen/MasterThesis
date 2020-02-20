@@ -10,6 +10,7 @@
 //#include <symengine/symbolicExecutionEngine.hpp>
 #include <CSSA_CFG.hpp>
 #include <dominatorTreeConstructor.hpp>
+#include <SSA_CCFG.hpp>
 
 using namespace std;
 using namespace antlr4;

@@ -14,6 +14,7 @@
 #include "eventNode.hpp"
 #include "skipNode.hpp"
 #include "arrayFieldAssignNode.hpp"
+#include "phiNode.hpp"
 #include "piNode.hpp"
 #include "endConcNode.hpp"
 
