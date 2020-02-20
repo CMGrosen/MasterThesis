@@ -18,7 +18,7 @@ class DominatorTree {
 
     };
 public:
-
+    std::unordered_map<std::shared_ptr<basicblock>, std::shared_ptr<basicblock>> DF;    // Dominator Frontier
     static DFSTree CreateDFSTree(const std::shared_ptr<CCFG> &ccfg){
         DFSTree dfsTree;
         std::shared_ptr<basicblock> node = ccfg->startNode;
@@ -52,6 +52,17 @@ public:
         
     }
 
+    std::shared_ptr<basicblock> AncestorWithLowestSemi(std::shared_ptr<basicblock> v, DFSTree* dfsTree){
+        auto temp_a = dfsTree->parents.find(v);
+        if(temp_a == dfsTree->parents.end()){
+            std::shared_ptr<basicblock> a = temp_a->second;
+            std::shared_ptr<basicblock> b = AncestorWithLowestSemi(a, dfsTree);
+
+
+
+            dfsTree->parents.find(v)->second = dfsTree->parents.find(a)->second;
+        }
+    }
 
 
     DominatorTree(const std::shared_ptr<CCFG>& ccfg){
