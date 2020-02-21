@@ -15,6 +15,7 @@ public:
         setNodeType(Assign);
     };
 
+    void setName(std::string newName) {name = std::move(newName);}
     std::string getName() const {return name;}
     expressionNode* getExpr() const {return expr.get();}
     std::string to_string() override {

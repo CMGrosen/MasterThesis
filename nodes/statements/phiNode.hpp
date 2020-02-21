@@ -31,6 +31,7 @@ public:
         return _this;
     }
 
+    std::vector<std::string> *get_variables() {return &_variables;}
     /*std::shared_ptr<expressionNode> copy_expression() const override {
         std::vector<std::shared_ptr<variableNode>> _vars;
         for (auto v : _variables) {

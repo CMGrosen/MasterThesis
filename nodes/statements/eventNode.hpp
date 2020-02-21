@@ -13,7 +13,7 @@ public:
         setType(t);
         setNodeType(Event);
     }
-    const expressionNode *getCondition() const {return _condition.get();}
+    expressionNode *getCondition() {return _condition.get();}
     std::string to_string() override {
         return "event(" + _condition->to_string() + ")";
     }

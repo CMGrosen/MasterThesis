@@ -13,7 +13,7 @@ public:
         setType(t);
         setNodeType(While);
     }
-    const expressionNode *getCondition() const {return condition.get();}
+    expressionNode *getCondition() {return condition.get();}
     const std::shared_ptr<statementNode> getBody() const {return body;}
 
     std::string to_string() override {
