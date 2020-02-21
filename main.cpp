@@ -25,7 +25,8 @@ static std::map< const char *, const char * > files = {
         {"temp", "../temp.small"},
         {"oob_race-condition", "../code_examples/out_of_bounds_race-condition.small"},
         {"testAssign", "../code_examples/testAssign.small"},
-        {"coffee_maker", "../code_examples/coffee_maker.small"}
+        {"coffee_maker", "../code_examples/coffee_maker.small"},
+        {"idom_test", "../code_examples/idomTest.small"}
 };
 
 void do_stuff(basicBlockTreeConstructor test, const std::shared_ptr<statementNode> tree) {
@@ -56,10 +57,12 @@ void do_stuff(basicBlockTreeConstructor test, const std::shared_ptr<statementNod
 
 }
 
+
+
 int main(int argc, const char* argv[]) {
     std::ifstream stream;
     //stream.open("../code.small");
-    stream.open(files["coffee_maker"]);
+    stream.open(files["idom_test"]);
     //stream.open("shortExpr.small");
 
     ANTLRInputStream input(stream);
