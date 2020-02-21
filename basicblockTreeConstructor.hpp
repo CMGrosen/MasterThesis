@@ -58,9 +58,21 @@ private:
         std::unordered_map<basicblock *, std::shared_ptr<basicblock>> visited_blocks;
         std::vector<std::shared_ptr<basicblock>> vec;
         std::set<basicblock *> foundBlocks;
-        for (auto child : a.startNode->nexts) {
+        for (const auto &child : a.startNode->nexts) {
             if (child == a.exitNode) {vec.push_back(exitNode);}
-            vec.push_back(copy_block(child, &foundBlocks, &visited_blocks, a.exitNode));
+            if (!child->statements.empty() && child->statements[0]->getNodeType() == While) {
+                std::shared_ptr<basicblock> blk = std::make_shared<basicblock>(basicblock(*child));
+                nodes.insert(blk);
+                visited_blocks.insert({child.get(), blk});
+                foundBlocks.insert(child.get());
+                vec.push_back(blk);
+                blk->nexts = std::vector<std::shared_ptr<basicblock>>{
+                    (copy_block(child->nexts[0], &foundBlocks, &visited_blocks, a.exitNode)),
+                    (copy_block(child->nexts[1], &foundBlocks, &visited_blocks, a.exitNode))
+                };
+            } else {
+                vec.push_back(copy_block(child, &foundBlocks, &visited_blocks, a.exitNode));
+            }
         }
         startNode->nexts = std::move(vec);
 
