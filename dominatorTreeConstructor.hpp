@@ -9,6 +9,26 @@
 #include <basicblockTreeConstructor.hpp>
 #include <utility>
 
+struct DOMNode {
+    std::shared_ptr<DOMNode> parent;
+    std::vector<std::shared_ptr<DOMNode>> children;
+    std::shared_ptr<basicblock> basic_block;
+    DOMNode(std::shared_ptr<basicblock> _basic_block,std::shared_ptr<DOMNode> _parent) :
+            parent{std::move(_parent)},
+            basic_block{std::move(_basic_block)}
+    {}
+
+    void AddChild(const std::shared_ptr<DOMNode>& child){
+        for(const auto& _child : children){
+            if(_child->basic_block == child->basic_block){
+                return;
+            }
+        }
+        children.emplace_back(child);
+    }
+
+};
+
 class DominatorTree {
     struct DFSTree {
         std::unordered_map<int, std::shared_ptr<basicblock>> nodes;
@@ -16,25 +36,6 @@ class DominatorTree {
         std::unordered_map<std::shared_ptr<basicblock>, int> dfnums;
         std::unordered_map<std::shared_ptr<basicblock>, std::shared_ptr<basicblock>> ancestors;
         //std::unordered_map<std::shared_ptr<basicblock>, std::vector<std::shared_ptr<basicblock>>> successors;
-    };
-    struct DOMNode {
-        std::shared_ptr<DOMNode> parent;
-        std::vector<std::shared_ptr<DOMNode>> children;
-        std::shared_ptr<basicblock> basic_block;
-        DOMNode(std::shared_ptr<basicblock> _basic_block,std::shared_ptr<DOMNode> _parent) :
-                                                                parent{std::move(_parent)},
-                                                                basic_block{std::move(_basic_block)}
-                                                                {}
-
-        void AddChild(const std::shared_ptr<DOMNode>& child){
-            for(const auto& _child : children){
-                if(_child->basic_block == child->basic_block){
-                    return;
-                }
-            }
-            children.emplace_back(child);
-        }
-
     };
 public:
 
@@ -140,7 +141,7 @@ public:
             for(const std::shared_ptr<basicblock>& v : bucket.find(p)->second){
                 auto y = AncestorWithLowestSemi(v, &depth_first_spanning_tree, &semi);
                 if(semi.find(y)->second == semi.find(v)->second){
-                    idom.insert({v, p});
+                    idom.find(v)->second = p;
                 } else {
                     samedom.insert({v, y});
                 }
@@ -182,10 +183,37 @@ public:
         DF.insert({n, S});
     }
 
+    static void PrintIdom(const std::unordered_map<std::shared_ptr<basicblock>, std::shared_ptr<basicblock>>& idom){
+        int i = 1;
+        for(const auto& pair : idom){
+            std::cout << "idom" + std::to_string(i) + ": ";
+            if(pair.second) {
+                for(const auto &stmt : pair.second->statements) {
+                    std::cout << stmt->to_string();
+                }
+            } else {
+                std::cout << "none";
+            }
+            std::cout << " dominates: ";
+            if(pair.first){
+                for(const auto& stmt : pair.first->statements){
+                    std::cout << stmt->to_string();
+                }
+            } else {
+                std::cout << "none";
+            }
+
+            std::cout << std::endl;
+            i++;
+        }
+    }
+
     DominatorTree(const std::shared_ptr<CCFG>& ccfg){
 
         DFSTree depth_first_spanning_tree = CreateDFSTree(ccfg);
         std::unordered_map<std::shared_ptr<basicblock>, std::shared_ptr<basicblock>> idom = CreateDominatorTree(depth_first_spanning_tree);
+        PrintIdom(idom);
+
         std::unordered_map<std::shared_ptr<basicblock>, std::shared_ptr<DOMNode>> DOMTree;
 
         std::shared_ptr<basicblock> basic_block = depth_first_spanning_tree.nodes.find(0)->second;
@@ -201,6 +229,7 @@ public:
         root = DOMTree.find(depth_first_spanning_tree.nodes.find(0)->second)->second;
         CreateDominanceFrontier(&idom, root->basic_block, &DOMTree);
         std::cout << "Depth-First-Spanning-Tree constructed" << std::endl;
+
     }
 
 
