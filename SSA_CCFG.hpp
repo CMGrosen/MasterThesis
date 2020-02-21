@@ -26,7 +26,7 @@ struct SSA_CCFG {
 
         place_phi_functions();
 
-        rename(ccfg->startNode);
+        rename(domTree->root);
     };
 
 private:
@@ -91,8 +91,55 @@ private:
         }
     }
 
-    void rename(std::shared_ptr<basicblock> n) {
+    void update_uses(expressionNode *expr) {
+        if(expr) {
+            switch (expr->getNodeType()) {
+                case ArrayAccess: {
+                    auto node = dynamic_cast<arrayAccessNode*>(expr);
+                    break;
+                } case ArrayLiteral: {
+                    break;
+                } case Variable: {
+                    break;
+                } default:
+                    break;
+            }
+        }
+    }
+    void update_uses(const std::shared_ptr<statementNode> &stmt) {
+        switch (stmt->getNodeType()) { // for each use
+            case Assign: {
+                auto node = dynamic_cast<assignNode*>(stmt.get());
+                update_uses(node->getExpr());
+                break;
+            } case AssignArrField: {
+                auto node = dynamic_cast<arrayFieldAssignNode*>(stmt.get());
+                break;
+            } case While: {
+                auto node = dynamic_cast<whileNode*>(stmt.get());
+                break;
+            } case If: {
+                auto node = dynamic_cast<ifElseNode*>(stmt.get());
+                break;
+            } case Write: {
+                auto node = dynamic_cast<writeNode*>(stmt.get());
+                break;
+            } case ArrayAccess: {
+                auto node = dynamic_cast<arrayAccessNode*>(stmt.get());
+                break;
+            } case Event: {
+                auto node = dynamic_cast<eventNode*>(stmt.get());
+                break;
+            } default:
+                break;
+        }
+    }
 
+    void rename(std::shared_ptr<DOMNode> n) {
+        for (auto stmt : n->basic_block->statements) {
+            update_uses(stmt);
+
+        }
     }
 };
 

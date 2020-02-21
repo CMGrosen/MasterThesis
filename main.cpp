@@ -28,10 +28,10 @@ static std::map< const char *, const char * > files = {
         {"coffee_maker", "../code_examples/coffee_maker.small"}
 };
 
-void do_stuff(basicBlockTreeConstructor test, const std::shared_ptr<statementNode> tree) {
-    auto ccfg = std::make_shared<CCFG>(test.get_ccfg(tree));
+void do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_ptr<statementNode>, const std::unordered_map<std::string, std::shared_ptr<expressionNode>>> *treeAndSymbolTable) {
+    auto ccfg = std::make_shared<CCFG>(test.get_ccfg(treeAndSymbolTable->first));
 
-    DominatorTree dominatorTree = DominatorTree(ccfg);
+    std::shared_ptr<DominatorTree> dominatorTree = std::make_shared<DominatorTree>(DominatorTree(ccfg));
 
     std::cout << "got here  " << std::to_string(ccfg->startNode->get_number_of_blocks()) << "\n\n";//a << std::endl;
 
@@ -54,6 +54,12 @@ void do_stuff(basicBlockTreeConstructor test, const std::shared_ptr<statementNod
 
     std::cout << "finished\nAfter: " << std::to_string(cssa.ccfg->startNode->get_number_of_blocks()) << "\n";*/
 
+    auto symboltable = std::make_shared<std::unordered_map<std::string, std::shared_ptr<expressionNode>>>(
+            treeAndSymbolTable->second);
+
+    SSA_CCFG ssa_ccfg = SSA_CCFG(ccfg, symboltable, dominatorTree);
+
+    std::cout << ssa_ccfg.ccfg->startNode->statements[0]->getNodeType() << "\n";
 }
 
 int main(int argc, const char* argv[]) {
@@ -81,7 +87,7 @@ int main(int argc, const char* argv[]) {
 
     basicBlockTreeConstructor test;
 
-    do_stuff(test, treeAndSymbolTable.first);
+    do_stuff(test, &treeAndSymbolTable);
 
     std::shared_ptr<expressionNode> expr = std::make_shared<literalNode>(literalNode(intType, "10"));
     std::shared_ptr<statementNode> stmt = std::make_shared<assignNode>(assignNode(intType, "a", expr));
