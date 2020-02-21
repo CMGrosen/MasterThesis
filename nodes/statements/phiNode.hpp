@@ -13,14 +13,15 @@ public:
     _name{std::move(name)}, _variables{std::move(variables)} {
         setNodeType(Phi);
         setType(okType);
+        onSSA = true;
     }
 
     std::string to_string() override {
         std::string res = "$\\phi($";
         if (!_variables.empty()) {
-            res += _variables[0];
+            res += nameToTikzName(_variables[0], true);
             for (auto i = 1; i < _variables.size(); ++i)
-                res += (", " + _variables[i]);
+                res += (", " + nameToTikzName(_variables[i], true));
         }
         res += ")";
         return res;
@@ -28,6 +29,7 @@ public:
 
     std::shared_ptr<statementNode> copy_statement() const override {
         std::shared_ptr<statementNode> _this = std::make_shared<phiNode>(phiNode(_name, _variables));
+        _this->setSSA(onSSA);
         return _this;
     }
 

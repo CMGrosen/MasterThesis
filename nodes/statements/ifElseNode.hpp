@@ -27,6 +27,7 @@ public:
         std::shared_ptr<statementNode> _trueBranch = trueBranch->copy_statement();
         std::shared_ptr<statementNode> _falseBranch = falseBranch->copy_statement();
         std::shared_ptr<statementNode> _this = std::make_shared<ifElseNode>(ifElseNode(type, _condition, _trueBranch, _falseBranch));
+        _this->setSSA(onSSA);
         return _this;
     }
 

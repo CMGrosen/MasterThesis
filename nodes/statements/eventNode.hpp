@@ -20,6 +20,7 @@ public:
     std::shared_ptr<statementNode> copy_statement() const override {
         std::shared_ptr<expressionNode> _expr = _condition->copy_expression();
         std::shared_ptr<statementNode> _this = std::make_shared<eventNode>(eventNode(type, _expr));
+        _this->setSSA(onSSA);
         return _this;
     }
 private:

@@ -24,6 +24,7 @@ public:
         std::shared_ptr<expressionNode> _c = condition->copy_expression();
         std::shared_ptr<statementNode> _b = body->copy_statement();
         std::shared_ptr<statementNode> _this = std::make_shared<whileNode>(whileNode(type, _c, _b));
+        _this->setSSA(onSSA);
         return _this;
     }
 

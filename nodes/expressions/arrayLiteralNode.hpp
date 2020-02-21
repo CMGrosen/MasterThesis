@@ -50,6 +50,7 @@ public:
         }
         std::shared_ptr<expressionNode> _this = std::make_shared<arrayLiteralNode>(arrayLiteralNode(getType(), std::move(_values)));
         _this->setNext(this->copy_next());
+        _this->setSSA(onSSA);
         return _this;
     }
 

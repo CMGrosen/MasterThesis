@@ -41,7 +41,7 @@ void do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_ptr<st
 
 //    symbolicExecutionEngine symEngine;
 //    symEngine.execute(treeAndSymbolTable);
-    std::cout << ccfg->startNode->draw_picture(&ccfg->edges) << "\n\n\n";
+    //std::cout << ccfg->startNode->draw_picture(&ccfg->edges) << "\n\n\n";
 
     auto first = CCFGTree(*ccfg);
     std::cout << "made first:  " << std::to_string(ccfg->startNode->get_number_of_blocks()) << "\n";

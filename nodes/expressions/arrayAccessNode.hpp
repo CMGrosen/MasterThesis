@@ -15,7 +15,7 @@ public:
     std::string getName() const { return name;}
 
     std::string to_string() override {
-        std::string res = nameToTikzName(name) + "[" + value->to_string() + "] ";
+        std::string res = nameToTikzName(name, onSSA) + "[" + value->to_string() + "] ";
         if (getNext()) {
             res += getNext()->to_string();
         }
@@ -27,6 +27,7 @@ public:
         _val->setNext(value->copy_next());
         std::shared_ptr<expressionNode> _this = std::make_shared<arrayAccessNode>(arrayAccessNode(getType(), _val, name));
         _this->setNext(copy_next());
+        _this->setSSA(onSSA);
         return _this;
     }
 

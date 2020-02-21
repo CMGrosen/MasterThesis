@@ -34,7 +34,9 @@ basicblock::basicblock(const basicblock &o) {
 }
 
 basicblock& basicblock::operator=(const basicblock &o) {
-    statements = o.statements;
+    for (auto stmt : o.statements) {
+        statements.push_back(stmt->copy_statement());
+    }
     /*nexts = o.nexts;
     parents = o.parents;*/
     type = o.type;

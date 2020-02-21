@@ -33,6 +33,7 @@ public:
             _pos_vars.push_back(std::make_shared<variableNode>(variableNode(v->getType(), v->name)));
         }
         auto _this = std::make_shared<piNode>(piNode(std::make_shared<variableNode>(variableNode(_variable->getType(), _variable->name)), std::move(_pos_vars)));
+        _this->setSSA(onSSA);
         return _this;
     }
 };

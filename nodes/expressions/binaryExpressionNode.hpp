@@ -25,6 +25,7 @@ public:
     std::shared_ptr<expressionNode> copy_expression() const override {
         std::shared_ptr<expressionNode> _this = std::make_shared<binaryExpressionNode>(binaryExpressionNode(type, _operator));
         _this->setNext(this->copy_next());
+        _this->setSSA(onSSA);
         return _this;
     }
     op getOperator() const {return _operator;};

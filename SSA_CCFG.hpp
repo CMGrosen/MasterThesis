@@ -103,6 +103,7 @@ private:
             auto res = defcounts->insert({node->getName(), 0});
             if (!res.second) res.first->second++;
             node->setName(node->getName() + "_" + std::to_string(i));
+            node->setSSA(true);
         } else if (stmt->getNodeType() == AssignArrField) {
 
         }
@@ -124,6 +125,7 @@ private:
                 } case Variable: {
                     auto node = dynamic_cast<variableNode*>(expr);
                     node->name += ("_" + std::to_string(Stack[node->name].top()));
+                    node->setSSA(true);
                     break;
                 } default:
                     break;

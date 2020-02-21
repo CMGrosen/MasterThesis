@@ -14,6 +14,7 @@ public:
     }
     std::shared_ptr<statementNode> copy_statement() const override {
         std::shared_ptr<statementNode> _this = std::make_shared<skipNode>(skipNode());
+        _this->setSSA(onSSA);
         return _this;
     }
 };

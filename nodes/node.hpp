@@ -49,8 +49,9 @@ public:
     virtual void setType(Type t) {type = t;};
     virtual NodeType getNodeType() const {return nodetype;};
     virtual void setNodeType(NodeType t) {nodetype = t;};
+    virtual void setSSA(bool t) {onSSA = t;};
 
-    static std::string nameToTikzName(std::string name) {
+    static std::string nameToTikzName(std::string name, bool SSAForm) {
         std::string newName = name;
         int length = newName.length();
         for (int i = 0; i < length; i++) {
@@ -61,12 +62,25 @@ public:
                 length += 1;
             }
         }
+        if (SSAForm) {
+            length = newName.length();
+            for (int i = length - 1; i >= 0; --i) {
+                if (newName[i] == '_') {
+                    newName[i - 1] = '$';
+                    newName[i] = '_';
+                    i++;
+                    std::string num = newName.substr(i);
+                    return newName.substr(0,i) + '{' + num + "}$";
+                }
+            }
+        }
         return newName;
     }
 
 protected:
     Type type;
     NodeType nodetype;
+    bool onSSA = false;
 };
 
 #endif //ANTLR_CPP_TUTORIAL_NODE_HPP

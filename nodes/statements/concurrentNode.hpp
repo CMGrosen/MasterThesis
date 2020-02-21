@@ -29,6 +29,7 @@ public:
             _threads.push_back(thread->copy_statement());
         }
         std::shared_ptr<statementNode> _this = std::make_shared<concurrentNode>(concurrentNode(type, std::move(_threads)));
+        _this->setSSA(onSSA);
         return _this;
     }
 };
