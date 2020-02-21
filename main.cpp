@@ -29,30 +29,30 @@ static std::map< const char *, const char * > files = {
 };
 
 void do_stuff(basicBlockTreeConstructor test, const std::shared_ptr<statementNode> tree) {
-    auto ccfg = test.get_ccfg(tree);
+    auto ccfg = std::make_shared<CCFG>(test.get_ccfg(tree));
 
-    DominatorTree dominatorTree = DominatorTree(std::make_shared<CCFG>(ccfg));
+    DominatorTree dominatorTree = DominatorTree(ccfg);
 
-    std::cout << "got here  " << std::to_string(ccfg.startNode->get_number_of_blocks()) << "\n\n";//a << std::endl;
+    std::cout << "got here  " << std::to_string(ccfg->startNode->get_number_of_blocks()) << "\n\n";//a << std::endl;
 
     //symbolicExecutionEngine symEngine;
     //auto constraintsToReachBug = symEngine.execute(treeAndSymbolTable);
 
 //    symbolicExecutionEngine symEngine;
 //    symEngine.execute(treeAndSymbolTable);
-    std::cout << ccfg.startNode->draw_picture(&ccfg.edges) << "\n\n\n";
+    std::cout << ccfg->startNode->draw_picture(&ccfg->edges) << "\n\n\n";
 
-    auto first = CCFGTree(ccfg);
-    std::cout << "made first:  " << std::to_string(ccfg.startNode->get_number_of_blocks()) << "\n";
+    auto first = CCFGTree(*ccfg);
+    std::cout << "made first:  " << std::to_string(ccfg->startNode->get_number_of_blocks()) << "\n";
 
     std::cout << first.DrawCCFG() << "\n";
 
-    CSSA_CFG cssa = CSSA_CFG(ccfg);
+    /*CSSA_CFG cssa = CSSA_CFG(ccfg);
 
     int c = cssa.ccfg->startNode->get_number_of_blocks();
     std::cout << "cssa: " << std::to_string(c) << "\n";
 
-    std::cout << "finished\nAfter: " << std::to_string(cssa.ccfg->startNode->get_number_of_blocks()) << "\n";
+    std::cout << "finished\nAfter: " << std::to_string(cssa.ccfg->startNode->get_number_of_blocks()) << "\n";*/
 
 }
 
