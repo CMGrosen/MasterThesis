@@ -25,6 +25,7 @@ basicblock::basicblock(const basicblock &o) {
     for (auto stmt : o.statements) {
         statements.push_back(stmt->copy_statement());
     }
+    type = o.type;
     /*
     for (auto nxt : o.nexts) {
         nexts.push_back(std::make_shared<basicblock>(basicblock(*nxt)));
@@ -34,12 +35,13 @@ basicblock::basicblock(const basicblock &o) {
 
 basicblock& basicblock::operator=(const basicblock &o) {
     statements = o.statements;
-    nexts = o.nexts;
-    parents = o.parents;
+    /*nexts = o.nexts;
+    parents = o.parents;*/
+    type = o.type;
     counterblocks++;
 }
 
-basicblock::basicblock(basicblock &&o) noexcept : statements{std::move(o.statements)}, nexts{std::move(o.nexts)}, parents{std::move(o.parents)} {
+basicblock::basicblock(basicblock &&o) noexcept : statements{std::move(o.statements)}, nexts{std::move(o.nexts)}, parents{std::move(o.parents)}, type{o.type} {
     counterblocks++;
 }
 
@@ -47,6 +49,7 @@ basicblock& basicblock::operator=(basicblock &&o) noexcept  {
     statements = std::move(o.statements);
     nexts = std::move(o.nexts);
     parents = std::move(o.parents);
+    type = o.type;
     counterblocks++;
 }
 

@@ -16,13 +16,51 @@ struct CCFG {
     CCFG(std::set<std::shared_ptr<basicblock>> _nodes, std::unordered_set<edge> _edges, std::shared_ptr<basicblock> _start, std::shared_ptr<basicblock> _exit)
         : nodes{std::move(_nodes)}, edges{std::move(_edges)}, startNode{std::move(_start)}, exitNode{std::move(_exit)} {
         assign_parents();
+        if (exitNode->parents.size() == 1 && exitNode->parents[0].lock()->statements[0]->getNodeType() != While) {
+            nodes.erase(exitNode);
+            edges.erase(edge(flow, exitNode->parents[0].lock(), exitNode));
+            std::vector<std::shared_ptr<basicblock>> _nexts;
+            exitNode = exitNode->parents[0].lock();
+            exitNode->nexts.clear();
+        }
+
+        for (auto &n : nodes) {
+            if (!n->statements.empty()) {
+                if (n == startNode) n->type = Entry;
+                else if (n == exitNode) n->type = Exit;
+                else switch (n->statements[0]->getNodeType()) {
+                    case Assign:
+                    case AssignArrField:
+                    case Write:
+                    case Skip:
+                    case Phi:
+                    case Pi:
+                        n->type = Compute;
+                        break;
+                    case Concurrent:
+                        n->type = Cobegin;
+                        break;
+                    case EndConcurrent:
+                        n->type = Coend;
+                        break;
+                    case Sequential:
+                        break;
+                    case While:
+                        n->type = Loop;
+                        break;
+                    case If:
+                    case Event:
+                        n->type = Condition;
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
     }
 
-    CCFG(const CCFG& a) : startNode{std::make_shared<basicblock>(basicblock(*(a.startNode)))}, exitNode{std::make_shared<basicblock>(basicblock(*(a.exitNode)))} {
-        construct_rest(a);
-        nodes.insert(startNode);
-        nodes.insert(exitNode);
-        assign_parents();
+    CCFG(const CCFG& a) {
+        copy_tree(a);
     }
 
     CCFG(CCFG&& o) noexcept
@@ -30,12 +68,7 @@ struct CCFG {
     }
 
     CCFG& operator=(const CCFG& a) {
-        startNode = std::make_shared<basicblock>(basicblock(*(a.startNode)));
-        exitNode = std::make_shared<basicblock>(basicblock(*(a.exitNode)));
-        construct_rest(a);
-        nodes.insert(startNode);
-        nodes.insert(exitNode);
-        assign_parents();
+        copy_tree(a);
         return *this;
     }
 
@@ -54,34 +87,25 @@ struct CCFG {
     }
 
 private:
-    void construct_rest(const CCFG& a) {
-        std::unordered_map<basicblock *, std::shared_ptr<basicblock>> visited_blocks;
-        std::vector<std::shared_ptr<basicblock>> vec;
-        std::set<basicblock *> foundBlocks;
-        for (const auto &child : a.startNode->nexts) {
-            if (child == a.exitNode) {vec.push_back(exitNode);}
-            if (!child->statements.empty() && child->statements[0]->getNodeType() == While) {
-                std::shared_ptr<basicblock> blk = std::make_shared<basicblock>(basicblock(*child));
-                nodes.insert(blk);
-                visited_blocks.insert({child.get(), blk});
-                foundBlocks.insert(child.get());
-                vec.push_back(blk);
-                blk->nexts = std::vector<std::shared_ptr<basicblock>>{
-                    (copy_block(child->nexts[0], &foundBlocks, &visited_blocks, a.exitNode)),
-                    (copy_block(child->nexts[1], &foundBlocks, &visited_blocks, a.exitNode))
-                };
-            } else {
-                vec.push_back(copy_block(child, &foundBlocks, &visited_blocks, a.exitNode));
+    void copy_tree(const CCFG& a) {
+        auto oldMapsTo = std::map<std::shared_ptr<basicblock>, std::shared_ptr<basicblock>>{};
+        for (auto &n : a.nodes) {
+            auto newNode = std::make_shared<basicblock>(basicblock(*n));
+            if (newNode->type == Entry) startNode = newNode;
+            else if (newNode->type == Exit) exitNode = newNode;
+            nodes.insert(newNode);
+            oldMapsTo.insert({n, newNode});
+        }
+        for (const auto &n : a.nodes) {
+            for (const auto &next : n->nexts) {
+                oldMapsTo[n]->nexts.push_back(oldMapsTo[next]);
+                oldMapsTo[next]->parents.push_back(oldMapsTo[n]);
             }
         }
-        startNode->nexts = std::move(vec);
-
-        visited_blocks.insert({a.startNode.get(), startNode});
-        for(auto ed : a.edges) {
-            edges.insert(edge(ed.type,
-                    visited_blocks.find(ed.neighbours[0].get())->second,
-                    visited_blocks.find(ed.neighbours[1].get())->second));
+        for (const auto &ed : a.edges) {
+            edges.insert(edge(ed.type, oldMapsTo[ed.neighbours[0]], oldMapsTo[ed.neighbours[1]]));
         }
+
     }
 
     void assign_parents() {
@@ -92,35 +116,6 @@ private:
                 }
             }
         }
-    }
-
-    std::shared_ptr<basicblock> copy_block(const std::shared_ptr<basicblock> &child, std::set<basicblock *> *foundBlocks, std::unordered_map<basicblock *, std::shared_ptr<basicblock>> *visited_blocks, std::shared_ptr<basicblock> oldExitNode) {
-        std::vector<std::shared_ptr<basicblock>> vec;
-        std::shared_ptr<basicblock> blk;
-        if (child == oldExitNode) {vec.push_back(exitNode); visited_blocks->insert({child.get(), exitNode});}
-        for (const auto &t : child->nexts) {
-            if (t == oldExitNode) {vec.push_back(exitNode); visited_blocks->insert({t.get(), exitNode});}
-            else if (foundBlocks->insert(t.get()).second) { //If can be inserted
-                vec.push_back(copy_block(t, foundBlocks, visited_blocks, oldExitNode));
-            } else if (visited_blocks->find(t.get()) != visited_blocks->end()) { //If exists
-                vec.push_back(visited_blocks->find(t.get())->second);
-            } else { //We have a while node, since we have not yet constructed this node, but have already found it (loop)
-                blk = std::make_shared<basicblock>(basicblock(*t));
-                nodes.insert(blk);
-                visited_blocks->insert({t.get(), blk});
-                vec.push_back(blk);
-            }
-        }
-        auto res = visited_blocks->find(child.get());
-        if (res != visited_blocks->end() && child != oldExitNode && res->second->nexts.empty()) {
-            blk = res->second;
-        } else {
-            blk = std::make_shared<basicblock>(basicblock(*child));
-            nodes.insert(blk);
-            visited_blocks->insert({child.get(), blk});
-        }
-        blk->nexts = std::move(vec);
-        return blk;
     }
 };
 

@@ -16,6 +16,8 @@
 #include "nodes/nodes.hpp"
 #include <sstream>
 
+enum blocktype {Entry, Exit, Cobegin, Coend, Condition, Loop, Compute, ThreadEntry, ThreadExit};
+
 struct basicblock {
     basicblock();
     basicblock(std::shared_ptr<statementNode> stmt);
@@ -56,6 +58,7 @@ struct basicblock {
     std::pair<std::shared_ptr<basicblock>, int> concurrentBlock;
     std::string get_name();
 
+    blocktype type;
 private:
     static int counterblocks;
 
