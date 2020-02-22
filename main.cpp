@@ -61,7 +61,7 @@ void do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_ptr<st
     SSA_CCFG ssa_ccfg = SSA_CCFG(ccfg, symboltable, dominatorTree);
 
     auto second = CCFGTree(*ssa_ccfg.ccfg);
-    std::cout << "\n\nmade second:  " << second.DrawCCFG() << "\n";
+    std::cout << "\n\nmade second:  \n" << second.DrawCCFG() << "\n";
 
 
     std::cout << ssa_ccfg.ccfg->startNode->statements[0]->getNodeType() << "\n";

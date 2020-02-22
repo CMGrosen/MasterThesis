@@ -27,7 +27,7 @@ struct SSA_CCFG {
 
         place_phi_functions();
 
-        rename(domTree->root);
+        //rename(domTree->root);
     };
 
 private:
@@ -78,6 +78,7 @@ private:
                         for(const auto &s : Y->statements) stmts.push_back(s);
                         Y->statements = stmts;
 
+                        bool found = false;
                         for (const auto &i : Worklist) {
                             // Possibly not correct, but code looks the node up in Aorig
                             // and adds to worklist if it's not in it.
@@ -85,10 +86,11 @@ private:
                             // Which iterates over all blocks in Aorig.
                             // So add the block Y to worklist if it's not already in it. Should be similar to pseudo-code
                             if (Y == i) {
-                                Worklist.emplace_back(Y);
+                                found = true;
                                 break;
                             }
                         }
+                        if (!found) Worklist.emplace_back(Y);
                     }
                 }
             }

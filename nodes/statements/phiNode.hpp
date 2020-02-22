@@ -17,7 +17,7 @@ public:
     }
 
     std::string to_string() override {
-        std::string res = "$\\phi($";
+        std::string res = _name + " = $\\phi($";
         if (!_variables.empty()) {
             res += nameToTikzName(_variables[0], true);
             for (auto i = 1; i < _variables.size(); ++i)
