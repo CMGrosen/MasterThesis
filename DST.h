@@ -287,7 +287,7 @@ public:
             return res;
         } else if (ctx->read()) {
             return visitRead(ctx->read());
-        }
+        } else return nullptr; //should never reach;
     }
 
     virtual antlrcpp::Any visitArrayAccess(SmallParser::ArrayAccessContext *ctx) override {

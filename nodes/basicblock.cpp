@@ -41,6 +41,7 @@ basicblock& basicblock::operator=(const basicblock &o) {
     parents = o.parents;*/
     type = o.type;
     counterblocks++;
+    return *this;
 }
 
 basicblock::basicblock(basicblock &&o) noexcept : statements{std::move(o.statements)}, nexts{std::move(o.nexts)}, parents{std::move(o.parents)}, type{o.type} {
@@ -53,6 +54,7 @@ basicblock& basicblock::operator=(basicblock &&o) noexcept  {
     parents = std::move(o.parents);
     type = o.type;
     counterblocks++;
+    return *this;
 }
 
 basicblock::~basicblock() {counterblocks--;}

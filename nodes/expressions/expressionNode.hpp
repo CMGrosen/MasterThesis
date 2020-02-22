@@ -37,9 +37,9 @@ public:
         while(next->getNext()) next = next->getNext();
         return next;
     }
-    virtual std::string to_string() {};
-    virtual std::shared_ptr<expressionNode> copy_expression() const {};
-    virtual bool operator==(const expressionNode *expr) const {};
+    virtual std::string to_string() {return "";};
+    virtual std::shared_ptr<expressionNode> copy_expression() const {return nullptr;};
+    virtual bool operator==(const expressionNode *expr) const {return false;};
     std::shared_ptr<expressionNode> copy_next() const {
         if(getNext()) return getNext()->copy_expression();
         else return nullptr;

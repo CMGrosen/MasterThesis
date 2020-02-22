@@ -27,7 +27,7 @@ struct SSA_CCFG {
 
         place_phi_functions();
 
-        //rename(domTree->root);
+        rename(domTree->root);
     };
 
 private:
@@ -37,7 +37,7 @@ private:
     std::unordered_map<std::string, std::stack<uint32_t>> Stack;
     std::unordered_map<std::string, std::list<std::shared_ptr<basicblock>>> defsites;
     std::unordered_map<std::shared_ptr<basicblock>, std::unordered_set<std::string>> Aorig; //variable definitions in block
-    std::unordered_map<std::shared_ptr<basicblock>, std::unordered_set<std::shared_ptr<basicblock>>> Aphi; //variable definitions in block
+    std::unordered_map<std::shared_ptr<basicblock>, std::unique_ptr<std::unordered_set<std::string>>> Aphi; //Does block have a phi function for variable
 
     void init_AorigMap_and_Aphi() {
         for (const auto &blk : ccfg->nodes) {
@@ -52,7 +52,7 @@ private:
                 }
             }
             Aorig.insert({blk, variables});
-            Aphi.insert({blk, std::unordered_set<std::shared_ptr<basicblock>>{}});
+            Aphi.insert({blk, std::make_unique<std::unordered_set<std::string>>(std::unordered_set<std::string>{})});
         }
     }
 
@@ -69,7 +69,8 @@ private:
                 std::shared_ptr<basicblock> blk = Worklist.front();
                 Worklist.pop_front();
                 for (const auto &Y : domTree->DF[blk]) {
-                    if (Aphi[blk].insert(Y).second) { // Y is not in Aphi[n], do this block and insert (lines 10->)
+                    std::unordered_set<std::string> *aphi = Aphi.find(Y)->second.get();
+                    if (aphi->insert(var).second) { // Y is not in Aphi[n], do this block and insert (lines 10->)
                         std::vector<std::shared_ptr<statementNode>> stmts;
                         std::vector<std::string> args;
                         for (auto i = 0; i < Y->parents.size(); ++i) args.push_back(var);
@@ -100,6 +101,14 @@ private:
     void update_def_stmtNode(std::shared_ptr<statementNode> stmt, std::map<std::string, uint32_t> *defcounts) {
         if (stmt->getNodeType() == Assign) {
             auto node = dynamic_cast<assignNode*>(stmt.get());
+            int i = ++Count[node->getName()];
+            Stack[node->getName()].push(i);
+            auto res = defcounts->insert({node->getName(), 0});
+            if (!res.second) res.first->second++;
+            node->setName(node->getName() + "_" + std::to_string(i));
+            node->setSSA(true);
+        } else if (stmt->getNodeType() == Phi) {
+            auto node = dynamic_cast<phiNode*>(stmt.get());
             int i = ++Count[node->getName()];
             Stack[node->getName()].push(i);
             auto res = defcounts->insert({node->getName(), 0});

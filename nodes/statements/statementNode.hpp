@@ -9,9 +9,9 @@
 
 class statementNode : public node {
 public:
-    virtual std::vector<std::shared_ptr<statementNode>> debug_getAllNodes() {};
-    virtual std::string to_string() {};
-    virtual std::shared_ptr<statementNode> copy_statement() const {};
+    //virtual std::vector<std::shared_ptr<statementNode>> debug_getAllNodes() {};
+    virtual std::string to_string() {return "";};
+    virtual std::shared_ptr<statementNode> copy_statement() const {return nullptr;};
 };
 
 #endif //ANTLR_CPP_TUTORIAL_STATEMENTNODE_HPP

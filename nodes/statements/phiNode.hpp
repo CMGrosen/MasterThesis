@@ -17,7 +17,14 @@ public:
     }
 
     std::string to_string() override {
-        std::string res = _name + " = $\\phi($";
+        std::string res;
+        for (auto i = 0; i < _name.length(); ++i) {
+            if (_name[i] == '_') {
+                res = _name.substr(0,i) + "$_{" + _name.substr(i+1) + "}$";
+                break;
+            }
+        }
+        res += " = $\\phi($";
         if (!_variables.empty()) {
             res += nameToTikzName(_variables[0], true);
             for (auto i = 1; i < _variables.size(); ++i)
@@ -33,6 +40,12 @@ public:
         return _this;
     }
 
+    std::string getName() const {
+        return _name;
+    }
+    void setName(std::string name) {
+        _name = name;
+    }
     std::vector<std::string> *get_variables() {return &_variables;}
     /*std::shared_ptr<expressionNode> copy_expression() const override {
         std::vector<std::shared_ptr<variableNode>> _vars;

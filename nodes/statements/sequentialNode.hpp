@@ -25,7 +25,7 @@ public:
     std::shared_ptr<statementNode> getBody() const { return _body; }
     std::shared_ptr<statementNode> getNext() const { return _next; }
 
-    std::vector<std::shared_ptr<statementNode>> debug_getAllNodes() override {
+    /*std::vector<std::shared_ptr<statementNode>> debug_getAllNodes() override {
         std::vector<std::shared_ptr<statementNode>> nexts{_body};
         if(auto next = dynamic_cast<sequentialNode*>(_next.get())) {
              for (auto &s : next->debug_getAllNodes())
@@ -34,7 +34,7 @@ public:
             nexts.push_back(_next);
         }
         return nexts;
-    }
+    }*/
     std::string to_string() override {
         return "";
     }
