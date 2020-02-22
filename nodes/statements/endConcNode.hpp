@@ -30,6 +30,9 @@ public:
         _this->setSSA(onSSA);
         return _this;
     }
+    void setSSA(bool t) override {
+        onSSA = t;
+    }
 };
 
 #endif //ANTLR_CPP_TUTORIAL_ENDCONCNODE_HPP

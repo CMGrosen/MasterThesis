@@ -31,7 +31,25 @@ class CCFGTree {
             std::string stmtStr;
             for (auto stmt : blk->statements) {
                 stmtStr = stmt->to_string();
-                if (longestStr < stmtStr.length()) longestStr = stmtStr.length();
+                const int stmtLength = stmtStr.length();
+                int finalLength = stmtLength;
+                if (stmt->isSSAForm()) {
+                    if (stmt->getNodeType() == Phi) finalLength += (1 + dynamic_cast<phiNode*>(stmt.get())->get_variables()->size());
+                    for (int i = 0; i < stmtLength; ++i) {
+                        if (stmtStr[i] == '$') {
+                            --finalLength;
+                            for (int j = i+1; j < stmtLength; ++j) {
+                                if (stmtStr[j] == '$') {
+                                    --finalLength;
+                                    i = j;
+                                    break;
+                                }
+                                --finalLength;
+                            }
+                        }
+                    }
+                }
+                if (longestStr < finalLength) longestStr = finalLength;
                 content += (stmtStr + "\\\\");
             }
             v_padding = blk->statements.size()* symbol_height + vertical_padding;

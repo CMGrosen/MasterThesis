@@ -27,6 +27,10 @@ public:
         _this->setSSA(onSSA);
         return _this;
     }
+    void setSSA(bool t) override {
+        onSSA = t;
+        expr->setSSA(t);
+    }
 private:
     std::string name;
     std::shared_ptr<expressionNode> expr;

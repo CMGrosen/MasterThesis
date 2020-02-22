@@ -28,6 +28,11 @@ public:
         return _this;
     }
 
+    void setSSA(bool t) override {
+        onSSA = t;
+        condition->setSSA(t);
+        //body->setSSA(t);
+    }
 private:
     std::shared_ptr<expressionNode> condition;
     std::shared_ptr<statementNode> body;

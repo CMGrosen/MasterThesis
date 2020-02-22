@@ -36,5 +36,11 @@ public:
         _this->setSSA(onSSA);
         return _this;
     }
+
+    void setSSA(bool t) override {
+        onSSA = t;
+        for (const auto v : _possible_variables) v->setSSA(t);
+        _variable->setSSA(t);
+    }
 };
 #endif //ANTLR_CPP_TUTORIAL_PINODE_HPP

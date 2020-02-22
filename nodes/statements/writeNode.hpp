@@ -32,6 +32,10 @@ public:
         _this->setSSA(onSSA);
         return _this;
     }
+    void setSSA(bool t) override {
+        onSSA = t;
+        _e->setSSA(t);
+    }
 private:
     const int16_t _pin;
     std::shared_ptr <expressionNode> _e;

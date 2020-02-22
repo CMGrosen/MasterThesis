@@ -28,6 +28,14 @@ struct SSA_CCFG {
         place_phi_functions();
 
         rename(domTree->root);
+
+        for (const auto blk : ccfg->nodes) {
+            if (!blk->statements.empty()) {
+                for (const auto stmt : blk->statements) {
+                    stmt->setSSA(true);
+                }
+            }
+        }
     };
 
 private:
@@ -106,7 +114,6 @@ private:
             auto res = defcounts->insert({node->getName(), 0});
             if (!res.second) res.first->second++;
             node->setName(node->getName() + "_" + std::to_string(i));
-            node->setSSA(true);
         } else if (stmt->getNodeType() == Phi) {
             auto node = dynamic_cast<phiNode*>(stmt.get());
             int i = ++Count[node->getName()];
@@ -114,7 +121,6 @@ private:
             auto res = defcounts->insert({node->getName(), 0});
             if (!res.second) res.first->second++;
             node->setName(node->getName() + "_" + std::to_string(i));
-            node->setSSA(true);
         } else if (stmt->getNodeType() == AssignArrField) {
 
         }
@@ -136,7 +142,6 @@ private:
                 } case Variable: {
                     auto node = dynamic_cast<variableNode*>(expr);
                     node->name += ("_" + std::to_string(Stack[node->name].top()));
-                    node->setSSA(true);
                     break;
                 } default:
                     break;

@@ -23,6 +23,10 @@ public:
         _this->setSSA(onSSA);
         return _this;
     }
+    void setSSA(bool t) override {
+        onSSA = t;
+        _condition->setSSA(t);
+    }
 private:
     std::shared_ptr<expressionNode> _condition;
 };

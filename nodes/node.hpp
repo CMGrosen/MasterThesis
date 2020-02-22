@@ -50,6 +50,7 @@ public:
     virtual NodeType getNodeType() const {return nodetype;};
     virtual void setNodeType(NodeType t) {nodetype = t;};
     virtual void setSSA(bool t) {onSSA = t;};
+    virtual bool isSSAForm() const {return onSSA;};
 
     static std::string nameToTikzName(std::string name, bool SSAForm) {
         std::string newName = name;

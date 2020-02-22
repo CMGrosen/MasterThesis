@@ -32,6 +32,10 @@ public:
         _this->setSSA(onSSA);
         return _this;
     }
+    void setSSA(bool t) override {
+        onSSA = t;
+        for (const auto thread : threads) thread->setSSA(t);
+    }
 };
 
 

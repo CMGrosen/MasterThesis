@@ -46,6 +46,9 @@ public:
     void setName(std::string name) {
         _name = name;
     }
+    void setSSA(bool t) override {
+        onSSA = t;
+    }
     std::vector<std::string> *get_variables() {return &_variables;}
     /*std::shared_ptr<expressionNode> copy_expression() const override {
         std::vector<std::shared_ptr<variableNode>> _vars;

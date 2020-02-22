@@ -45,6 +45,9 @@ public:
         _this->setSSA(onSSA);
         return _this;
     }
+    void setSSA(bool t) override {
+        onSSA = t;
+    }
 
 private:
     std::shared_ptr<statementNode> _body;

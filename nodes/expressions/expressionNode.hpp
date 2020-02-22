@@ -40,6 +40,10 @@ public:
     virtual std::string to_string() {return "";};
     virtual std::shared_ptr<expressionNode> copy_expression() const {return nullptr;};
     virtual bool operator==(const expressionNode *expr) const {return false;};
+    virtual void setSSA(bool t) override {
+        onSSA = t;
+        if (_next) _next->setSSA(t);
+    }
     std::shared_ptr<expressionNode> copy_next() const {
         if(getNext()) return getNext()->copy_expression();
         else return nullptr;
