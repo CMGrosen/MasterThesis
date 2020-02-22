@@ -10,7 +10,7 @@
 #include <utility>
 
 struct DOMNode {
-    std::shared_ptr<DOMNode> parent;
+    std::weak_ptr<DOMNode> parent;
     std::vector<std::shared_ptr<DOMNode>> children;
     std::shared_ptr<basicblock> basic_block;
     DOMNode(std::shared_ptr<basicblock> _basic_block,std::shared_ptr<DOMNode> _parent) :
@@ -222,7 +222,7 @@ public:
         for(unsigned long i = 1; i < depth_first_spanning_tree.nodes.size(); i++){
             basic_block = depth_first_spanning_tree.nodes.find(i)->second;
             node = std::make_shared<DOMNode>(DOMNode(basic_block, DOMTree.find(idom.find(basic_block)->second)->second));
-            node->parent->AddChild(node);
+            node->parent.lock()->AddChild(node);
             DOMTree.insert({basic_block, node});
         }
 
@@ -231,8 +231,6 @@ public:
         std::cout << "Depth-First-Spanning-Tree constructed" << std::endl;
 
     }
-
-
 };
 
 
