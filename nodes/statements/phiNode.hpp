@@ -17,14 +17,7 @@ public:
     }
 
     std::string to_string() override {
-        std::string res;
-        for (auto i = 0; i < _name.length(); ++i) {
-            if (_name[i] == '_') {
-                res = _name.substr(0,i) + "$_{" + _name.substr(i+1) + "}$";
-                break;
-            }
-        }
-        res += " = $\\phi($";
+        std::string res = nameToTikzName(_name, true) + " = $\\phi($";
         if (!_variables.empty()) {
             res += nameToTikzName(_variables[0], true);
             for (auto i = 1; i < _variables.size(); ++i)
