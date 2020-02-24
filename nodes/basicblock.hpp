@@ -53,7 +53,8 @@ struct basicblock {
 
     static int get_number_of_blocks();
 
-    std::set<variableNode> variables;
+    std::set<std::string> uses;
+    std::set<std::string> defines;
 
     std::pair<std::shared_ptr<basicblock>, int> concurrentBlock;
     std::string get_name();
@@ -68,13 +69,13 @@ private:
 
     std::string name;
 
-    static std::vector<variableNode> get_variables_from_expression(const expressionNode *expr) {
-        std::vector<variableNode> vars{};
+    static std::vector<std::string> get_variables_from_expression(const expressionNode *expr) {
+        std::vector<std::string> vars{};
         while (expr) {
             switch (expr->getNodeType()) {
                 case ArrayAccess: {
                     auto arrAcc = dynamic_cast<const arrayAccessNode*>(expr);
-                    vars.push_back(variableNode(okType, arrAcc->getName()));
+                    vars.push_back(arrAcc->getName());
                     auto res = get_variables_from_expression(arrAcc->getAccessor());
                     for (auto var : res) vars.emplace_back(var);
                     break;
@@ -88,7 +89,7 @@ private:
                     break;
                 }
                 case Variable: {
-                    vars.push_back(*dynamic_cast<const variableNode*>(expr));
+                    vars.push_back(dynamic_cast<const variableNode*>(expr)->name);
                     break;
                 }
                 default: {

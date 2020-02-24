@@ -305,9 +305,8 @@ private:
         for (auto blk : *allBlocks) {
             for (auto cmp : *allBlocks) {
                 if (concurrent(blk, cmp)) {
-                    auto vars = blk->variables;
-                    for (const auto var : vars) {
-                        if ((cmp->variables.find(var)) != cmp->variables.end()) {
+                    for (const auto var : blk->defines) {
+                        if ((cmp->uses.find(var)) != cmp->uses.end() || cmp->defines.find(var) != cmp->defines.end()) {
                             //blocks are concurrent
                             // and have a variable in common,
                             // thus there's a conflict

@@ -25,6 +25,8 @@ basicblock::basicblock(const basicblock &o) {
     for (auto stmt : o.statements) {
         statements.push_back(stmt->copy_statement());
     }
+    uses = o.uses;
+    defines = o.defines;
     type = o.type;
     /*
     for (auto nxt : o.nexts) {
@@ -37,6 +39,8 @@ basicblock& basicblock::operator=(const basicblock &o) {
     for (auto stmt : o.statements) {
         statements.push_back(stmt->copy_statement());
     }
+    uses = o.uses;
+    defines = o.defines;
     /*nexts = o.nexts;
     parents = o.parents;*/
     type = o.type;
@@ -44,7 +48,7 @@ basicblock& basicblock::operator=(const basicblock &o) {
     return *this;
 }
 
-basicblock::basicblock(basicblock &&o) noexcept : statements{std::move(o.statements)}, nexts{std::move(o.nexts)}, parents{std::move(o.parents)}, type{o.type} {
+basicblock::basicblock(basicblock &&o) noexcept : statements{std::move(o.statements)}, nexts{std::move(o.nexts)}, parents{std::move(o.parents)}, type{o.type}, uses{std::move(o.uses)}, defines{std::move(o.defines)} {
     counterblocks++;
 }
 
@@ -52,6 +56,8 @@ basicblock& basicblock::operator=(basicblock &&o) noexcept  {
     statements = std::move(o.statements);
     nexts = std::move(o.nexts);
     parents = std::move(o.parents);
+    defines = std::move(o.defines);
+    uses = std::move(o.uses);
     type = o.type;
     counterblocks++;
     return *this;
@@ -88,25 +94,25 @@ void basicblock::updateUsedVariables() {
         switch (stmt->getNodeType()) {
             case Assign: {
                 auto assStmt = dynamic_cast<assignNode*>(stmt.get());
-                variables.insert(variableNode(okType, assStmt->getName()));
+                defines.insert(assStmt->getName());
                 auto expr = assStmt->getExpr();
                 auto res = get_variables_from_expression(expr);
                 for(auto var : res) {
-                    variables.insert(var);
+                    uses.insert(var);
                 }
                 break;
             }
             case AssignArrField: {
                 auto assArrStmt = dynamic_cast<arrayFieldAssignNode*>(stmt.get());
-                variables.insert(variableNode(okType, assArrStmt->getName()));
+                defines.insert(assArrStmt->getName());
                 auto res = get_variables_from_expression(assArrStmt->getField());
                 for(auto var : res) {
-                    variables.insert(var);
+                    uses.insert(var);
                 }
 
                 res = get_variables_from_expression(assArrStmt->getExpr());
                 for(auto var : res) {
-                    variables.insert(var);
+                    uses.insert(var);
                 }
                 break;
             }
@@ -114,7 +120,7 @@ void basicblock::updateUsedVariables() {
                 auto whileStmt = dynamic_cast<whileNode*>(stmt.get());
                 auto res = get_variables_from_expression(whileStmt->getCondition());
                 for(auto var : res) {
-                    variables.insert(var);
+                    uses.insert(var);
                 }
                 break;
             }
@@ -122,7 +128,7 @@ void basicblock::updateUsedVariables() {
                 auto ifStmt = dynamic_cast<ifElseNode*>(stmt.get());
                 auto res = get_variables_from_expression(ifStmt->getCondition());
                 for(auto var : res) {
-                    variables.insert(var);
+                    uses.insert(var);
                 }
                 break;
             }
@@ -130,7 +136,7 @@ void basicblock::updateUsedVariables() {
                 auto writeStmt = dynamic_cast<writeNode*>(stmt.get());
                 auto res = get_variables_from_expression(writeStmt->getExpr());
                 for(auto var : res) {
-                    variables.insert(var);
+                    uses.insert(var);
                 }
                 break;
             }
@@ -138,7 +144,7 @@ void basicblock::updateUsedVariables() {
                 auto eventStmt = dynamic_cast<eventNode*>(stmt.get());
                 auto res = get_variables_from_expression(eventStmt->getCondition());
                 for(auto var : res) {
-                    variables.insert(var);
+                    uses.insert(var);
                 }
                 break;
             }
