@@ -14,8 +14,8 @@ public:
     op getOperator() const {return _operator;};
 
     std::string to_string() override {
-        std::string res = operatorToString[_operator] + " ";
-        if (getNext()) res += getNext()->to_string();
+        std::string res = operatorToString[_operator];
+        if (getNext()) res += " " + getNext()->to_string();
         return res;
     }
 

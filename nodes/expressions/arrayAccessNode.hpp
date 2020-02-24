@@ -13,6 +13,7 @@ public:
 
     expressionNode *getAccessor() const {return value.get();};
     std::string getName() const { return name;}
+    void setName(std::string _name) {name = _name;}
 
     std::string to_string() override {
         std::string res = nameToTikzName(name, onSSA) + "[" + value->to_string() + "] ";
@@ -29,6 +30,12 @@ public:
         _this->setNext(copy_next());
         _this->setSSA(onSSA);
         return _this;
+    }
+
+    void setSSA(bool t) override {
+        onSSA = t;
+        value->setSSA(t);
+        if(getNext()) getNext()->setSSA(t);
     }
 
     bool operator==(const expressionNode *expr) const override {

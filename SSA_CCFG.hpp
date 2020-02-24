@@ -122,7 +122,12 @@ private:
             if (!res.second) res.first->second++;
             node->setName(node->getName() + "_" + std::to_string(i));
         } else if (stmt->getNodeType() == AssignArrField) {
-
+            auto node = dynamic_cast<arrayFieldAssignNode*>(stmt.get());
+            int i = ++Count[node->getName()];
+            Stack[node->getName()].push(i);
+            auto res = defcounts->insert({node->getName(), 0});
+            if (!res.second) res.first->second++;
+            node->setName(node->getName() + "_" + std::to_string(i));
         }
     }
 
@@ -131,7 +136,8 @@ private:
             switch (expr->getNodeType()) {
                 case ArrayAccess: {
                     auto node = dynamic_cast<arrayAccessNode*>(expr);
-                    //
+                    node->setName(node->getName() + ("_" + std::to_string(Stack[node->getName()].top())));
+                    update_uses_exprNode(node->getAccessor());
                     break;
                 } case ArrayLiteral: {
                     auto node = dynamic_cast<arrayLiteralNode*>(expr);
@@ -157,7 +163,8 @@ private:
                 break;
             } case AssignArrField: {
                 auto node = dynamic_cast<arrayFieldAssignNode*>(stmt.get());
-                //update_uses_exprNode()
+                update_uses_exprNode(node->getField());
+                update_uses_exprNode(node->getExpr());
                 break;
             } case While: {
                 auto node = dynamic_cast<whileNode*>(stmt.get());

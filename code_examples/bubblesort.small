@@ -3,7 +3,6 @@ i = 0;
 start = 0;
 end = 29;
 
-fork {
 while (end > start) {
     i = 0;
     while (i < end) {
@@ -11,9 +10,8 @@ while (end > start) {
             tmp = arr[i];
             arr[i] = arr[i+1];
             arr[i+1] = tmp;
-        } else {emptyStatement = 0;};
+        } else {skip;};
         i = i+1;
     };
     end = end - 1;
 };
-} and { skip; };

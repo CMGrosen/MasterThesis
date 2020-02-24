@@ -97,7 +97,7 @@ void basicblock::updateUsedVariables() {
             case AssignArrField: {
                 auto assArrStmt = dynamic_cast<arrayFieldAssignNode*>(stmt.get());
                 variables.insert(variableNode(okType, assArrStmt->getName()));
-                auto res = get_variables_from_expression(assArrStmt->getField()->getAccessor());
+                auto res = get_variables_from_expression(assArrStmt->getField());
                 for(auto var : res) {
                     variables.insert(var);
                 }

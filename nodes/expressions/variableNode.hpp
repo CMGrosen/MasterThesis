@@ -22,8 +22,8 @@ public:
     }
 
     std::string to_string() override {
-        std::string res = nameToTikzName(name, onSSA) + " ";
-        if (getNext()) res += getNext()->to_string();
+        std::string res = nameToTikzName(name, onSSA);
+        if (getNext()) res += " " + getNext()->to_string();
         return res;
     }
 

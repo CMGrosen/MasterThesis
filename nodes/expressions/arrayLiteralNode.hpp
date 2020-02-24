@@ -34,8 +34,9 @@ public:
         std::string res = "[";
         for (int i = 0; i < value.size(); ++i) {
             res += value[i]->to_string();
-            if (i != value.size()) res += ", ";
+            if (i != value.size()-1) res += ", ";
         }
+        res += "]";
         if (getNext()) {
             res += " " + getNext()->to_string();
         }
@@ -54,6 +55,7 @@ public:
         return _this;
     }
 
+
     bool operator==(const expressionNode *expr) const override {
         if (nodetype == expr->getNodeType()) {
             const std::vector<std::shared_ptr<expressionNode>> arrlit = dynamic_cast<const arrayLiteralNode*>(expr)->getArrLit();
@@ -65,6 +67,12 @@ public:
                 return true;
             } else return false;
         } else return false;
+    }
+
+    void setSSA(bool t) override {
+        onSSA = t;
+        for (const auto ele : value) ele->setSSA(t);
+        if(getNext()) getNext()->setSSA(t);
     }
 
     const std::vector<std::shared_ptr<expressionNode>> getArrLit() const {return value;};

@@ -15,9 +15,9 @@ public:
     }
 
     std::string to_string() override {
-        std::string res = operatorToString[_operator] + " ";
+        std::string res = operatorToString[_operator];
         if (getNext()) {
-            res += getNext()->to_string();
+            res +=  " " + getNext()->to_string();
         }
         return res;
     }
