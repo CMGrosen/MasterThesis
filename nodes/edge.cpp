@@ -4,12 +4,8 @@
 
 #include "edge.hpp"
 
-std::vector<std::shared_ptr<basicblock>> neighbours;
-bool edge::operator<(const edge& s) const { return neighbours[0] < s.neighbours[1];
-    if (neighbours[0] == s.neighbours[1] || neighbours[1] == s.neighbours[0])
-        return neighbours[0] < s.neighbours[1] && neighbours[1] < s.neighbours[0] && type < s.type;
-    else
-        return neighbours[0] < s.neighbours[0] && neighbours[1] < s.neighbours[1] && type < s.type;
+bool edge::operator<(const edge& s) const {
+    return std::hash<edge>{}(*this) < std::hash<edge>{}(s);
 }
 bool edge::operator==(const edge& s) const {
     if (neighbours[0] == s.neighbours[1])

@@ -56,28 +56,23 @@ public:
     }
 
     virtual antlrcpp::Any visitStmt(SmallParser::StmtContext *ctx) override {
+        std::shared_ptr<statementNode> stmt;
         if (ctx->assign()) {
-            std::shared_ptr<statementNode> stmt =  visitAssign(ctx->assign());
-            return stmt;
+            stmt = visitAssign(ctx->assign());
         } else if (ctx->write()) {
-            std::shared_ptr<statementNode> stmt = visitWrite(ctx->write());
-            return stmt;
+            stmt = visitWrite(ctx->write());
         } else if (ctx->iter()) {
-            std::shared_ptr<statementNode> stmt = visitIter(ctx->iter());
-            return stmt;
+            stmt = visitIter(ctx->iter());
         } else if (ctx->ifs()) {
-            std::shared_ptr<statementNode> stmt = visitIfs(ctx->ifs());
-            return stmt;
+            stmt = visitIfs(ctx->ifs());
         } else if (ctx->thread()) {
-            std::shared_ptr<statementNode> stmt = visitThread(ctx->thread());
-            return stmt;
+            stmt = visitThread(ctx->thread());
         } else if (ctx->event()) {
-            std::shared_ptr<statementNode> stmt = visitEvent(ctx->event());
-            return stmt;
+            stmt = visitEvent(ctx->event());
         } else { //only skip is remaining
-            std::shared_ptr<statementNode> stmt =  visitSkipStmt(ctx->skipStmt());
-            return stmt;
+            stmt = visitSkipStmt(ctx->skipStmt());
         }
+        return stmt;
     }
 
     virtual antlrcpp::Any visitAssign(SmallParser::AssignContext *ctx) override {
@@ -222,9 +217,7 @@ public:
                 std::shared_ptr<expressionNode> node = visitExpr(ctx->expr(0));
                 Type t = intType;
                 if (node->getType() != intType) t = errorType;
-                if (t != errorType && node->getNodeType() == Literal) {
-                    return compute_new_literal(node, node, NEG, t);
-                }
+
                 std::shared_ptr<expressionNode> una = std::make_shared<unaryExpressionNode>(unaryExpressionNode(t, NEG));
                 auto last = node->getLast();
                 if (!last) last = node;
@@ -262,9 +255,7 @@ public:
                       << "] Type mismatch in unary expression. Expected "
                       << info[boolType] << " got " << info[node->getType()] << "\n";
             }
-            if (t != errorType && node->getNodeType() == Literal) {
-                return compute_new_literal(node, node, NOT, t);
-            }
+
             std::shared_ptr<expressionNode> una = std::make_shared<unaryExpressionNode>(unaryExpressionNode(t, NOT));
             auto last = node->getLast();
             if (!last) last = node;
@@ -520,7 +511,7 @@ public:
                 break;
         }
         if (t != errorType) {
-            if ((lastL->getNodeType() == Literal && lastR->getNodeType() == Literal) && lastL->getNext() && lastR->getNext()) {
+            if ((lastL->getNodeType() == Literal && lastR->getNodeType() == Literal) && !l->getNext() && !r->getNext()) {
                 return compute_new_literal(l,r, expressionType, t).second;
             }
         }

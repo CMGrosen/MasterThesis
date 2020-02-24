@@ -5,9 +5,9 @@ j = 0;
 fork {
     while (i < 20) {
         val = val + 1;
-    }
-} par {
+    };
+} and {
     while (j < 20) {
         val = val + 1;
-    }
-}
+    };
+};

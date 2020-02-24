@@ -35,8 +35,8 @@ namespace std {
     template<> struct hash<edge> {
         size_t operator()(const edge& s) const {
             size_t seed = 0;
-            if (s.neighbours[0] < s.neighbours[1]) hash_combine(seed, s.neighbours[0]);
-            else hash_combine(seed, s.neighbours[1]);
+            hash_combine(seed, s.neighbours[0]);
+            hash_combine(seed, s.neighbours[1]);
             hash_combine(seed, s.type);
             return seed;
         }

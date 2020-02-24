@@ -1,7 +1,6 @@
-pin = 1;
 arr = [1,2,3,4,5,6,7,8,9];
 
-entry = read(pin);
+entry = read(1);
 
 if (arr[entry] > 5) {
     arr[entry] = 5;
@@ -10,5 +9,5 @@ if (arr[entry] > 5) {
         arr[entry] = 0;
     } else {
         arr[entry] = 1;
-    }
-}
+    };
+};

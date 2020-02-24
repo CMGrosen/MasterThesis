@@ -2,24 +2,24 @@ t = 0+1+2+3+4;
 aa = false;
 tt = t*2;
 
-when(tt < 10)
+when(tt < 10);
 fork {
     t = 1;
-} par {
+} and {
     t = 2;
-}
+};
 
 if(aa) {
   aa = true;
 } else {
   aa = false;
-}
+};
 
 while(aa) {
     bb = true;
-}
+};
 a = [1,2,3];
 a[1] = 2;
 b = [4,5,6];
 c = 2;
-write(c, 5);
+write(5, c);

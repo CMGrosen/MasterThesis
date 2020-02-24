@@ -20,9 +20,9 @@ static std::map< const char *, const char * > files = {
         {"out_of_bounds", "../code_examples/out_of_bounds.small"},
         {"race_condition", "../code_examples/race_condition.small"},
         {"bubblesort", "../code_examples/bubblesort.small"},
-        {"stateTest", "../nodeptr_test.small"},
-        {"precedence", "../precendenceTest.small"},
-        {"temp", "../temp.small"},
+        {"stateTest", "../code_examples/nodeptr_test.small"},
+        {"precedence", "../code_examples/precendenceTest.small"},
+        {"temp", "../code_examples/temp.small"},
         {"oob_race-condition", "../code_examples/out_of_bounds_race-condition.small"},
         {"testAssign", "../code_examples/testAssign.small"},
         {"coffee_maker", "../code_examples/coffee_maker.small"},
@@ -88,7 +88,7 @@ int main(int argc, const char* argv[]) {
     auto treeAndSymbolTable = visitor.getTree(tree);
 
     //auto tmp = treeAndSymbolTable.first->debug_getAllNodes();
-    if(visitor.getNumErrors() || treeAndSymbolTable.first->getType() == errorType)
+    if(visitor.getNumErrors())// || treeAndSymbolTable.first->getType() == errorType)
         return 0;
 
 

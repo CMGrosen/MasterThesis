@@ -1,39 +1,39 @@
 tt = true;
 a = 1+2*3;
+e = 34 < 12 && 50 > a || 10 == 12;
 d = [1,2,3];
 a = (1+2);
 b = 2-1;
 c = a/b;
-write(a, 2+2);
+write(2, 2+2);
 a = d[2];
-e = 34 < 12 && 50 > a || 10 == 12;
 a = -a;
-a = read(b);
+a = read(1);
 
 arr = [2,3,4];
 var = arr[0];
 
 while (e) {
     a=a+2;
-}
+};
 
 if (a > b) {
     a = b;
 } else {
     b = a;
-}
+};
 
 fork {
     a=a+2;
-} par {
+} and {
     a=a*b;
-} par {
+} and {
     a=a-b;
-}
+};
 
 tt = true;
 ff = false;
 
-when (true)
+when (true);
 
 b = 10;

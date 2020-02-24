@@ -1,14 +1,13 @@
 arr = [1,2,3,4];
-pin = 1;
-entry = read(pin);
+entry = read(1);
 cond = 0;
 fork {
     if (cond == 5 && cond == 7) {
         cond = arr[entry];
     } else {
         cond = 7;
-    }
-} par {
+    };
+} and {
     cond = 5;
     cond = 7;
-}
+};

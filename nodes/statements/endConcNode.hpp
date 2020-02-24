@@ -22,6 +22,7 @@ public:
 
     int get_number_of_threads () {return threadCount;}
 
+    basicblock *getConcNode() const {return concNode.get();}
     std::string to_string() override {
         return "end conc-node of " + std::to_string(threadCount) + " threads";
     }
