@@ -7,12 +7,14 @@
 
 class phiNode : public statementNode {
     std::string _name;
+    std::string origName;
     std::vector<std::string> _variables;
 public:
     phiNode(std::string name, std::vector<std::string> variables) :
     _name{std::move(name)}, _variables{std::move(variables)} {
         setNodeType(Phi);
         setType(okType);
+        origName = _name;
         onSSA = true;
     }
 
@@ -36,6 +38,7 @@ public:
     std::string getName() const {
         return _name;
     }
+    std::string getOriginalName() const {return origName;}
     void setName(std::string name) {
         _name = name;
     }

@@ -13,6 +13,7 @@ class arrayFieldAssignNode : public statementNode {
 public:
     arrayFieldAssignNode (Type t, std::string _name, std::shared_ptr<expressionNode> arrField, std::shared_ptr<expressionNode> n) : name{std::move(_name)}, field{std::move(arrField)}, expr{std::move(n)} {
         setType(t);
+        origName = name;
         setNodeType(AssignArrField);
     };
 
@@ -20,6 +21,7 @@ public:
     expressionNode* getField() const {return field.get();}
     expressionNode* getExpr() const {return expr.get();}
     std::string getName() const {return name;}
+    std::string getOriginalName() const {return origName;}
     void setName(std::string _name) {name = _name;}
 
     std::string to_string() override {
@@ -41,6 +43,7 @@ public:
     }
 private:
     std::string name;
+    std::string origName;
     std::shared_ptr<expressionNode> field;
     std::shared_ptr<expressionNode> expr;
 };

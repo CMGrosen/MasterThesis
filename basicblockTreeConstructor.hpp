@@ -7,6 +7,9 @@
 
 #include <nodes/basicblock.hpp>
 #include <unordered_set>
+#include <list>
+#include <unordered_map>
+#include <iostream>
 
 struct CCFG {
     std::set<std::shared_ptr<basicblock>> nodes;

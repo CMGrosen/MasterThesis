@@ -10,13 +10,15 @@
 
 class assignNode : public statementNode {
 public:
-    assignNode (Type t, std::string name, std::shared_ptr<expressionNode> n) : name{std::move(name)}, expr{std::move(n)} {
+    assignNode (Type t, std::string _name, std::shared_ptr<expressionNode> n) : name{std::move(_name)}, expr{std::move(n)} {
+        origName = name;
         setType(t);
         setNodeType(Assign);
     };
 
     void setName(std::string newName) {name = std::move(newName);}
     std::string getName() const {return name;}
+    std::string getOriginalName() const {return origName;}
     expressionNode* getExpr() const {return expr.get();}
     std::string to_string() override {
         return nameToTikzName(name, onSSA) + " = " + expr->to_string();
@@ -32,6 +34,7 @@ public:
         expr->setSSA(t);
     }
 private:
+    std::string origName;
     std::string name;
     std::shared_ptr<expressionNode> expr;
 };

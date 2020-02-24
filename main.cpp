@@ -7,7 +7,7 @@
 #include "basicblockTreeConstructor.hpp"
 #include <antlr4-runtime.h>
 #include <CCFGIllustrator.hpp>
-//#include <symengine/symbolicExecutionEngine.hpp>
+#include <symengine/symEngine.hpp>
 #include <CSSA_CFG.hpp>
 #include <dominatorTreeConstructor.hpp>
 #include <SSA_CCFG.hpp>
@@ -29,7 +29,7 @@ static std::map< const char *, const char * > files = {
         {"idom_test", "../code_examples/idomTest.small"}
 };
 
-void do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_ptr<statementNode>, const std::unordered_map<std::string, std::shared_ptr<expressionNode>>> *treeAndSymbolTable) {
+SSA_CCFG do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_ptr<statementNode>, const std::unordered_map<std::string, std::shared_ptr<expressionNode>>> *treeAndSymbolTable) {
     auto ccfg = std::make_shared<CCFG>(test.get_ccfg(treeAndSymbolTable->first));
 
     std::shared_ptr<DominatorTree> dominatorTree = std::make_shared<DominatorTree>(DominatorTree(ccfg));
@@ -65,6 +65,8 @@ void do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_ptr<st
 
 
     std::cout << ssa_ccfg.ccfg->startNode->statements[0]->getNodeType() << "\n";
+
+    return std::move(ssa_ccfg);
 }
 
 
@@ -94,7 +96,15 @@ int main(int argc, const char* argv[]) {
 
     basicBlockTreeConstructor test;
 
-    do_stuff(test, &treeAndSymbolTable);
+    auto ccfg = std::make_shared<SSA_CCFG>(do_stuff(test, &treeAndSymbolTable));
+
+    symEngine engine = symEngine(ccfg, treeAndSymbolTable.second);
+
+    //auto res = engine.execute();
+
+
+
+
 
     std::shared_ptr<expressionNode> expr = std::make_shared<literalNode>(literalNode(intType, "10"));
     std::shared_ptr<statementNode> stmt = std::make_shared<assignNode>(assignNode(intType, "a", expr));
