@@ -32,8 +32,9 @@ public:
         std::shared_ptr<expressionNode> _field = field->copy_expression();
         //std::shared_ptr<arrayAccessNode> _field = std::make_shared<arrayAccessNode>(arrayAccessNode(field->getType(), _fieldExpr, name));
         std::shared_ptr<expressionNode> _expr = expr->copy_expression();
-        std::shared_ptr<statementNode> _this = std::make_shared<arrayFieldAssignNode>(arrayFieldAssignNode(type, name, _field, _expr));
+        std::shared_ptr<statementNode> _this = std::make_shared<arrayFieldAssignNode>(arrayFieldAssignNode(type, origName, _field, _expr));
         _this->setSSA(onSSA);
+        dynamic_cast<arrayFieldAssignNode*>(_this.get())->setName(name);
         return _this;
     }
     void setSSA(bool t) override {

@@ -41,8 +41,6 @@ basicblock& basicblock::operator=(const basicblock &o) {
     }
     uses = o.uses;
     defines = o.defines;
-    /*nexts = o.nexts;
-    parents = o.parents;*/
     type = o.type;
     counterblocks++;
     return *this;
@@ -94,25 +92,25 @@ void basicblock::updateUsedVariables() {
         switch (stmt->getNodeType()) {
             case Assign: {
                 auto assStmt = dynamic_cast<assignNode*>(stmt.get());
-                defines.insert(assStmt->getName());
+                defines.insert({assStmt->getName(), std::set<std::string>{}});
                 auto expr = assStmt->getExpr();
                 auto res = get_variables_from_expression(expr);
                 for(auto var : res) {
-                    uses.insert(var);
+                    uses.insert({var, std::set<std::string>{}});
                 }
                 break;
             }
             case AssignArrField: {
                 auto assArrStmt = dynamic_cast<arrayFieldAssignNode*>(stmt.get());
-                defines.insert(assArrStmt->getName());
+                defines.insert({assArrStmt->getName(), std::set<std::string>{}});
                 auto res = get_variables_from_expression(assArrStmt->getField());
                 for(auto var : res) {
-                    uses.insert(var);
+                    uses.insert({var, std::set<std::string>{}});
                 }
 
                 res = get_variables_from_expression(assArrStmt->getExpr());
                 for(auto var : res) {
-                    uses.insert(var);
+                    uses.insert({var, std::set<std::string>{}});
                 }
                 break;
             }
@@ -120,7 +118,7 @@ void basicblock::updateUsedVariables() {
                 auto whileStmt = dynamic_cast<whileNode*>(stmt.get());
                 auto res = get_variables_from_expression(whileStmt->getCondition());
                 for(auto var : res) {
-                    uses.insert(var);
+                    uses.insert({var, std::set<std::string>{}});
                 }
                 break;
             }
@@ -128,7 +126,7 @@ void basicblock::updateUsedVariables() {
                 auto ifStmt = dynamic_cast<ifElseNode*>(stmt.get());
                 auto res = get_variables_from_expression(ifStmt->getCondition());
                 for(auto var : res) {
-                    uses.insert(var);
+                    uses.insert({var, std::set<std::string>{}});
                 }
                 break;
             }
@@ -136,7 +134,7 @@ void basicblock::updateUsedVariables() {
                 auto writeStmt = dynamic_cast<writeNode*>(stmt.get());
                 auto res = get_variables_from_expression(writeStmt->getExpr());
                 for(auto var : res) {
-                    uses.insert(var);
+                    uses.insert({var, std::set<std::string>{}});
                 }
                 break;
             }
@@ -144,7 +142,7 @@ void basicblock::updateUsedVariables() {
                 auto eventStmt = dynamic_cast<eventNode*>(stmt.get());
                 auto res = get_variables_from_expression(eventStmt->getCondition());
                 for(auto var : res) {
-                    uses.insert(var);
+                    uses.insert({var, std::set<std::string>{}});
                 }
                 break;
             }
@@ -254,4 +252,3 @@ std::pair<std::string, std::int32_t> basicblock::statements_as_string() {
 }
 
 std::string name = std::string{};
-

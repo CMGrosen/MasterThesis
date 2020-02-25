@@ -66,6 +66,10 @@ SSA_CCFG do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_pt
 
     std::cout << ssa_ccfg.ccfg->startNode->statements[0]->getNodeType() << "\n";
 
+    auto cssaccfg = std::make_shared<CSSA_CFG>(CSSA_CFG(*ssa_ccfg.ccfg, dominatorTree, symboltable));
+
+    auto third = CCFGTree(*cssaccfg->ccfg);
+    std::cout << "\nmade third: \n" << third.DrawCCFG() << "\n";
     return std::move(ssa_ccfg);
 }
 
@@ -100,7 +104,7 @@ int main(int argc, const char* argv[]) {
 
     symEngine engine = symEngine(ccfg, treeAndSymbolTable.second);
 
-    auto res = engine.execute();
+    //auto res = engine.execute();
 
 
 

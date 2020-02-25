@@ -53,8 +53,9 @@ struct basicblock {
 
     static int get_number_of_blocks();
 
-    std::set<std::string> uses;
-    std::set<std::string> defines;
+    std::map<std::string, std::set<std::string>> uses;
+    std::map<std::string, std::set<std::string>> defines;
+
 
     std::pair<std::shared_ptr<basicblock>, int> concurrentBlock;
     std::string get_name();

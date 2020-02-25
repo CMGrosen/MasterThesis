@@ -6,41 +6,47 @@
 #define ANTLR_CPP_TUTORIAL_PINODE_HPP
 
 class piNode : public statementNode {
-    std::shared_ptr<variableNode> _variable;
-    std::vector<std::shared_ptr<variableNode>> _possible_variables;
+    std::string _variable;
+    std::string name;
+    int num;
+    std::vector<std::string> _possible_variables;
 
 public:
-    piNode(std::shared_ptr<variableNode> variable, std::vector<std::shared_ptr<variableNode>> possible_variables)
-        : _variable{std::move(variable)}, _possible_variables{std::move(possible_variables)} {
+    piNode(std::string variable, int _num, std::vector<std::string> possible_variables)
+        : _variable{std::move(variable)}, _possible_variables{std::move(possible_variables)}, num{_num} {
+        name = "-T_" + _variable + std::to_string(num);
         setType(okType);
         setNodeType(Pi);
     }
 
     std::string to_string() override {
-        std::string res = _variable->to_string() + " = $\\pi($";
+        std::string res = "T\\_" + _variable + "$_{" + std::to_string(num) + "}$ = $\\pi($";
         if (!_possible_variables.empty()) {
-            res += _possible_variables[0]->to_string();
+            res += nameToTikzName(_possible_variables[0], true);
             for (auto i = 1; i < _possible_variables.size(); ++i)
-                res += (", " + _possible_variables[i]->to_string());
+                res += (", " + nameToTikzName(_possible_variables[i], true));
         }
         res += ")";
         return res;
     }
 
     std::shared_ptr<statementNode> copy_statement() const override {
-        std::vector<std::shared_ptr<variableNode>> _pos_vars;
-        for (auto v : _possible_variables) {
-            _pos_vars.push_back(std::make_shared<variableNode>(variableNode(v->getType(), v->name)));
+        std::vector<std::string> _pos_vars;
+        for (const auto &v : _possible_variables) {
+            _pos_vars.push_back(v);
         }
-        auto _this = std::make_shared<piNode>(piNode(std::make_shared<variableNode>(variableNode(_variable->getType(), _variable->name)), std::move(_pos_vars)));
+        auto _this = std::make_shared<piNode>(piNode(_variable, num, std::move(_pos_vars)));
         _this->setSSA(onSSA);
         return _this;
     }
 
+    std::vector<std::string> *get_variables() {return &_possible_variables;}
+
+    void addVariable(std::string var) {_possible_variables.push_back(std::move(var));}
+    std::string getName() const {return name;}
+    std::string getVar() const {return _variable;}
     void setSSA(bool t) override {
         onSSA = t;
-        for (const auto v : _possible_variables) v->setSSA(t);
-        _variable->setSSA(t);
     }
 };
 #endif //ANTLR_CPP_TUTORIAL_PINODE_HPP

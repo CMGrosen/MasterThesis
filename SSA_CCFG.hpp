@@ -86,6 +86,10 @@ private:
                         stmts.push_back(stmt);
                         for(const auto &s : Y->statements) stmts.push_back(s);
                         Y->statements = stmts;
+                        auto res = Y->defines.insert({var, std::set<std::string>{}});
+                        if (!res.second) {
+                            std::cout << "here";
+                        }
 
                         bool found = false;
                         for (const auto &i : Worklist) {
@@ -106,81 +110,97 @@ private:
         }
     }
 
-    void update_def_stmtNode(std::shared_ptr<statementNode> stmt, std::map<std::string, uint32_t> *defcounts) {
+    void update_def_stmtNode(std::shared_ptr<basicblock> &blk, std::shared_ptr<statementNode> stmt, std::map<std::string, uint32_t> *defcounts) {
+        std::string name;
+        std::string oldName;
         if (stmt->getNodeType() == Assign) {
             auto node = dynamic_cast<assignNode*>(stmt.get());
             int i = ++Count[node->getName()];
             Stack[node->getName()].push(i);
             auto res = defcounts->insert({node->getName(), 0});
             if (!res.second) res.first->second++;
-            node->setName(node->getName() + "_" + std::to_string(i));
+            oldName = node->getName();
+            name = oldName + "_" + std::to_string(i);
+            node->setName(name);
+
         } else if (stmt->getNodeType() == Phi) {
             auto node = dynamic_cast<phiNode*>(stmt.get());
             int i = ++Count[node->getName()];
             Stack[node->getName()].push(i);
             auto res = defcounts->insert({node->getName(), 0});
             if (!res.second) res.first->second++;
-            node->setName(node->getName() + "_" + std::to_string(i));
+            oldName = node->getName();
+            name = oldName + "_" + std::to_string(i);
+            node->setName(name);
         } else if (stmt->getNodeType() == AssignArrField) {
             auto node = dynamic_cast<arrayFieldAssignNode*>(stmt.get());
             int i = ++Count[node->getName()];
             Stack[node->getName()].push(i);
             auto res = defcounts->insert({node->getName(), 0});
             if (!res.second) res.first->second++;
-            node->setName(node->getName() + "_" + std::to_string(i));
-        }
+            oldName = node->getName();
+            name = oldName + "_" + std::to_string(i);
+            node->setName(name);
+        } else return;
+        blk->defines.find(oldName)->second.insert(name);
     }
 
-    void update_uses_exprNode(expressionNode *expr) {
+    void update_uses_exprNode(std::shared_ptr<basicblock> &blk, expressionNode *expr) {
         if(expr) {
             switch (expr->getNodeType()) {
                 case ArrayAccess: {
                     auto node = dynamic_cast<arrayAccessNode*>(expr);
-                    node->setName(node->getName() + ("_" + std::to_string(Stack[node->getName()].top())));
-                    update_uses_exprNode(node->getAccessor());
+                    std::string oldName = node->getName();
+                    std::string name = oldName + ("_" + std::to_string(Stack[node->getName()].top()));
+                    node->setName(name);
+                    blk->uses.find(oldName)->second.insert(name);
+                    update_uses_exprNode(blk, node->getAccessor());
                     break;
                 } case ArrayLiteral: {
                     auto node = dynamic_cast<arrayLiteralNode*>(expr);
                     for (auto &e : node->getArrLit()) {
-                        update_uses_exprNode(e.get());
+                        update_uses_exprNode(blk, e.get());
                     }
                     break;
                 } case Variable: {
                     auto node = dynamic_cast<variableNode*>(expr);
-                    node->name += ("_" + std::to_string(Stack[node->name].top()));
+                    std::string oldName = node->name;
+                    std::string name = oldName + ("_" + std::to_string(Stack[node->name].top()));
+                    node->name = name;
+                    blk->uses.find(oldName)->second.insert(name);
                     break;
                 } default:
                     break;
             }
-            update_uses_exprNode(expr->getNext().get());
+            update_uses_exprNode(blk, expr->getNext().get());
         }
     }
-    void update_uses_stmtNode(const std::shared_ptr<statementNode> &stmt) {
+    void update_uses_stmtNode(std::shared_ptr<basicblock> &blk, const std::shared_ptr<statementNode> &stmt) {
         switch (stmt->getNodeType()) { // for each use
             case Assign: {
                 auto node = dynamic_cast<assignNode*>(stmt.get());
-                update_uses_exprNode(node->getExpr());
+                update_uses_exprNode(blk, node->getExpr());
                 break;
             } case AssignArrField: {
                 auto node = dynamic_cast<arrayFieldAssignNode*>(stmt.get());
-                update_uses_exprNode(node->getField());
-                update_uses_exprNode(node->getExpr());
+                update_uses_exprNode(blk, node->getField());
+                update_uses_exprNode(blk, node->getExpr());
                 break;
             } case While: {
                 auto node = dynamic_cast<whileNode*>(stmt.get());
-                update_uses_exprNode(node->getCondition());
+                update_uses_exprNode(blk, node->getCondition());
                 break;
             } case If: {
                 auto node = dynamic_cast<ifElseNode*>(stmt.get());
-                update_uses_exprNode(node->getCondition());
+                update_uses_exprNode(blk, node->getCondition());
                 break;
             } case Write: {
                 auto node = dynamic_cast<writeNode*>(stmt.get());
-                update_uses_exprNode(node->getExpr());
+                update_uses_exprNode(blk, node->getExpr());
                 break;
             } case Event: {
                 auto node = dynamic_cast<eventNode*>(stmt.get());
-                update_uses_exprNode(node->getCondition());
+                update_uses_exprNode(blk, node->getCondition());
                 break;
             } default:
                 break;
@@ -191,9 +211,9 @@ private:
         std::map<std::string, uint32_t> defcounts;
         for (auto stmt : n->basic_block->statements) {
             if (stmt->getNodeType() != Phi) {
-                update_uses_stmtNode(stmt);
+                update_uses_stmtNode(n->basic_block, stmt);
             }
-            update_def_stmtNode(stmt, &defcounts);
+            update_def_stmtNode(n->basic_block, stmt, &defcounts);
         }
         for (auto successor : n->basic_block->nexts) {
             // Suppose n is the j'th predecessor of successor
