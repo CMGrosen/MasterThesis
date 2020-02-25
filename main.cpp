@@ -100,7 +100,7 @@ int main(int argc, const char* argv[]) {
 
     symEngine engine = symEngine(ccfg, treeAndSymbolTable.second);
 
-    //auto res = engine.execute();
+    auto res = engine.execute();
 
 
 

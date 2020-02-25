@@ -120,19 +120,22 @@ std::shared_ptr<trace> symEngine::get_trace(std::shared_ptr<basicblock> node) {
     z3::context c;
     std::vector<z3::expr> vec;
     int currentRead = 0;
+    int it = 1;
     while (node) {
         for (const auto &stmt : node->statements) {
             switch (stmt->getNodeType()) {
                 case Assign: {
                     auto assNode = dynamic_cast<assignNode*>(stmt.get());
                     switch (symboltable.find(assNode->getOriginalName())->second->getType()) {
-                        case intType:
-                            c.int_const(assNode->getName().c_str());
+                        case intType: {
+                            z3::expr x = c.int_const(assNode->getName().c_str());
+                            vec.push_back(x == get_expr(&c, assNode->getExpr(), &currentRead));
                             break;
-                        case boolType:
-                            c.bool_const(assNode->getName().c_str());
+                        } case boolType: {
+                            z3::expr x = c.bool_const(assNode->getName().c_str());
+                            vec.push_back(x == get_expr(&c, assNode->getExpr(), &currentRead));
                             break;
-                        case arrayIntType: {
+                        } case arrayIntType: {
                             auto arrLit = dynamic_cast<arrayLiteralNode*>(assNode->getExpr());
                             sort I = c.int_sort();
                             sort A = c.array_sort(I, I);
@@ -161,7 +164,6 @@ std::shared_ptr<trace> symEngine::get_trace(std::shared_ptr<basicblock> node) {
                         default:
                             break;
                     }
-                    vec.push_back(get_expr(&c, assNode->getExpr(), &currentRead));
                     break;
                 }
                 case AssignArrField: {
@@ -182,7 +184,7 @@ std::shared_ptr<trace> symEngine::get_trace(std::shared_ptr<basicblock> node) {
                 }
                 case While: {
                     auto wNode = dynamic_cast<whileNode*>(stmt.get());
-                    vec.push_back(get_expr(&c, wNode->getCondition(), &currentRead));
+                    vec.push_back(!get_expr(&c, wNode->getCondition(), &currentRead));
                     break;
                 }
                 case If: {
@@ -204,10 +206,10 @@ std::shared_ptr<trace> symEngine::get_trace(std::shared_ptr<basicblock> node) {
                     auto res = symboltable.find(phi->getOriginalName());
                     switch (res->second->getType()) {
                         case intType:
-                            c.int_const(phi->getName().c_str());
+                            vec.push_back(c.int_const(phi->getName().c_str()) == c.int_const(phi->get_variables()->at(1).c_str()));
                             break;
                         case boolType:
-                            c.bool_const(phi->getName().c_str());
+                            vec.push_back(c.bool_const(phi->getName().c_str()) == c.bool_const(phi->get_variables()->at(1).c_str()));
                             break;
                         case arrayIntType: {
                             break;
@@ -229,9 +231,17 @@ std::shared_ptr<trace> symEngine::get_trace(std::shared_ptr<basicblock> node) {
                     break;
             }
         }
+        if (node->nexts.empty()) break;
         node = node->type == Loop ? node->nexts[1] : node->nexts[0];
     }
+
     z3::solver s(c);
-    for (const auto e : vec) s.add(e);
+    for (const auto &e : vec) s.add(e);
+    if (s.check() == z3::sat) {
+        std::cout << "sat\n";
+        std::cout << s.get_model() << "\n";
+    } else {
+        std::cout << "unsat\n";
+    }
     return std::make_shared<trace>(trace(std::vector<edge>{}, std::vector<std::string>{}, nullptr));
 }
