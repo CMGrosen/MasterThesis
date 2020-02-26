@@ -16,6 +16,7 @@ struct CCFG {
     std::unordered_set<edge> edges;
     std::shared_ptr<basicblock> startNode;
     std::shared_ptr<basicblock> exitNode;
+    void updateConflictEdges() {add_conflict_edges();};
     CCFG(std::set<std::shared_ptr<basicblock>> _nodes, std::unordered_set<edge> _edges, std::shared_ptr<basicblock> _start, std::shared_ptr<basicblock> _exit)
         : nodes{std::move(_nodes)}, edges{std::move(_edges)}, startNode{std::move(_start)}, exitNode{std::move(_exit)} {
         assign_parents();
@@ -100,6 +101,7 @@ private:
             oldMapsTo.insert({n, newNode});
         }
         for (const auto &n : a.nodes) {
+            oldMapsTo[n]->concurrentBlock = std::make_pair(oldMapsTo[n->concurrentBlock.first], n->concurrentBlock.second);
             for (const auto &next : n->nexts) {
                 oldMapsTo[n]->nexts.push_back(oldMapsTo[next]);
                 oldMapsTo[next]->parents.push_back(oldMapsTo[n]);
@@ -119,6 +121,52 @@ private:
                 }
             }
         }
+    }
+
+    void add_conflict_edges() {
+        for (auto blk : nodes) {
+            for (auto cmp : nodes) {
+                if (concurrent(blk, cmp)) {
+                    for (const auto var : blk->defines) {
+                        if ((cmp->uses.find(var.first)) != cmp->uses.end() || cmp->defines.find(var.first) != cmp->defines.end()) {
+                            //blocks are concurrent
+                            // and have a variable in common,
+                            // thus there's a conflict
+                            edges.insert(edge(conflict, blk, cmp));
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    static bool concurrent(std::shared_ptr<basicblock> &a, std::shared_ptr<basicblock> &b) {
+        if (a == b) return false; //same nodes aren't concurrent
+        if (a->concurrentBlock.second == b->concurrentBlock.second) { //If they're in the same thread, they're not concurrent
+            return false;
+        }
+        std::vector<std::shared_ptr<basicblock>> concurrentNodesForA;
+        std::shared_ptr<basicblock> tmp = a->concurrentBlock.first;
+        while (tmp) {
+            concurrentNodesForA.push_back(tmp);
+            tmp = tmp->concurrentBlock.first;
+        }
+        tmp = b->concurrentBlock.first;
+        while (tmp) {
+            for (const auto &n : concurrentNodesForA) {
+                /*if(tmp->concurrentBlock.second == n->concurrentBlock.second) {
+                    return false;
+                }*/
+                if (tmp == n && !(a->type == Coend || b->type == Coend)) {
+                    // common fork ancestor between nodes, making them concurrent.
+                    // Doesn't work for nested forks
+                    return true;
+                }
+            }
+            tmp = tmp->concurrentBlock.first;
+        }
+        return false; //if we get here, no conditions were met, thus not concurrent
     }
 };
 
@@ -168,7 +216,6 @@ public:
         for (const auto blk : res.first) blk->updateUsedVariables();
         //std::cout << "hej\n";
 
-        add_conflict_edges(&res.first, &edges);
         return CCFG(std::move(res.first), std::move(edges), startNode, exitNode);
     }
 
@@ -302,50 +349,6 @@ private:
             blk->setConcurrentBlock(conBlock.first, conBlock.second, whileloops);
             return blk;
         }
-    }
-
-    void add_conflict_edges(std::set<std::shared_ptr<basicblock>> *allBlocks, std::unordered_set<edge> *allEdges) {
-        for (auto blk : *allBlocks) {
-            for (auto cmp : *allBlocks) {
-                if (concurrent(blk, cmp)) {
-                    for (const auto var : blk->defines) {
-                        if ((cmp->uses.find(var.first)) != cmp->uses.end() || cmp->defines.find(var.first) != cmp->defines.end()) {
-                            //blocks are concurrent
-                            // and have a variable in common,
-                            // thus there's a conflict
-                            allEdges->insert(edge(conflict, blk, cmp));
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    bool concurrent(std::shared_ptr<basicblock> a, std::shared_ptr<basicblock> b) {
-        if (a == b) return false; //same nodes aren't concurrent
-        if (a->concurrentBlock.second == b->concurrentBlock.second) { //If they're in the same thread, they're not concurrent
-            return false;
-        }
-        std::vector<std::shared_ptr<basicblock>> concurrentNodesForA;
-        std::shared_ptr<basicblock> tmp = a->concurrentBlock.first;
-        while (tmp) {
-            concurrentNodesForA.push_back(tmp);
-            tmp = tmp->concurrentBlock.first;
-        }
-        tmp = b->concurrentBlock.first;
-        while (tmp) {
-            for (const auto n : concurrentNodesForA) {
-                /*if(tmp->concurrentBlock.second == n->concurrentBlock.second) {
-                    return false;
-                }*/
-                if (tmp == n) { // common fork ancestor between nodes, making them concurrent
-                    return true;
-                }
-            }
-            tmp = tmp->concurrentBlock.first;
-        }
-        return false; //if we get here, no conditions were met, thus not concurrent
     }
 };
 #endif //ANTLR_CPP_TUTORIAL_BASICBLOCKTREECONSTRUCTOR_HPP

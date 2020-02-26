@@ -17,6 +17,7 @@ public:
         name = "-T_" + _variable + "_" + std::to_string(num);
         setType(okType);
         setNodeType(Pi);
+        setSSA(true);
     }
 
     std::string to_string() override {
@@ -41,6 +42,13 @@ public:
     }
 
     std::vector<std::string> *get_variables() {return &_possible_variables;}
+
+    bool contains(const std::string &var) {
+        for (const auto &v : _possible_variables) {
+            if (v == var) return true;
+        }
+        return false;
+    }
 
     void addVariable(std::string var) {_possible_variables.push_back(std::move(var));}
     std::string getName() const {return name;}

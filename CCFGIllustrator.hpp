@@ -35,6 +35,7 @@ class CCFGTree {
                 int finalLength = stmtLength;
                 if (stmt->isSSAForm()) {
                     if (stmt->getNodeType() == Phi) finalLength += (1 + dynamic_cast<phiNode*>(stmt.get())->get_variables()->size());
+                    else if (stmt->getNodeType() == Pi) finalLength += (1 + dynamic_cast<piNode*>(stmt.get())->get_variables()->size());
                     for (int i = 0; i < stmtLength; ++i) {
                         if (stmtStr[i] == '$') {
                             --finalLength;

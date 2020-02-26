@@ -16,7 +16,7 @@ struct CSSA_CFG {
     : ccfg{std::make_shared<CCFG>(CCFG(_ccfg))}, domTree{std::move(_domTree)}, symboltable{std::move(table)} {
         update_mapstoMap(_ccfg.startNode, ccfg->startNode);
         std::cout << "here";
-
+        ccfg->updateConflictEdges();
         //build_fud_chains();
         place_phi_functions();
     }
@@ -185,8 +185,13 @@ private:
                             }
                             // if (n not in prec(s) incomplete, need prec(s) function
                             if (!b->statements.empty()) {
-                                if (auto pi = dynamic_cast<piNode *>(b->statements[0].get())) {
-                                    pi->addVariable(*(a->defines.find(v.first)->second.begin()));
+                                for (const auto &stmt : b->statements) {
+                                    if (auto pi = dynamic_cast<piNode *>(stmt.get())) {
+                                        std::string var = *(a->defines.find(v.first)->second.begin());
+                                        if (pi->getVar() == v.first && !pi->contains(var)) {
+                                            pi->addVariable(var);
+                                        }
+                                    }
                                 }
                             }
                         }
