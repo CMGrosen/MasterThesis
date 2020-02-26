@@ -53,7 +53,7 @@ public:
     virtual bool isSSAForm() const {return onSSA;};
 
     static std::string nameToTikzName(std::string name, bool SSAForm) {
-        std::string newName = name;
+        std::string newName = name[0] == '-' ? name.substr(1) : name;
         int length = newName.length();
         for (int i = 0; i < length; i++) {
             if (newName[i] == '_') {

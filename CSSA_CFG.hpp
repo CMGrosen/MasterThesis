@@ -173,10 +173,14 @@ private:
                             if (!hasPiFunction) {                       //if b does not have a pi function
                                 std::vector<std::shared_ptr<statementNode>> vec;
                                 vec.reserve(1+b->statements.size());
-                                std::shared_ptr<statementNode> pi = std::make_shared<piNode>(piNode(v.first, counter++,
+                                std::shared_ptr<statementNode> pi = std::make_shared<piNode>(piNode(v.first, counter,
                                         std::vector<std::string>{*(b->uses.find(v.first)->second.begin())}));
                                 vec.push_back(pi);
-                                for (const auto &stmt: b->statements) vec.push_back(stmt);
+                                for (const auto &stmt: b->statements) {
+                                    rename(stmt, v.first, *(b->uses.find(v.first)->second.begin()), counter);
+                                    vec.push_back(stmt);
+                                }
+                                ++counter;
                                 b->statements = vec;
                             }
                             // if (n not in prec(s) incomplete, need prec(s) function
@@ -189,6 +193,70 @@ private:
                     }
                 }
             }
+        }
+    }
+
+    static void rename(const std::shared_ptr<statementNode> &stmt, const std::string &varName, const std::string &use, int counter) {
+        std::string piName = "-T_" + varName + "_" + std::to_string(counter);
+        switch (stmt->getNodeType()) {
+            case Assign: {
+                auto ass = dynamic_cast<assignNode*>(stmt.get());
+                rename_expr(ass->getExpr(), use, piName);
+                break;
+            } case AssignArrField: {
+                auto assArrF = dynamic_cast<arrayFieldAssignNode*>(stmt.get());
+                rename_expr(assArrF->getField(), use, piName);
+                rename_expr(assArrF->getExpr(), use, piName);
+                break;
+            } case While: {
+                auto wNode = dynamic_cast<whileNode*>(stmt.get());
+                rename_expr(wNode->getCondition(), use, piName);
+                break;
+            } case If: {
+                auto ifNode = dynamic_cast<ifElseNode*>(stmt.get());
+                rename_expr(ifNode->getCondition(), use, piName);
+                break;
+            } case Write: {
+                auto wrNode = dynamic_cast<writeNode*>(stmt.get());
+                rename_expr(wrNode->getExpr(), use, piName);
+                break;
+            } case Event: {
+                auto eNode = dynamic_cast<eventNode*>(stmt.get());
+                rename_expr(eNode->getCondition(), use, piName);
+                break;
+            } case Phi: {
+                auto phi = dynamic_cast<phiNode*>(stmt.get());
+                for (auto s : *phi->get_variables()) {
+                    if (s == use) {s = piName;}
+                }
+                break;
+            } default:
+                break;
+        }
+    }
+
+    static void rename_expr(expressionNode *expr, const std::string &use, const std::string &piName) {
+        while (expr) {
+            switch (expr->getNodeType()) {
+                case ArrayAccess: {
+                    auto arrAcc = dynamic_cast<arrayAccessNode*>(expr);
+                    if (arrAcc->getName() == use) arrAcc->setName(piName);
+                    rename_expr(arrAcc->getAccessor(), use, piName);
+                    break;
+                } case ArrayLiteral: {
+                    auto arrLit = dynamic_cast<arrayLiteralNode*>(expr);
+                    for (const auto &l : arrLit->getArrLit()) {
+                        rename_expr(l.get(), use, piName);
+                    }
+                    break;
+                } case Variable: {
+                    auto var = dynamic_cast<variableNode*>(expr);
+                    if (var->name == use) var->name = piName;
+                    break;
+                } default:
+                    break;
+            }
+            expr = expr->getNext().get();
         }
     }
 };
