@@ -146,33 +146,40 @@ private:
     }
 
     void update_uses_exprNode(std::shared_ptr<basicblock> &blk, expressionNode *expr) {
-        if(expr) {
-            switch (expr->getNodeType()) {
-                case ArrayAccess: {
-                    auto node = dynamic_cast<arrayAccessNode*>(expr);
-                    std::string oldName = node->getName();
-                    std::string name = oldName + ("_" + std::to_string(Stack[node->getName()].top()));
-                    node->setName(name);
-                    blk->uses.find(oldName)->second.insert(name);
-                    update_uses_exprNode(blk, node->getAccessor());
-                    break;
-                } case ArrayLiteral: {
-                    auto node = dynamic_cast<arrayLiteralNode*>(expr);
-                    for (auto &e : node->getArrLit()) {
-                        update_uses_exprNode(blk, e.get());
-                    }
-                    break;
-                } case Variable: {
-                    auto node = dynamic_cast<variableNode*>(expr);
-                    std::string oldName = node->name;
-                    std::string name = oldName + ("_" + std::to_string(Stack[node->name].top()));
-                    node->name = name;
-                    blk->uses.find(oldName)->second.insert(name);
-                    break;
-                } default:
-                    break;
+        switch (expr->getNodeType()) {
+            case ArrayAccess: {
+                auto node = dynamic_cast<arrayAccessNode*>(expr);
+                std::string oldName = node->getName();
+                std::string name = oldName + ("_" + std::to_string(Stack[node->getName()].top()));
+                node->setName(name);
+                blk->uses.find(oldName)->second.insert(name);
+                update_uses_exprNode(blk, node->getAccessor());
+                break;
+            } case ArrayLiteral: {
+                auto node = dynamic_cast<arrayLiteralNode*>(expr);
+                for (auto &e : node->getArrLit()) {
+                    update_uses_exprNode(blk, e.get());
+                }
+                break;
+            } case Variable: {
+                auto node = dynamic_cast<variableNode*>(expr);
+                std::string oldName = node->name;
+                std::string name = oldName + ("_" + std::to_string(Stack[node->name].top()));
+                node->name = name;
+                blk->uses.find(oldName)->second.insert(name);
+                break;
+            } case BinaryExpression: {
+                auto binExpr = dynamic_cast<binaryExpressionNode*>(expr);
+                update_uses_exprNode(blk, binExpr->getLeft());
+                update_uses_exprNode(blk, binExpr->getRight());
+                break;
+            } case UnaryExpression: {
+                auto unExpr = dynamic_cast<unaryExpressionNode*>(expr);
+                update_uses_exprNode(blk, unExpr->getExpr());
+                break;
             }
-            update_uses_exprNode(blk, expr->getNext().get());
+            default:
+                break;
         }
     }
     void update_uses_stmtNode(std::shared_ptr<basicblock> &blk, const std::shared_ptr<statementNode> &stmt) {

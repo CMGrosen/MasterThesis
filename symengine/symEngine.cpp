@@ -23,96 +23,73 @@ std::pair<std::shared_ptr<basicblock>, bool> symEngine::run_trace(std::shared_pt
 }
 
 z3::expr get_expr (z3::context *c, expressionNode *node, int *currentRead) {
-    std::stack<z3::expr> stack;
-
-    while(node) {
-        switch (node->getNodeType()) {
-            case Read: {
-                z3::expr x = c->int_const(("-" + std::to_string(*currentRead++) + "readVal").c_str());
-                stack.push(c->int_val(INT16_MIN) <= x <= c->int_val(INT16_MAX));
-                break;
-            } case Literal: {
-                auto lit = dynamic_cast<literalNode*>(node);
-                if (lit->getType() == intType) {
-                    stack.push(c->int_val(std::stoi(lit->value)));
-                } else {
-                    stack.push(c->bool_val(lit->value == "true"));
-                }
-                break;
-            } case ArrayAccess: {
-                auto arrAcc = dynamic_cast<arrayAccessNode*>(node);
-                //stack.pu
-                break;
-            } case Variable: {
-                auto var = dynamic_cast<variableNode*>(node);
-                if (var->getType() == intType) stack.push(c->int_const(var->name.c_str()));
-                else stack.push(c->bool_const(var->name.c_str()));
-                break;
-            } case BinaryExpression: {
-                auto binOp = dynamic_cast<binaryExpressionNode*>(node);
-                z3::expr right = stack.top();
-                stack.pop();
-                z3::expr left = stack.top();
-                stack.pop();
-                switch (binOp->getOperator()) {
-                    case PLUS:
-                        stack.push(left + right);
-                        break;
-                    case MINUS:
-                        stack.push(left - right);
-                        break;
-                    case MULT:
-                        stack.push(left * right);
-                        break;
-                    case DIV:
-                        stack.push(left / right);
-                        break;
-                    case MOD:
-                        stack.push(left % right);
-                        break;
-                    case AND:
-                        stack.push(left && right);
-                        break;
-                    case OR:
-                        stack.push(left || right);
-                        break;
-                    case LE:
-                        stack.push(left < right);
-                        break;
-                    case LEQ:
-                        stack.push(left <= right);
-                        break;
-                    case GE:
-                        stack.push(left > right);
-                        break;
-                    case GEQ:
-                        stack.push(left >= right);
-                        break;
-                    case EQ:
-                        stack.push(left == right);
-                        break;
-                    case NEQ:
-                        stack.push(left != right);
-                        break;
-                    default:break;
-                }
-                break;
-            } case UnaryExpression: {
-                auto unOp = dynamic_cast<unaryExpressionNode*>(node);
-                z3::expr val = stack.top();
-                stack.pop();
-                if (unOp->getOperator() == NOT) {
-                    stack.push(!val);
-                } else {
-                    stack.push(-val);
-                }
-                break;
-            } default:
-                break;
-        }
-        node = node->getNext().get();
+    switch (node->getNodeType()) {
+        case Read: {
+            z3::expr x = c->int_const(("-" + std::to_string(*currentRead++) + "readVal").c_str());
+            return (c->int_val(INT16_MIN) <= x <= c->int_val(INT16_MAX));
+        } case Literal: {
+            auto lit = dynamic_cast<literalNode*>(node);
+            if (lit->getType() == intType) {
+                return (c->int_val(std::stoi(lit->value)));
+            } else {
+                return (c->bool_val(lit->value == "true"));
+            }
+        } case ArrayAccess: {
+            auto arrAcc = dynamic_cast<arrayAccessNode*>(node);
+            //stack.pu
+            break;
+        } case Variable: {
+            auto var = dynamic_cast<variableNode*>(node);
+            if (var->getType() == intType)
+                return (c->int_const(var->name.c_str()));
+            else
+                return (c->bool_const(var->name.c_str()));
+        } case BinaryExpression: {
+            auto binOp = dynamic_cast<binaryExpressionNode*>(node);
+            z3::expr left = get_expr(c, binOp->getLeft(), currentRead);
+            z3::expr right = get_expr(c, binOp->getRight(), currentRead);
+            switch (binOp->getOperator()) {
+                case PLUS:
+                    return (left + right);
+                case MINUS:
+                    return (left - right);
+                case MULT:
+                    return (left * right);
+                case DIV:
+                    return (left / right);
+                case MOD:
+                    return (left % right);
+                case AND:
+                    return (left && right);
+                case OR:
+                    return (left || right);
+                case LE:
+                    return (left < right);
+                case LEQ:
+                    return (left <= right);
+                case GE:
+                    return (left > right);
+                case GEQ:
+                    return (left >= right);
+                case EQ:
+                    return (left == right);
+                case NEQ:
+                    return (left != right);
+                default:
+                    break;
+            }
+            break;
+        } case UnaryExpression: {
+            auto unOp = dynamic_cast<unaryExpressionNode*>(node);
+            z3::expr val = get_expr(c, unOp->getExpr(), currentRead);
+            if (unOp->getOperator() == NOT) {
+                return (!val);
+            } else {
+                return (-val);
+            }
+        } default:
+            break;
     }
-    return stack.top();
 }
 
 std::shared_ptr<trace> symEngine::get_trace(std::shared_ptr<basicblock> node) {

@@ -9,32 +9,39 @@
 
 class binaryExpressionNode : public expressionNode {
 public:
-    binaryExpressionNode(Type _type, op _op) : _operator{_op} {
+    binaryExpressionNode(Type _type, op _op, std::shared_ptr<expressionNode> _left, std::shared_ptr<expressionNode> _right)
+    : _operator{_op}, left{std::move(_left)}, right{std::move(_right)} {
         type = _type;
         setNodeType(BinaryExpression);
     }
 
     std::string to_string() override {
-        std::string res = operatorToString[_operator];
-        if (getNext()) {
-            res +=  " " + getNext()->to_string();
-        }
-        return res;
+        return left->to_string() + " " + operatorToString[_operator] + " " + right->to_string();
     }
 
     std::shared_ptr<expressionNode> copy_expression() const override {
-        std::shared_ptr<expressionNode> _this = std::make_shared<binaryExpressionNode>(binaryExpressionNode(type, _operator));
-        _this->setNext(this->copy_next());
+        std::shared_ptr<expressionNode> _this = std::make_shared<binaryExpressionNode>(binaryExpressionNode(type, _operator, left->copy_expression(), right->copy_expression()));
         _this->setSSA(onSSA);
         return _this;
     }
     op getOperator() const {return _operator;};
 
     bool operator==(const expressionNode *expr) const override {
-        return (nodetype == expr->getNodeType() && _operator == dynamic_cast<const binaryExpressionNode*>(expr)->_operator);
+        if (expr->getNodeType() == BinaryExpression) {
+            if (auto binNode = dynamic_cast<const binaryExpressionNode*>(expr)) {
+                return binNode->getOperator() == _operator && binNode->getLeft() == left.get() && binNode->getRight() == right.get();
+            }
+        }
+        return false;
     }
+
+    expressionNode *getLeft() const {return left.get();}
+    expressionNode *getRight() const {return right.get();}
+
 private:
     op _operator;
+    std::shared_ptr<expressionNode> left;
+    std::shared_ptr<expressionNode> right;
 };
 /*
 static std::map< NodeType, std::type_info > binExprs = {

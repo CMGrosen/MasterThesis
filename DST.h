@@ -137,23 +137,19 @@ public:
 
     virtual antlrcpp::Any visitIter(SmallParser::IterContext *ctx) override {
         std::shared_ptr<expressionNode> condition = visitExpr(ctx->expr());
-        auto last = condition->getLast();
-        if(!last) last = condition;
         std::shared_ptr<statementNode> body = visitStmts(ctx->scope()->stmts());
         Type t = okType;
-        if (last->getType() != boolType || body->getType() != okType) t = errorType;
+        if (condition->getType() != boolType || body->getType() != okType) t = errorType;
         std::shared_ptr<statementNode> res = std::make_shared<whileNode>(whileNode(t, condition, body));
         return res;
     }
 
     virtual antlrcpp::Any visitIfs(SmallParser::IfsContext *ctx) override {
         std::shared_ptr<expressionNode> condition = visitExpr(ctx->expr());
-        auto last = condition->getLast();
-        if(!last) last = condition;
         std::shared_ptr<statementNode> trueBranch = visitStmts(ctx->scope(0)->stmts());
         std::shared_ptr<statementNode> falseBranch = visitStmts(ctx->scope(1)->stmts());
         Type t = okType;
-        if (last->getType() != boolType || trueBranch->getType() != okType || falseBranch->getType() != okType) t = errorType;
+        if (condition->getType() != boolType || trueBranch->getType() != okType || falseBranch->getType() != okType) t = errorType;
         std::shared_ptr<statementNode> res = std::make_shared<ifElseNode>(ifElseNode(t, condition, trueBranch, falseBranch));
         return res;
     }
@@ -176,9 +172,7 @@ public:
 
     virtual antlrcpp::Any visitEvent(SmallParser::EventContext *ctx) override {
         std::shared_ptr<expressionNode> condition = visitExpr(ctx->expr());
-        auto last = condition->getLast();
-        if(!last) last = condition;
-        Type t = (last->getType() == boolType) ? okType : errorType;
+        Type t = (condition->getType() == boolType) ? okType : errorType;
         std::shared_ptr<statementNode> res = std::make_shared<eventNode>(eventNode(t, condition));
         return res;
     }
@@ -217,12 +211,8 @@ public:
                 std::shared_ptr<expressionNode> node = visitExpr(ctx->expr(0));
                 Type t = intType;
                 if (node->getType() != intType) t = errorType;
-
-                std::shared_ptr<expressionNode> una = std::make_shared<unaryExpressionNode>(unaryExpressionNode(t, NEG));
-                auto last = node->getLast();
-                if (!last) last = node;
-                last->setNext(una);
-                return node;
+                std::shared_ptr<expressionNode> una = std::make_shared<unaryExpressionNode>(unaryExpressionNode(t, NEG, node));
+                return una;
             }
         } else if (ctx->OP_MUL()) {
             return binary_expression(ctx, MULT);
@@ -256,11 +246,8 @@ public:
                       << info[boolType] << " got " << info[node->getType()] << "\n";
             }
 
-            std::shared_ptr<expressionNode> una = std::make_shared<unaryExpressionNode>(unaryExpressionNode(t, NOT));
-            auto last = node->getLast();
-            if (!last) last = node;
-            last->setNext(una);
-            return node;
+            std::shared_ptr<expressionNode> una = std::make_shared<unaryExpressionNode>(unaryExpressionNode(t, NOT, node));
+            return una;
         } else if (ctx->literal()) {
             std::shared_ptr<expressionNode> p = std::make_shared<literalNode>(literalNode(ctx->literal()->getText()));
             return p;
@@ -276,7 +263,7 @@ public:
                 std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
                           << "] Attempted to use variable that hasn't been assigned a value\n";
             }
-            std::shared_ptr<expressionNode> res = std::make_shared<variableNode>(node);
+            std::shared_ptr<expressionNode> res = std::make_shared<variableNode>(std::move(node));
             return res;
         } else if (ctx->read()) {
             return visitRead(ctx->read());
@@ -357,9 +344,7 @@ public:
             case DIV:
                 if(rIntVal == 0) {
                     success = false;
-                    n = l;
-                    l->setNext(r);
-                    r->setNext(std::make_shared<binaryExpressionNode>(binaryExpressionNode(t, DIV)));
+                    n = std::make_shared<binaryExpressionNode>(binaryExpressionNode(t, DIV, l, r));
                 }
                 else {
                     lIntVal /= rIntVal;
@@ -369,9 +354,7 @@ public:
             case MOD:
                 if(rIntVal == 0) {
                     success = false;
-                    n = l;
-                    l->setNext(r);
-                    r->setNext(std::make_shared<binaryExpressionNode>(binaryExpressionNode(t, MOD)));
+                    n = std::make_shared<binaryExpressionNode>(binaryExpressionNode(t, MOD, l, r));
                 } else {
                     lIntVal %= rIntVal;
                     n = std::make_shared<literalNode>(literalNode(t, std::to_string((int16_t)lIntVal)));
@@ -447,35 +430,29 @@ public:
         std::shared_ptr<expressionNode> r = (visitExpr(ctx->right));
         Type t;
 
-        auto lastL = l->getLast();
-        if(!lastL) lastL = l;
-
-        auto lastR = r->getLast();
-        if(!lastR) lastR = r;
-
         switch (expressionType) {
             case PLUS:
             case MINUS:
             case MULT:
             case DIV:
             case MOD:
-                if (lastL->getType() == lastR->getType() && lastL->getType() == intType) {
-                    t = lastL->getType();
+                if (l->getType() == r->getType() && l->getType() == intType) {
+                    t = l->getType();
                 } else {
                     std::cout << "[" << ctx->start->getLine() << ":" << ctx->start->getCharPositionInLine()
-                              << "] Type mismatch in binary expression. Expected " << info[lastL->getType()] << " got " << info[lastR->getType()] << "\n";
+                              << "] Type mismatch in binary expression. Expected " << info[l->getType()] << " got " << info[r->getType()] << "\n";
                     t = errorType;
                     updateErrorCount();
                 }
                 break;
             case AND:
             case OR:
-                if (lastL->getType() == lastR->getType() && lastL->getType() == boolType) {
-                    t = lastL->getType();
+                if (l->getType() == r->getType() && l->getType() == boolType) {
+                    t = l->getType();
                 } else {
                     std::cout << "[" << ctx->start->getLine() << ":" << ctx->start->getCharPositionInLine()
                               << "] Type mismatch in binary expression. Expected " << info[boolType] << " got "
-                              << info[lastR->getType() != boolType ? lastR->getType() : lastL->getType()] << "\n";
+                              << info[r->getType() != boolType ? r->getType() : l->getType()] << "\n";
                     t = errorType;
                     updateErrorCount();
                 }
@@ -484,23 +461,23 @@ public:
             case LEQ:
             case GE:
             case GEQ:
-                if (lastL->getType() == lastR->getType() && lastL->getType() == intType) {
+                if (l->getType() == r->getType() && l->getType() == intType) {
                     t = boolType;
                 } else {
                     std::cout << "[" << ctx->start->getLine() << ":" << ctx->start->getCharPositionInLine()
                               << "] Type mismatch in binary expression. Expected " << info[intType] << " got "
-                              << info[lastR->getType() != intType ? lastR->getType() : lastL->getType()] << "\n";
+                              << info[r->getType() != intType ? r->getType() : l->getType()] << "\n";
                     t = errorType;
                     updateErrorCount();
                 }
                 break;
             case EQ:
             case NEQ:
-                if (lastL->getType() == lastR->getType() && (lastL->getType() == intType || lastL->getType() == boolType)) {
+                if (l->getType() == r->getType() && (l->getType() == intType || l->getType() == boolType)) {
                     t = boolType;
                 } else {
                     std::cout << "[" << ctx->start->getLine() << ":" << ctx->start->getCharPositionInLine()
-                              << "] Type mismatch in binary expression. Expected " << info[lastL->getType()] << " got " << info[lastR->getType()] << "\n";
+                              << "] Type mismatch in binary expression. Expected " << info[l->getType()] << " got " << info[r->getType()] << "\n";
                     t = errorType;
                     updateErrorCount();
                 }
@@ -511,15 +488,13 @@ public:
                 break;
         }
         if (t != errorType) {
-            if ((lastL->getNodeType() == Literal && lastR->getNodeType() == Literal) && !l->getNext() && !r->getNext()) {
+            if (l->getNodeType() == Literal && r->getNodeType() == Literal) {
                 return compute_new_literal(l,r, expressionType, t).second;
             }
         }
 
-        std::shared_ptr<expressionNode> p = std::make_shared<binaryExpressionNode>(binaryExpressionNode(t, expressionType));
-        lastL->setNext(r);
-        lastR->setNext(p);
-        return l;
+        std::shared_ptr<expressionNode> p = std::make_shared<binaryExpressionNode>(binaryExpressionNode(t, expressionType, l, r));
+        return p;
     }
 /*
     static antlrcpp::Any deepCopy(const node *tree) {

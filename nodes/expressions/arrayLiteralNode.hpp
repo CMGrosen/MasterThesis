@@ -37,9 +37,6 @@ public:
             if (i != value.size()-1) res += ", ";
         }
         res += "]";
-        if (getNext()) {
-            res += " " + getNext()->to_string();
-        }
         return res;
     }
 
@@ -50,7 +47,6 @@ public:
             _values.push_back(val->copy_expression());
         }
         std::shared_ptr<expressionNode> _this = std::make_shared<arrayLiteralNode>(arrayLiteralNode(getType(), std::move(_values)));
-        _this->setNext(this->copy_next());
         _this->setSSA(onSSA);
         return _this;
     }
@@ -72,10 +68,9 @@ public:
     void setSSA(bool t) override {
         onSSA = t;
         for (const auto ele : value) ele->setSSA(t);
-        if(getNext()) getNext()->setSSA(t);
     }
 
-    const std::vector<std::shared_ptr<expressionNode>> getArrLit() const {return value;};
+    std::vector<std::shared_ptr<expressionNode>> getArrLit() const {return value;};
 private:
     std::vector<std::shared_ptr<expressionNode>> value;
 };

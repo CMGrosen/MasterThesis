@@ -16,18 +16,12 @@ public:
     void setName(std::string _name) {name = _name;}
 
     std::string to_string() override {
-        std::string res = nameToTikzName(name, onSSA) + "[" + value->to_string() + "] ";
-        if (getNext()) {
-            res += getNext()->to_string();
-        }
-        return res;
+        return nameToTikzName(name, onSSA) + "[" + value->to_string() + "] ";
     }
 
     std::shared_ptr<expressionNode> copy_expression() const override {
         std::shared_ptr<expressionNode> _val = value->copy_expression();
-        _val->setNext(value->copy_next());
         std::shared_ptr<expressionNode> _this = std::make_shared<arrayAccessNode>(arrayAccessNode(getType(), _val, name));
-        _this->setNext(copy_next());
         _this->setSSA(onSSA);
         return _this;
     }
@@ -35,7 +29,6 @@ public:
     void setSSA(bool t) override {
         onSSA = t;
         value->setSSA(t);
-        if(getNext()) getNext()->setSSA(t);
     }
 
     bool operator==(const expressionNode *expr) const override {

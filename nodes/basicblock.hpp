@@ -72,33 +72,40 @@ private:
 
     static std::vector<std::string> get_variables_from_expression(const expressionNode *expr) {
         std::vector<std::string> vars{};
-        while (expr) {
-            switch (expr->getNodeType()) {
-                case ArrayAccess: {
-                    auto arrAcc = dynamic_cast<const arrayAccessNode*>(expr);
-                    vars.push_back(arrAcc->getName());
-                    auto res = get_variables_from_expression(arrAcc->getAccessor());
-                    for (auto var : res) vars.emplace_back(var);
-                    break;
-                }
-                case ArrayLiteral: {
-                    auto arrLit = dynamic_cast<const arrayLiteralNode*>(expr);
-                    for (auto xp : arrLit->getArrLit()) {
-                        auto res = get_variables_from_expression(xp.get());
-                        for (auto var : res) vars.emplace_back(var);
-                    }
-                    break;
-                }
-                case Variable: {
-                    vars.push_back(dynamic_cast<const variableNode*>(expr)->name);
-                    break;
-                }
-                default: {
-                    break;
-                }
+        switch (expr->getNodeType()) {
+            case ArrayAccess: {
+                auto arrAcc = dynamic_cast<const arrayAccessNode*>(expr);
+                vars.push_back(arrAcc->getName());
+                auto res = get_variables_from_expression(arrAcc->getAccessor());
+                for (auto var : res) vars.emplace_back(var);
+                break;
             }
-            if (!expr->getNext()) return vars;
-            else expr = expr->getNext().get();
+            case ArrayLiteral: {
+                auto arrLit = dynamic_cast<const arrayLiteralNode*>(expr);
+                for (auto xp : arrLit->getArrLit()) {
+                    auto res = get_variables_from_expression(xp.get());
+                    for (auto var : res) vars.emplace_back(var);
+                }
+                break;
+            }
+            case Variable: {
+                vars.push_back(dynamic_cast<const variableNode*>(expr)->name);
+                break;
+            }
+            case BinaryExpression: {
+                auto binExpr = dynamic_cast<const binaryExpressionNode*>(expr);
+                for (const auto &e : get_variables_from_expression(binExpr->getLeft())) vars.push_back(e);
+                for (const auto &e : get_variables_from_expression(binExpr->getRight())) vars.push_back(e);
+                break;
+            }
+            case UnaryExpression: {
+                auto unExpr = dynamic_cast<const unaryExpressionNode*>(expr);
+                for (const auto &e : get_variables_from_expression(unExpr->getExpr())) vars.push_back(e);
+                break;
+            }
+            default: {
+                break;
+            }
         }
         return vars;
     }

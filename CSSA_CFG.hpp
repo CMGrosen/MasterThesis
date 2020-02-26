@@ -47,30 +47,37 @@ private:
 
     static std::vector<std::pair<std::string, varType>> getUsagesFromExpr(expressionNode *node) {
         std::vector<std::pair<std::string, varType>> vec;
-        while (node) {
-            switch (node->getNodeType()) {
-                case ArrayAccess: {
-                    auto arrAcc = dynamic_cast<arrayAccessNode*>(node);
-                    vec.emplace_back(arrAcc->getName(), use);
-                    auto res = getUsagesFromExpr(arrAcc->getAccessor());
-                    for (const auto &p : res) vec.push_back(p);
-                    break;
-                } case ArrayLiteral: {
-                    auto arrLit = dynamic_cast<arrayLiteralNode*>(node);
-                    for (const auto &expr : arrLit->getArrLit()) {
-                        auto res = getUsagesFromExpr(expr.get());
-                        for(const auto &r : res) {
-                            vec.push_back(r);
-                        }
+        switch (node->getNodeType()) {
+            case ArrayAccess: {
+                auto arrAcc = dynamic_cast<arrayAccessNode*>(node);
+                vec.emplace_back(arrAcc->getName(), use);
+                auto res = getUsagesFromExpr(arrAcc->getAccessor());
+                for (const auto &p : res) vec.push_back(p);
+                break;
+            } case ArrayLiteral: {
+                auto arrLit = dynamic_cast<arrayLiteralNode*>(node);
+                for (const auto &expr : arrLit->getArrLit()) {
+                    auto res = getUsagesFromExpr(expr.get());
+                    for(const auto &r : res) {
+                        vec.push_back(r);
                     }
-                    break;
-                } case Variable: {
-                    vec.emplace_back(dynamic_cast<variableNode*>(node)->name, use);
-                    break;
-                } default:
-                    break;
+                }
+                break;
+            } case Variable: {
+                vec.emplace_back(dynamic_cast<variableNode*>(node)->name, use);
+                break;
+            } case BinaryExpression: {
+                auto binExpr = dynamic_cast<binaryExpressionNode*>(node);
+                for (const auto &lexp : getUsagesFromExpr(binExpr->getLeft())) vec.push_back(lexp);
+                for (const auto &rexp : getUsagesFromExpr(binExpr->getRight())) vec.push_back(rexp);
+                break;
+            } case UnaryExpression: {
+                auto unExpr = dynamic_cast<unaryExpressionNode*>(node);
+                for (const auto &expr : getUsagesFromExpr(unExpr->getExpr())) vec.push_back(expr);
+                break;
             }
-            node = node->getNext().get();
+            default:
+                break;
         }
         return vec;
     }
@@ -241,27 +248,33 @@ private:
     }
 
     static void rename_expr(expressionNode *expr, const std::string &use, const std::string &piName) {
-        while (expr) {
-            switch (expr->getNodeType()) {
-                case ArrayAccess: {
-                    auto arrAcc = dynamic_cast<arrayAccessNode*>(expr);
-                    if (arrAcc->getName() == use) arrAcc->setName(piName);
-                    rename_expr(arrAcc->getAccessor(), use, piName);
-                    break;
-                } case ArrayLiteral: {
-                    auto arrLit = dynamic_cast<arrayLiteralNode*>(expr);
-                    for (const auto &l : arrLit->getArrLit()) {
-                        rename_expr(l.get(), use, piName);
-                    }
-                    break;
-                } case Variable: {
-                    auto var = dynamic_cast<variableNode*>(expr);
-                    if (var->name == use) var->name = piName;
-                    break;
-                } default:
-                    break;
-            }
-            expr = expr->getNext().get();
+        switch (expr->getNodeType()) {
+            case ArrayAccess: {
+                auto arrAcc = dynamic_cast<arrayAccessNode*>(expr);
+                if (arrAcc->getName() == use) arrAcc->setName(piName);
+                rename_expr(arrAcc->getAccessor(), use, piName);
+                break;
+            } case ArrayLiteral: {
+                auto arrLit = dynamic_cast<arrayLiteralNode*>(expr);
+                for (const auto &l : arrLit->getArrLit()) {
+                    rename_expr(l.get(), use, piName);
+                }
+                break;
+            } case Variable: {
+                auto var = dynamic_cast<variableNode*>(expr);
+                if (var->name == use) var->name = piName;
+                break;
+            } case BinaryExpression: {
+                auto binExpr = dynamic_cast<binaryExpressionNode*>(expr);
+                rename_expr(binExpr->getLeft(), use, piName);
+                rename_expr(binExpr->getRight(), use, piName);
+                break;
+            } case UnaryExpression: {
+                auto unExpr = dynamic_cast<unaryExpressionNode*>(expr);
+                rename_expr(unExpr->getExpr(), use, piName);
+                break;
+            } default:
+                break;
         }
     }
 };

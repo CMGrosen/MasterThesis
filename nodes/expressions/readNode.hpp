@@ -16,7 +16,6 @@ public:
     }
     std::shared_ptr<expressionNode> copy_expression() const override {
         std::shared_ptr<expressionNode> _this = std::make_shared<readNode>(readNode(_pin));
-        _this->setNext(this->copy_next());
         _this->setSSA(onSSA);
         return _this;
     }

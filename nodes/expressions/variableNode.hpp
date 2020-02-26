@@ -23,13 +23,11 @@ public:
 
     std::string to_string() override {
         std::string res = nameToTikzName(name, onSSA);
-        if (getNext()) res += " " + getNext()->to_string();
         return res;
     }
 
     std::shared_ptr<expressionNode> copy_expression() const override {
         std::shared_ptr<expressionNode> _this = std::make_shared<variableNode>(variableNode(type, name));
-        _this->setNext(this->copy_next());
         _this->setSSA(onSSA);
         return _this;
     }
