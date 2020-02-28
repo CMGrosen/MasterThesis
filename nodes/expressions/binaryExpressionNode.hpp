@@ -26,6 +26,12 @@ public:
     }
     op getOperator() const {return _operator;};
 
+    void setSSA(bool t) override {
+        onSSA = t;
+        left->setSSA(t);
+        right->setSSA(t);
+    }
+
     bool operator==(const expressionNode *expr) const override {
         if (expr->getNodeType() == BinaryExpression) {
             if (auto binNode = dynamic_cast<const binaryExpressionNode*>(expr)) {

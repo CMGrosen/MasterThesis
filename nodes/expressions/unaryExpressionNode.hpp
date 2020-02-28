@@ -25,6 +25,11 @@ public:
         return _this;
     }
 
+    void setSSA(bool t) override {
+        onSSA = t;
+        expr->setSSA(t);
+    }
+
     bool operator==(const expressionNode *_expr) const override {
         if (nodetype == _expr->getNodeType()) {
             if (auto unNode = dynamic_cast<const unaryExpressionNode *>(_expr)) {
