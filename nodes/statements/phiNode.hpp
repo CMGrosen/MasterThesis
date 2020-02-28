@@ -46,6 +46,7 @@ public:
         onSSA = t;
     }
     std::vector<std::string> *get_variables() {return &_variables;}
+    void set_variables(std::vector<std::string> names) {_variables = std::move(names);}
     /*std::shared_ptr<expressionNode> copy_expression() const override {
         std::vector<std::shared_ptr<variableNode>> _vars;
         for (auto v : _variables) {

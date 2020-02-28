@@ -26,7 +26,8 @@ static std::map< const char *, const char * > files = {
         {"oob_race-condition", "../code_examples/out_of_bounds_race-condition.small"},
         {"testAssign", "../code_examples/testAssign.small"},
         {"coffee_maker", "../code_examples/coffee_maker.small"},
-        {"idom_test", "../code_examples/idomTest.small"}
+        {"idom_test", "../code_examples/idomTest.small"},
+        {"reportExample", "../code_examples/report_example.small"}
 };
 
 SSA_CCFG do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_ptr<statementNode>, const std::unordered_map<std::string, std::shared_ptr<expressionNode>>> *treeAndSymbolTable) {

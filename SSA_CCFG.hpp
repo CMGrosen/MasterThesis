@@ -36,6 +36,24 @@ struct SSA_CCFG {
                 }
             }
         }
+
+        //remove duplicate variables. Possibly a dumb idea
+        for (const auto &blk : Aphi) {
+            for (const auto &stmt : blk.first->statements) {
+                if (auto phi = dynamic_cast<phiNode*>(stmt.get())) {
+                    std::set<std::string> names;
+                    std::vector<std::string> updateNames;
+                    for (const auto &name : *phi->get_variables()) {
+                        names.insert(name);
+                    }
+                    updateNames.reserve(names.size());
+                    for (const auto &name : names) {
+                        updateNames.push_back(name);
+                    }
+                    phi->set_variables(std::move(updateNames));
+                }
+            }
+        }
     };
 
 private:
@@ -60,7 +78,6 @@ private:
                 }
             }
             Aorig.insert({blk, variables});
-            Aphi.insert({blk, std::make_unique<std::unordered_set<std::string>>(std::unordered_set<std::string>{})});
         }
     }
 
@@ -77,8 +94,11 @@ private:
                 std::shared_ptr<basicblock> blk = Worklist.front();
                 Worklist.pop_front();
                 for (const auto &Y : domTree->DF[blk]) {
-                    std::unordered_set<std::string> *aphi = Aphi.find(Y)->second.get();
-                    if (aphi->insert(var).second) { // Y is not in Aphi[n], do this block and insert (lines 10->)
+                    if (Aphi.find(Y) == Aphi.end()) {
+                        Aphi.insert({Y,std::make_unique<std::unordered_set<std::string>>(std::unordered_set<std::string>{})});
+                    }
+                    if (Aphi.find(Y)->second->insert(var).second) {
+                        // Y is not in Aphi[n], do this block and insert (lines 10->)
                         std::vector<std::shared_ptr<statementNode>> stmts;
                         std::vector<std::string> args;
                         for (auto i = 0; i < Y->parents.size(); ++i) args.push_back(var);

@@ -1,0 +1,15 @@
+a = read(1);
+b = a + 2;
+
+fork {
+if (b < a) {
+  write(3, a);
+} else {
+  write(2, a);
+};
+} and {
+  a = 10;
+};
+
+write(2, a);
+write(2, b);
