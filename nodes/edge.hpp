@@ -18,6 +18,7 @@ public:
     std::vector<std::shared_ptr<basicblock>> neighbours;
     bool operator<(const edge& s) const;
     bool operator==(const edge& s) const;
+    bool operator!=(const edge& s) const;
     edge();
     edge(std::shared_ptr<basicblock> lB, std::shared_ptr<basicblock> rB);
     edge(edgeType typeOfEdge, std::shared_ptr<basicblock> lB, std::shared_ptr<basicblock> rB);

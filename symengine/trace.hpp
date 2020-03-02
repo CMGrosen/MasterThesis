@@ -9,13 +9,16 @@
 #include <vector>
 #include <nodes/edge.hpp>
 
-class trace {
+struct trace {
     std::vector<edge> edgesToTake;
     std::vector<std::string> inputs;
-    std::shared_ptr<basicblock> goal;
-public:
+    std::vector<std::shared_ptr<basicblock>> goals;
+
+    trace() = default;
     trace(std::vector<edge> edges, std::vector<std::string> inputs, std::shared_ptr<basicblock> _goal)
-            : edgesToTake{std::move(edges)}, inputs{std::move(inputs)}, goal{std::move(_goal)} {};
+            : edgesToTake{std::move(edges)}, inputs{std::move(inputs)}, goals{std::vector<std::shared_ptr<basicblock>>{std::move(_goal)}} {};
+    trace(std::vector<edge> edges, std::vector<std::string> inputs, std::vector<std::shared_ptr<basicblock>> _goals)
+            : edgesToTake{std::move(edges)}, inputs{std::move(inputs)}, goals{std::move(_goals)} {};
 };
 
 

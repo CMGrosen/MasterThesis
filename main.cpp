@@ -71,6 +71,13 @@ SSA_CCFG do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_pt
 
     auto third = CCFGTree(*cssaccfg->ccfg);
     std::cout << "\nmade third: \n" << third.DrawCCFG() << "\n";
+
+    symEngine engine = symEngine(cssaccfg, treeAndSymbolTable->second);
+
+    //auto res = engine.execute();
+
+    auto res = engine.execute();
+
     return std::move(ssa_ccfg);
 }
 
@@ -79,7 +86,7 @@ SSA_CCFG do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_pt
 int main(int argc, const char* argv[]) {
     std::ifstream stream;
     //stream.open("../code.small");
-    stream.open(files["idom_test"]);
+    stream.open(files["reportExample"]);
     //stream.open("shortExpr.small");
 
     ANTLRInputStream input(stream);
@@ -102,14 +109,6 @@ int main(int argc, const char* argv[]) {
     basicBlockTreeConstructor test;
 
     auto ccfg = std::make_shared<SSA_CCFG>(do_stuff(test, &treeAndSymbolTable));
-
-    symEngine engine = symEngine(ccfg, treeAndSymbolTable.second);
-
-    //auto res = engine.execute();
-
-
-
-
 
     std::shared_ptr<expressionNode> expr = std::make_shared<literalNode>(literalNode(intType, "10"));
     std::shared_ptr<statementNode> stmt = std::make_shared<assignNode>(assignNode(intType, "a", expr));
