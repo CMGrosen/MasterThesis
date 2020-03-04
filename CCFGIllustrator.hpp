@@ -15,14 +15,18 @@ class CCFGTree {
 
     public:
         std::string name;
-        int distance;
-        int v_distance;
+        float distance;
+        float v_distance;
+        float right_width;
+        float left_width;
 
 
         CCFGNode(std::shared_ptr<CCFGNode> _parent, std::string _name, std::string _content, int count) : parent{std::move(_parent)}, name{std::move(_name)}, content{std::move(_content)} {
             node_size = (count+1) * symbol_width;
             distance = 0;
-            size = node_size;
+            left_width = node_size/2;
+            right_width = node_size/2;
+            //size = node_size;
         }
 
         CCFGNode(std::shared_ptr<CCFGNode> _parent, std::shared_ptr<basicblock> blk) : basicblockInfo{blk}, parent{std::move(_parent)}, name{blk->get_name()} {
@@ -57,7 +61,9 @@ class CCFGTree {
             node_size = (longestStr+1) * symbol_width;
             distance = 0;
             v_distance = vertical_padding;
-            size = node_size;
+            left_width = node_size/2;
+            right_width = node_size/2;
+            //size = node_size;
         }
 
 
@@ -81,9 +87,10 @@ class CCFGTree {
         std::string to_string(const std::unordered_set<edge> *edges, const CCFG *ccfg){
             std::set<CCFGNode *> drawnBlocks;
             std::set<std::shared_ptr<CCFGNode>> resizedBlocks;
+            std::set<std::shared_ptr<CCFGNode>> placeddBlocks;
             std::string result = std::string("\\usetikzlibrary{automata,positioning}\n") +
                                  std::string("\\begin{tikzpicture}[shorten >=1pt, node distance=2cm, on grid, auto]\n");
-            resizeAll(&resizedBlocks);
+            resizeAll(&resizedBlocks, &placeddBlocks);
             result += draw_node(&drawnBlocks, ccfg);
 
             /*
@@ -141,28 +148,29 @@ class CCFGTree {
             children.emplace_back(child);
         }
 
-        void resizeAll(std::set<std::shared_ptr<CCFGNode>> *resizedBlocks){
+        void resizeAll(std::set<std::shared_ptr<CCFGNode>> *resizedBlocks, std::set<std::shared_ptr<CCFGNode>> *placedBlocks){
             for(const auto& child : children){
                 if (resizedBlocks->insert(child).second) {
-                    child->resizeAll(resizedBlocks);
+                    child->resizeAll(resizedBlocks, placedBlocks);
                 } else {
-                    std::cout << "";
+
                 }
             }
-            resize();
+            resize(placedBlocks);
         }
-        void resize(){
-            int temp = calc_children_size();
-            if(temp > node_size){
-                size = temp;
-            } else {
-                size = node_size;
+        void resize(std::set<std::shared_ptr<CCFGNode>> *placedBlocks){
+            std::pair<float, float> temp = calc_children_size(placedBlocks);
+            if(temp.first > left_width){
+                left_width = temp.first;
+            }
+            if(temp.second > right_width){
+                right_width = temp.second;
             }
         }
-        int get_node_size(){
+        float get_node_size(){
             return node_size;
         }
-        int get_size(){
+        float get_size(){
             return size;
         }
         std::string get_content(){
@@ -174,50 +182,59 @@ class CCFGTree {
 
     private:
         std::string content;
-        int  v_padding;
-        int node_size;
-        int size;
+        float  v_padding;
+        float node_size;
+        float size;
 
-        int calc_children_size(){
-            int result;
+        std::pair<float, float> calc_children_size(std::set<std::shared_ptr<CCFGNode>> *placedBlocks){
             if(children.empty()){
-                return 0;
+                return{0,0};
             }
             int count = children.size();
+            float _left_width, _right_width;
+
+            float dist, left_dist, right_dist;
+            int left, right;
 
             if(count == 1){
-                children.front()->distance = 0;
-                children.front()->v_distance =  v_padding;
-                return children.front()->get_size();
-            }
-            int dist;
-            int left, right;
-            if(count % 2 == 1){
-                left = count/2-1;
-                int mid = count /2;
-                right = count/2+1;
-                dist = children[mid]->get_size()/2+horizontal_padding;
-                children[mid]->distance = 0;
-                children[mid]->v_distance =  v_padding;
+                if(placedBlocks->insert(children.front()).second){
+                    children.front()->distance = 0;
+                    children.front()->v_distance =  v_padding;
+                    _left_width = children.front()->left_width;
+                    _right_width = children.front()->right_width;
+                }
             } else {
-                left = count/2-1;
-                right = count/2;
-                dist = 0;
+                if(count % 2 == 1){
+                    left = count/2-1;
+                    int mid = count /2;
+                    right = count/2+1;
+                    dist = (children[mid]->left_width + children[mid]->right_width) / 2;
+                    children[mid]->distance = 0;
+                    children[mid]->v_distance =  v_padding;
+                    left_dist = dist + horizontal_padding;
+                    right_dist = dist + horizontal_padding;
+                } else {
+                    left = count/2-1;
+                    right = count/2;
+                    left_dist = horizontal_padding/2;
+                    right_dist = horizontal_padding/2;
+                }
+                while(left >= 0){
+                    left_dist += children[left]->right_width;
+                    right_dist += children[right]->left_width;
+                    children[left]->distance = (left_dist)*-1;
+                    children[right]->distance = right_dist;
+                    children[left]->v_distance =  v_padding;
+                    children[right]->v_distance =  v_padding;
+                    left_dist += horizontal_padding + children[left]->left_width;
+                    right_dist += horizontal_padding + children[right]->right_width;
+                    left--;
+                    right++;
+                }
+                _left_width = left_dist;
+                _right_width = right_dist;
             }
-            while(left >= 0){
-                dist += children[left]->get_size()<children[right]->get_size() ?
-                        children[right]->get_size():
-                        children[left]->get_size();
-                children[left]->distance = (dist/2 + horizontal_padding)*-1;
-                children[right]->distance = dist/2 + horizontal_padding;
-                children[left]->v_distance =  v_padding;
-                children[right]->v_distance =  v_padding;
-                dist += horizontal_padding;
-                left--;
-                right++;
-            }
-            result = children.front()->get_size()/2 + children.back()->get_size()/2 + dist;
-            return result;
+            return {_left_width, _right_width};
         }
 
     };

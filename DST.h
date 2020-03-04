@@ -152,7 +152,7 @@ public:
         Type t = okType;
         if (_condition->getType() != boolType || _body->getType() != okType) t = errorType;
         // create early exit setup and check to help determine if loop is exited naturally
-        std::string early_exit = "_" + std::to_string(early_exits) + "early_exit";
+        std::string early_exit = std::to_string(early_exits) + "_early_exit";
         std::shared_ptr<expressionNode> assExpr  = std::make_shared<literalNode>(literalNode(boolType,"false"));
 
         std::shared_ptr<assignNode> early_exit_setup = std::make_shared<assignNode>(assignNode(boolType, early_exit, assExpr));
