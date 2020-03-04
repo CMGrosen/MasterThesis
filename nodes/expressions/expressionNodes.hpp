@@ -12,6 +12,7 @@
 #include <nodes/expressions/arrayAccessNode.hpp>
 #include <nodes/expressions/variableNode.hpp>
 #include <nodes/expressions/readNode.hpp>
+#include <nodes/expressions/unpacked.hpp>
 //#include "constraintNode.hpp"
 
 

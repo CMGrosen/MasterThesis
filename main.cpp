@@ -11,6 +11,8 @@
 #include <CSSA_CFG.hpp>
 #include <dominatorTreeConstructor.hpp>
 #include <SSA_CCFG.hpp>
+#include <statementsTransformer.hpp>
+#include <z3++.h>
 
 using namespace std;
 using namespace antlr4;
@@ -72,6 +74,11 @@ SSA_CCFG do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_pt
     auto third = CCFGTree(*cssaccfg->ccfg);
     std::cout << "\nmade third: \n" << third.DrawCCFG() << "\n";
 
+    auto newccfg = statementsTransformer::get_transformedCCFG(cssaccfg);
+
+    auto fourth = CCFGTree(*newccfg);
+    std::cout << "\nmade fourth: \n" << fourth.DrawCCFG() << "\n";
+
     symEngine engine = symEngine(cssaccfg, treeAndSymbolTable->second);
 
     //auto res = engine.execute();
@@ -115,8 +122,48 @@ int main(int argc, const char* argv[]) {
     basicblock b = basicblock(stmt);
 
     std::cout << "done: " << std::to_string(b.get_number_of_blocks()) << "\n";
-    int a = 50, p = 2, s = 1;
-    a = p = s = 3;
-    std::cout << std::to_string(a) << std::to_string(p) << std::to_string(s) << std::endl;
+    //int a = 50, p = 2, s = 1;
+    //a = p = s = 3;
+    //std::cout << std::to_string(a) << std::to_string(p) << std::to_string(s) << std::endl;
+
+/*
+    z3::context c;
+
+    z3::solver s = z3::solver(c);
+
+
+    z3::expr _a1 = c.int_const("_a1");
+    s.add(a0 <= INT16_MAX && a0 >= INT16_MIN);
+
+    z3::expr b0 = c.int_const("b0");
+    s.add(b0 == 0);
+
+
+    //true
+
+    z3::expr cond_true = a0 > 10;
+    z3::expr b1 = c.int_val(50);
+    z3::expr true1 = b1 == 50;
+    z3::expr trueBranch = cond_true && true1;
+
+    //false
+    z3::expr cond_false = !(a0 > 10);
+    z3::expr b2 = c.int_val(20);
+    z3::expr false1 = b2 == 20;
+    z3::expr falseBranch = cond_false && false1;
+
+    s.add(trueBranch || falseBranch);
+    //z3::expr b3 = b1 || b2;
+    //s.add(b3);
+
+    if (s.check() == z3::sat) {
+        auto model = s.get_model();
+        std::cout << "sat\n" << model << std::endl;
+    } else {
+        std::cout << "unsat" << std::endl;
+    }
+*/
+
+
     return 0;
 }
