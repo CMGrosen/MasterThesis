@@ -6,6 +6,7 @@
 #include <nodes/nodes.hpp>
 //#include "symengine/Constraint.hpp"
 
+#define MAXITER 3
 
 /**
  * This class provides an empty implementation of SmallVisitor, which can be
@@ -14,6 +15,7 @@
 
 
 class  DST : public SmallVisitor {
+    int early_exits = 0;
     int foundErrors = 0;
 public:
     int getNumErrors() const {return foundErrors;}
@@ -44,9 +46,17 @@ public:
 
     virtual antlrcpp::Any visitStmts(SmallParser::StmtsContext *ctx) override {
         if(ctx->stmts()) {
+            std::shared_ptr<statementNode> result;
             std::shared_ptr<statementNode> body = visitStmt(ctx->stmt());
             std::shared_ptr<statementNode> next = visitStmts(ctx->stmts());
-            std::shared_ptr<statementNode> result = std::make_shared<sequentialNode>(sequentialNode(body, next));
+            // loop unrolling while stmt to nested ifElse chain
+            if(ctx->stmt()->iter()){
+                std::shared_ptr<statementNode> _body = dynamic_cast<sequentialNode*>(body.get())->getBody();
+                std::shared_ptr<statementNode> _next = std::make_shared<sequentialNode>(sequentialNode(dynamic_cast<sequentialNode*>(body.get())->getNext(), next));
+                result = std::make_shared<sequentialNode>(_body, _next );
+            } else {
+                result = std::make_shared<sequentialNode>(sequentialNode(body, next));
+            }
 
             return result;
         } else {
@@ -134,13 +144,42 @@ public:
             return a;
         }
     }
-
+    // returns a sequential node with a early exit setup as the stmt and a unrolled loop as the stmts
     virtual antlrcpp::Any visitIter(SmallParser::IterContext *ctx) override {
-        std::shared_ptr<expressionNode> condition = visitExpr(ctx->expr());
-        std::shared_ptr<statementNode> body = visitStmts(ctx->scope()->stmts());
+        std::shared_ptr<expressionNode> _condition = visitExpr(ctx->expr());
+        std::shared_ptr<statementNode> _body = visitStmts(ctx->scope()->stmts());
+        std::shared_ptr<statementNode> falseBranch = std::make_shared<skipNode>(skipNode());
         Type t = okType;
-        if (condition->getType() != boolType || body->getType() != okType) t = errorType;
-        std::shared_ptr<statementNode> res = std::make_shared<whileNode>(whileNode(t, condition, body));
+        if (_condition->getType() != boolType || _body->getType() != okType) t = errorType;
+        // create early exit setup and check to help determine if loop is exited naturally
+        std::string early_exit = "_" + std::to_string(early_exits) + "early_exit";
+        std::shared_ptr<expressionNode> assExpr  = std::make_shared<literalNode>(literalNode(boolType,"false"));
+
+        std::shared_ptr<assignNode> early_exit_setup = std::make_shared<assignNode>(assignNode(boolType, early_exit, assExpr));
+
+        assExpr = std::make_shared<literalNode>(literalNode(boolType,"true"));
+        std::shared_ptr<assignNode> early_exit_check = std::make_shared<assignNode>(assignNode(boolType, early_exit, assExpr));
+        // add early_exit variable to symbol table
+        symboltables.insert({early_exit, assExpr});
+        // increment early_exits to ensure unique names for all early_exit variables.
+        early_exits++;
+        // create early exit check
+        std::shared_ptr<statementNode> temp = std::make_shared<ifElseNode>(ifElseNode(t, _condition, early_exit_check, falseBranch));
+
+        // create MAXITER number of  iterations, starts with the last iteration and ends with the first.
+        for(int i = 0; i < MAXITER; i++){
+            //create new nodes and pointers to ensure uniqueness
+            std::shared_ptr<expressionNode> condition = _condition->copy_expression();
+            std::shared_ptr<statementNode> body = _body->copy_statement();
+            falseBranch = std::make_shared<skipNode>(skipNode());
+            // nest the next iteration into this iteration
+            std::shared_ptr<statementNode> trueBranch = std::make_shared<sequentialNode>(sequentialNode(body, temp));
+            // current iteration
+            temp = std::make_shared<ifElseNode>(ifElseNode(t, condition, trueBranch, falseBranch));
+        }
+        //std::shared_ptr<statementNode> res = std::make_shared<whileNode>(whileNode(t, condition, body));
+        // sequential node with the early_exit setup before the unrolled loop.
+        std::shared_ptr<statementNode> res = std::make_shared<sequentialNode>(sequentialNode(early_exit_setup, temp));
         return res;
     }
 
