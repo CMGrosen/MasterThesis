@@ -1,0 +1,10 @@
+a = 1;
+b = 2;
+while(true){
+	a = a +2;
+	if(a == 3){
+		b = a+3;
+	} else {
+	    skip;
+	};
+};

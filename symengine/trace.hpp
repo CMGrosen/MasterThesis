@@ -8,6 +8,7 @@
 
 #include <vector>
 #include <nodes/edge.hpp>
+#include <string>
 
 struct trace {
     std::vector<edge> edgesToTake;

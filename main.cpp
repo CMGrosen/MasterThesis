@@ -29,7 +29,8 @@ static std::map< const char *, const char * > files = {
         {"testAssign", "../code_examples/testAssign.small"},
         {"coffee_maker", "../code_examples/coffee_maker.small"},
         {"idom_test", "../code_examples/idomTest.small"},
-        {"reportExample", "../code_examples/report_example.small"}
+        {"reportExample", "../code_examples/report_example.small"},
+        {"constraint_test", "../code_examples/constraint_test.small"}
 };
 
 SSA_CCFG do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_ptr<statementNode>, const std::unordered_map<std::string, std::shared_ptr<expressionNode>>> *treeAndSymbolTable) {
@@ -80,10 +81,11 @@ SSA_CCFG do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_pt
     std::cout << "\nmade fourth: \n" << fourth.DrawCCFG() << "\n";
 
     symEngine engine = symEngine(cssaccfg, treeAndSymbolTable->second);
+    //symEngine engine = symEngine(cssaccfg, treeAndSymbolTable->second);
 
     //auto res = engine.execute();
 
-    auto res = engine.execute();
+    //auto res = engine.execute();
 
     return std::move(ssa_ccfg);
 }
@@ -93,7 +95,7 @@ SSA_CCFG do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_pt
 int main(int argc, const char* argv[]) {
     std::ifstream stream;
     //stream.open("../code.small");
-    stream.open(files["reportExample"]);
+    stream.open(files["constraint_test"]);
     //stream.open("shortExpr.small");
 
     ANTLRInputStream input(stream);
