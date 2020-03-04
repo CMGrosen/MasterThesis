@@ -155,10 +155,10 @@ public:
         std::string early_exit = std::to_string(early_exits) + "_early_exit";
         std::shared_ptr<expressionNode> assExpr  = std::make_shared<literalNode>(literalNode(boolType,"false"));
 
-        std::shared_ptr<assignNode> early_exit_setup = std::make_shared<assignNode>(assignNode(boolType, early_exit, assExpr));
+        std::shared_ptr<assignNode> early_exit_setup = std::make_shared<assignNode>(assignNode(okType, early_exit, assExpr));
 
         assExpr = std::make_shared<literalNode>(literalNode(boolType,"true"));
-        std::shared_ptr<assignNode> early_exit_check = std::make_shared<assignNode>(assignNode(boolType, early_exit, assExpr));
+        std::shared_ptr<assignNode> early_exit_check = std::make_shared<assignNode>(assignNode(okType, early_exit, assExpr));
         // add early_exit variable to symbol table
         symboltables.insert({early_exit, assExpr});
         // increment early_exits to ensure unique names for all early_exit variables.
