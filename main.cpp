@@ -30,7 +30,8 @@ static std::map< const char *, const char * > files = {
         {"coffee_maker", "../code_examples/coffee_maker.small"},
         {"idom_test", "../code_examples/idomTest.small"},
         {"reportExample", "../code_examples/report_example.small"},
-        {"constraint_test", "../code_examples/constraint_test.small"}
+        {"constraint_test", "../code_examples/constraint_test.small"},
+        {"tripple_maker", "../code_examples/tripple_maker.small"}
 };
 
 SSA_CCFG do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_ptr<statementNode>, const std::unordered_map<std::string, std::shared_ptr<expressionNode>>> *treeAndSymbolTable) {
