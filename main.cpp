@@ -9,10 +9,11 @@
 #include <CCFGIllustrator.hpp>
 #include <symengine/symEngine.hpp>
 #include <CSSA_CFG.hpp>
-#include <dominatorTreeConstructor.hpp>
+//#include <dominatorTreeConstructor.hpp>
 #include <SSA_CCFG.hpp>
 #include <statementsTransformer.hpp>
 #include <z3++.h>
+#include <lengauerTarjan.hpp>
 
 using namespace std;
 using namespace antlr4;
@@ -31,13 +32,14 @@ static std::map< const char *, const char * > files = {
         {"idom_test", "../code_examples/idomTest.small"},
         {"reportExample", "../code_examples/report_example.small"},
         {"constraint_test", "../code_examples/constraint_test.small"},
-        {"tripple_maker", "../code_examples/tripple_maker.small"}
+        {"tripple_maker", "../code_examples/tripple_maker.small"},
+        {"if_test", "../code_examples/if_test.small"}
 };
 
 SSA_CCFG do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_ptr<statementNode>, const std::unordered_map<std::string, std::shared_ptr<expressionNode>>> *treeAndSymbolTable) {
     auto ccfg = std::make_shared<CCFG>(test.get_ccfg(treeAndSymbolTable->first));
 
-    std::shared_ptr<DominatorTree> dominatorTree = std::make_shared<DominatorTree>(DominatorTree(ccfg));
+    std::shared_ptr<DomTree> dominatorTree = std::make_shared<DomTree>(DomTree(ccfg));
 
     std::cout << "got here  " << std::to_string(ccfg->startNode->get_number_of_blocks()) << "\n\n";//a << std::endl;
 
@@ -96,7 +98,7 @@ SSA_CCFG do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_pt
 int main(int argc, const char* argv[]) {
     std::ifstream stream;
     //stream.open("../code.small");
-    stream.open(files["coffee_maker"]);
+    stream.open(files["if_test"]);
     //stream.open("shortExpr.small");
 
     ANTLRInputStream input(stream);

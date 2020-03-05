@@ -1,0 +1,18 @@
+test = 7;
+if(true){
+    b = true;
+    if(false){
+       b = false;
+    } else {
+        a = 4;
+    };
+} else {
+    c = 3;
+    if(c == 3) {
+        c = 5;
+    } else {
+        a = 10;
+    };
+    write(1, 1);
+};
+test = 32;

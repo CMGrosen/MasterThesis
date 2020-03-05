@@ -9,10 +9,10 @@
 
 struct CSSA_CFG {
     std::shared_ptr<CCFG> ccfg;
-    std::shared_ptr<DominatorTree> domTree;
+    std::shared_ptr<DomTree> domTree;
     std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<expressionNode>>> symboltable;
 
-    CSSA_CFG(const CCFG &_ccfg, std::shared_ptr<DominatorTree> _domTree, std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<expressionNode>>> table)
+    CSSA_CFG(const CCFG &_ccfg, std::shared_ptr<DomTree> _domTree, std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<expressionNode>>> table)
     : ccfg{std::make_shared<CCFG>(CCFG(_ccfg))}, domTree{std::move(_domTree)}, symboltable{std::move(table)} {
         update_mapstoMap(_ccfg.startNode, ccfg->startNode);
         std::cout << "here";

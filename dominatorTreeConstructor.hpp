@@ -91,16 +91,16 @@ public:
         return u; //ikke lovligt. Memory der refereres til er stack. n som bliver passed har anden værdi end v som ellers er n
     }
 
-    static std::shared_ptr<basicblock>* AncestorWithLowerDFNum(std::shared_ptr<basicblock>* v, DFSTree* dfsTree, int s_dfnum){
-        auto u = v;
-        while(dfsTree->ancestors.find(*v) != dfsTree->ancestors.end()){
-            int v_dfnum = dfsTree->dfnums.find(*v)->second;
+    static std::shared_ptr<basicblock> AncestorWithLowerDFNum(std::shared_ptr<basicblock> v, DFSTree* dfsTree, int s_dfnum){
+        while(dfsTree->ancestors.find(v) != dfsTree->ancestors.end()){
+            int v_dfnum = dfsTree->dfnums.find(v)->second;
             if(v_dfnum < s_dfnum){
                 return v;
             }
-            v = &dfsTree->ancestors.find(*v)->second;
+            v = dfsTree->ancestors.find(v)->second;
         }
-        return &dfsTree->nodes.find(s_dfnum)->second;
+        //should not happen
+        return dfsTree->nodes.find(s_dfnum)->second;
     }
 
     static std::unordered_map<std::shared_ptr<basicblock>, std::shared_ptr<basicblock>> CreateDominatorTree(DFSTree depth_first_spanning_tree){
@@ -125,8 +125,10 @@ public:
                 if(depth_first_spanning_tree.dfnums.find(v)->second <= depth_first_spanning_tree.dfnums.find(n)->second){
                     _s = v;
                 } else {
-                    _s = (AncestorWithLowestSemi(n, &depth_first_spanning_tree, &semi));
-                    if(semi.find(_s)->second){
+                    _s = AncestorWithLowerDFNum(v, &depth_first_spanning_tree, depth_first_spanning_tree.dfnums.find(n)->second);
+                    //_s = AncestorWithLowestSemi(n, &depth_first_spanning_tree, &semi);
+                    auto temp = semi.find(_s)->second;
+                    if(temp != nullptr){
                         _s = semi.find(_s)->second;
                     }
                 }
@@ -134,16 +136,17 @@ public:
                     s = _s;
                 }
             }
-            semi.find(n)->second = s;
+            semi.find(s)->second = n;
             bucket.find(s)->second.emplace_back(n);
             Link(n, p, &depth_first_spanning_tree);
 
             for(const std::shared_ptr<basicblock>& v : bucket.find(p)->second){
-                auto y = AncestorWithLowestSemi(v, &depth_first_spanning_tree, &semi);
+                //auto y = AncestorWithLowestSemi(v, &depth_first_spanning_tree, &semi);
+                auto y = AncestorWithLowerDFNum(v, &depth_first_spanning_tree, depth_first_spanning_tree.dfnums.find(v)->second);
                 if(semi.find(y)->second == semi.find(v)->second){
                     idom.find(v)->second = p;
                 } else {
-                    samedom.insert({v, y});
+                    samedom.find(v)->second =  y;
                 }
             }
             bucket.find(p)->second.clear();

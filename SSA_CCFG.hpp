@@ -6,13 +6,14 @@
 #define ANTLR_CPP_TUTORIAL_SSA_CCFG_HPP
 
 #include <basicblockTreeConstructor.hpp>
-#include <dominatorTreeConstructor.hpp>
+//#include <dominatorTreeConstructor.hpp>
+#include <lengauerTarjan.hpp>
 #include <unordered_map>
 #include <stack>
 
 struct SSA_CCFG {
     std::shared_ptr<CCFG> ccfg;
-    SSA_CCFG(std::shared_ptr<CCFG> _ccfg, std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<expressionNode>>> _symboltable, std::shared_ptr<DominatorTree> _domTree)
+    SSA_CCFG(std::shared_ptr<CCFG> _ccfg, std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<expressionNode>>> _symboltable, std::shared_ptr<DomTree> _domTree)
     : ccfg{std::move(_ccfg)}, domTree{std::move(_domTree)} {
         Variables.reserve(_symboltable->size());
         for (const auto &it : *_symboltable) {
@@ -58,7 +59,7 @@ struct SSA_CCFG {
 
 private:
     std::vector<std::string> Variables;
-    std::shared_ptr<DominatorTree> domTree;
+    std::shared_ptr<DomTree> domTree;
     std::unordered_map<std::string, uint32_t> Count;
     std::unordered_map<std::string, std::stack<uint32_t>> Stack;
     std::unordered_map<std::string, std::list<std::shared_ptr<basicblock>>> defsites;
