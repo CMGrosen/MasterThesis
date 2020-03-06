@@ -6,6 +6,7 @@
 #include <limits>
 #include <string>
 
+symEngine::symEngine(std::shared_ptr<CCFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table) : ccfg{std::move(ccfg)}, symboltable{std::move(table)} {}
 symEngine::symEngine(std::shared_ptr<SSA_CCFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table) : ccfg{std::move(ccfg->ccfg)}, symboltable(std::move(table)) {}
 symEngine::symEngine(std::shared_ptr<CSSA_CFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table) : ccfg{std::move(ccfg->ccfg)}, symboltable(std::move(table)) {}
 std::vector<std::shared_ptr<trace>> symEngine::execute() {
@@ -13,11 +14,214 @@ std::vector<std::shared_ptr<trace>> symEngine::execute() {
     std::vector<std::shared_ptr<trace>> traces;
     std::vector<std::string> inputs;
 
-    auto t = find_race_condition();
-    return t;
+    //auto t = find_race_condition();
+    //auto t = get_run();
+    //return t;
+    z3::context c;
+    auto t = get_run(&c, nullptr, ccfg->startNode, ccfg->exitNode);
     return std::vector<std::shared_ptr<trace>>{get_trace(ccfg->startNode)};
 
 }
+
+z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_ptr<basicblock> start, std::shared_ptr<basicblock> end) {
+    auto node = start.get();
+    std::vector<z3::expr> constraints;
+    std::stack<z3::expr> evaluated;
+    for (const auto &stmt : node->statements) {
+        if (stmt->getNodeType() == Phi) {
+            auto phi = dynamic_cast<phiNode*>(stmt.get());
+            switch (phi->getType()) {
+                case intType: {
+                    z3::expr name = c->int_const(phi->getName().c_str());
+                    //constraints.push_back(name == )
+                }
+                    break;
+                case boolType:
+                    break;
+                case arrayIntType:
+                    break;
+                case arrayBoolType:
+                    break;
+                case okType:
+                    break;
+                case errorType:
+                    break;
+            }
+        } else if (stmt->getNodeType() == Pi) {
+
+        }
+        auto current = dynamic_cast<unpackedstmt*>(stmt.get())->_this;
+
+        while (current) {
+            switch (current->getNodeType()) {
+                case Assign: {
+                    switch (current->getType()) {
+                        case intType:
+                            constraints.push_back(c->int_const(current->value.c_str()) == evaluated.top());
+                            break;
+                        case boolType:
+                            constraints.push_back(c->bool_const(current->value.c_str()) == evaluated.top());
+                            break;
+                        case arrayIntType:
+                            break;
+                        case arrayBoolType:
+                            break;
+                        case okType:
+                            break;
+                        case errorType:
+                            break;
+                    }
+                    evaluated.pop();
+                    break;
+                } case If: {
+                    std::shared_ptr<basicblock> firstCommonChild = find_common_child(node);
+                    z3::expr final = z3::ite(evaluated.top(), get_run(c, node, node->nexts[0], firstCommonChild), get_run(c, node, node->nexts[1], firstCommonChild));
+
+                    for (const auto &constraint : constraints) {
+                        final = final && constraint;
+                    }
+
+                    while (firstCommonChild->type == Condition) {
+                        if (firstCommonChild->statements.back()->getNodeType() == If) {
+                            firstCommonChild = find_common_child(firstCommonChild.get());
+                        } else { //Event
+                            return final;
+                        }
+                    }
+
+                    return final && get_run(c, firstCommonChild.get(), firstCommonChild->nexts[0], end);
+                } case Read: {
+                    z3::expr intermediate = c->int_const(current->value.c_str());
+                    constraints.push_back((intermediate >= INT16_MIN) && (intermediate <= INT16_MAX));
+                    evaluated.push(intermediate);
+                    break;
+                } case Literal: {
+                    if (current->getType() == intType)
+                        evaluated.push(c->int_val(std::stoi(current->value)));
+                    else
+                        evaluated.push(c->bool_val(current->value == "true"));
+                    break;
+                } case Event: {
+                    z3::expr finalconstraint = z3::ite(evaluated.top(), get_run(c, node, node->nexts[0], end), c->bool_val(true));
+                    for (const auto &constraint : constraints) {
+                        finalconstraint = finalconstraint && constraint;
+                    }
+                    return finalconstraint;
+                } case Variable: {
+                    switch (current->getType()) {
+                        case intType:
+                            evaluated.push(c->int_const(current->value.c_str()));
+                            break;
+                        case boolType:
+                            evaluated.push(c->bool_const(current->value.c_str()));
+                            break;
+                        case arrayIntType:
+                            break;
+                        case arrayBoolType:
+                            break;
+                        case okType:
+                            break;
+                        case errorType:
+                            break;
+                    }
+                    break;
+                } case BinaryExpression: {
+                    z3::expr right = evaluated.top();
+                    evaluated.pop();
+                    z3::expr left = evaluated.top();
+                    evaluated.pop();
+                    evaluated.push(evaluate_expression(left, right, current->_operator));
+                    break;
+                } case UnaryExpression: {
+                    z3::expr top = evaluated.top();
+                    evaluated.pop();
+                    evaluated.push(evaluate_expression(top, top, current->_operator));
+                    break;
+                }
+                case ArrayAccess:
+
+                case ArrayLiteral:
+
+                case AssignArrField:
+
+                case Concurrent:
+
+                case EndConcurrent:
+
+                case Skip:
+                case Write:
+                case BasicBlock:
+                case Sequential:
+                case While:
+                    constraints.push_back(c->bool_val(true));
+                    break;
+                default:break;
+            }
+            current = current->next;
+        }
+    }
+    z3::expr final = constraints.back();
+    constraints.pop_back();
+    for (const auto &constraint : constraints) {
+        final = final && constraint;
+    }
+
+    if (node == end.get()) {
+        return final;
+    } else {
+        return final && get_run(c, node, node->nexts[0], end);
+    }
+}
+
+
+std::shared_ptr<basicblock> symEngine::find_common_child(basicblock *parent) {
+    std::set<std::shared_ptr<basicblock>> found;
+    found.insert(parent->nexts[0]);
+    basicblock *current = parent->nexts[0].get();
+    for (const auto &blk : ccfg->nodes) {
+        auto ifparent = blk->getIfParent();
+        if (ifparent && ifparent == parent) {
+            return blk;
+        }
+    }
+    return nullptr;
+}
+
+z3::expr symEngine::evaluate_expression(const z3::expr& left, const z3::expr& right, op _operator) {
+    switch (_operator) {
+        case PLUS:
+            return left + right;
+        case MINUS:
+            return left - right;
+        case MULT:
+            return left * right;
+        case DIV:
+            return left / right;
+        case MOD:
+            return left % right;
+        case NOT:
+            return !left;
+        case AND:
+            return left && right;
+        case OR:
+            return left || right;
+        case LE:
+            return left < right;
+        case LEQ:
+            return left <= right;
+        case GE:
+            return left > right;
+        case GEQ:
+            return left >= right;
+        case EQ:
+            return left == right;
+        case NEQ:
+            return left != right;
+        default:
+            return -left;
+    }
+}
+
 
 std::vector<std::shared_ptr<trace>> symEngine::find_race_condition() {
     std::vector<std::shared_ptr<trace>> traces;

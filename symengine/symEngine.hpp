@@ -18,8 +18,12 @@ class symEngine {
 
     z3::expr get_expr (z3::context *, expressionNode *, int *, std::vector<std::string> *, std::vector<edge> *);
     std::vector<z3::expr> reachParent(z3::context *, std::shared_ptr<basicblock>, std::shared_ptr<basicblock>, std::stack<std::string> *, std::stack<edge> *, std::set<std::shared_ptr<basicblock>> *);
+    z3::expr get_run(z3::context *, basicblock*, std::shared_ptr<basicblock>, std::shared_ptr<basicblock>);
+    std::shared_ptr<basicblock> find_common_child(basicblock *);
+    static z3::expr evaluate_expression(const z3::expr&, const z3::expr&, op);
 
 public:
+    symEngine(std::shared_ptr<CCFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table);
     symEngine(std::shared_ptr<SSA_CCFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table);
     symEngine(std::shared_ptr<CSSA_CFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table);
     std::vector<std::shared_ptr<trace>> execute();

@@ -1,0 +1,30 @@
+a = 0;
+
+fork {
+    early_exit = false;
+    if (a > 0) {
+        a = a + 1;
+        if (a > 0) {
+            a = a + 1;
+            if (a > 3) {
+                a = a + 1;
+                if (a > 3) {
+                    early_exit = true;
+                } else {
+                    skip;
+                };
+            } else {
+                skip;
+            };
+        } else {
+          skip;
+        };
+    } else {
+        skip;
+    };
+} and {
+    while (a > 3) {
+        a = a + 1;
+    };
+};
+write(1,a);

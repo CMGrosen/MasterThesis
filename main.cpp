@@ -33,7 +33,8 @@ static std::map< const char *, const char * > files = {
         {"reportExample", "../code_examples/report_example.small"},
         {"constraint_test", "../code_examples/constraint_test.small"},
         {"tripple_maker", "../code_examples/tripple_maker.small"},
-        {"if_test", "../code_examples/if_test.small"}
+        {"if_test", "../code_examples/if_test.small"},
+        {"testUnwrap", "../code_examples/testUnwrap.small"}
 };
 
 SSA_CCFG do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_ptr<statementNode>, const std::unordered_map<std::string, std::shared_ptr<expressionNode>>> *treeAndSymbolTable) {
@@ -83,10 +84,10 @@ SSA_CCFG do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_pt
     auto fourth = CCFGTree(*newccfg);
     std::cout << "\nmade fourth: \n" << fourth.DrawCCFG() << "\n";
 
-    symEngine engine = symEngine(cssaccfg, treeAndSymbolTable->second);
+    symEngine engine = symEngine(newccfg, treeAndSymbolTable->second);
     //symEngine engine = symEngine(cssaccfg, treeAndSymbolTable->second);
 
-    //auto res = engine.execute();
+    auto res = engine.execute();
 
     //auto res = engine.execute();
 
@@ -130,6 +131,7 @@ int main(int argc, const char* argv[]) {
     //int a = 50, p = 2, s = 1;
     //a = p = s = 3;
     //std::cout << std::to_string(a) << std::to_string(p) << std::to_string(s) << std::endl;
+
 
 /*
     z3::context c;

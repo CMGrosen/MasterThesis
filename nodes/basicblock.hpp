@@ -45,6 +45,9 @@ struct basicblock {
 
     void updateUsedVariables();
 
+    void setIfParent(const std::shared_ptr<basicblock>&);
+    basicblock *getIfParent();
+
     std::string draw_picture(std::unordered_set<edge> *edges);
 
     std::pair<std::string, int> draw_block(basicblock *parent, int current, int total, int distanceToNeighbour, std::set<basicblock *> *drawnBlocks);
@@ -69,6 +72,7 @@ private:
     std::pair<std::string, std::int32_t> statements_as_string();
 
     std::string name;
+    basicblock *ifparent;
 
     static std::vector<std::string> get_variables_from_expression(const expressionNode *expr) {
         std::vector<std::string> vars{};

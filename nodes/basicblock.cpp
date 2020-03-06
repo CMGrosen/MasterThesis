@@ -251,4 +251,12 @@ std::pair<std::string, std::int32_t> basicblock::statements_as_string() {
     return std::pair<std::string, std::int32_t>{res, length};
 }
 
+void basicblock::setIfParent(const std::shared_ptr<basicblock>& blk) {
+    ifparent = blk.get();
+}
+
+basicblock* basicblock::getIfParent() {
+    return ifparent;
+}
+
 std::string name = std::string{};

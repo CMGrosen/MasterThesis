@@ -289,6 +289,7 @@ public:
                 }
                 auto trueBranch = get_tree(ifNode->getTrueBranch(), nxt);
                 auto falseBranch = get_tree(ifNode->getFalseBranch(), nxt);
+                nxt->setIfParent(block);
                 auto nxts = std::vector<std::shared_ptr<basicblock>>{trueBranch, falseBranch};
                 block = std::make_shared<basicblock>(basicblock(std::vector<std::shared_ptr<statementNode>>{startTree}, nxts));
                 block->type = Condition;
