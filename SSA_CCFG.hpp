@@ -38,8 +38,28 @@ struct SSA_CCFG {
             }
         }
 
+        for (const auto &phiNode : Aphi) {
+            std::vector<std::shared_ptr<statementNode>> stmts;
+            for (auto i = phiNode.second->size(); i < phiNode.first->statements.size(); ++i) {
+                stmts.push_back(phiNode.first->statements[i]);
+            }
+            std::shared_ptr<basicblock> blk = std::make_shared<basicblock>(basicblock(*phiNode.first));
+            phiNode.first->statements.resize(phiNode.second->size());
+            blk->statements = std::move(stmts);
+            for (const auto &nxt : phiNode.first->nexts) {
+                blk->nexts.push_back(nxt);
+                ccfg->edges.erase({flow, phiNode.first, nxt});
+                ccfg->edges.insert({flow, blk, nxt});
+            }
+            blk->parents = std::vector<std::weak_ptr<basicblock>>{phiNode.first};
+            phiNode.first->nexts = std::vector<std::shared_ptr<basicblock>>{blk};
+
+            ccfg->edges.insert(edge(flow, phiNode.first, blk));
+            ccfg->nodes.insert(blk);
+        }
+
         //remove duplicate variables. Possibly a dumb idea
-        for (const auto &blk : Aphi) {
+        /*for (const auto &blk : Aphi) {
             for (const auto &stmt : blk.first->statements) {
                 if (auto phi = dynamic_cast<phiNode*>(stmt.get())) {
                     std::set<std::string> names;
@@ -54,7 +74,7 @@ struct SSA_CCFG {
                     phi->set_variables(std::move(updateNames));
                 }
             }
-        }
+        }*/
     };
 
 private:
