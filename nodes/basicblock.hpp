@@ -16,7 +16,7 @@
 #include "nodes/nodes.hpp"
 #include <sstream>
 
-enum blocktype {Entry, Exit, Cobegin, Coend, Condition, Loop, Compute, ThreadEntry, ThreadExit};
+enum blocktype {Entry, Exit, Cobegin, Coend, Condition, Loop, Compute, joinNode, ThreadEntry, ThreadExit};
 
 struct basicblock {
     basicblock();
@@ -74,12 +74,12 @@ private:
     std::string name;
     basicblock *ifparent;
 
-    static std::vector<std::string> get_variables_from_expression(const expressionNode *expr) {
-        std::vector<std::string> vars{};
+    static std::vector<const variableNode*> get_variables_from_expression(const expressionNode *expr) {
+        std::vector<const variableNode*> vars{};
         switch (expr->getNodeType()) {
             case ArrayAccess: {
                 auto arrAcc = dynamic_cast<const arrayAccessNode*>(expr);
-                vars.push_back(arrAcc->getName());
+                vars.push_back(arrAcc->getVar());
                 auto res = get_variables_from_expression(arrAcc->getAccessor());
                 for (auto var : res) vars.emplace_back(var);
                 break;
@@ -93,7 +93,7 @@ private:
                 break;
             }
             case Variable: {
-                vars.push_back(dynamic_cast<const variableNode*>(expr)->name);
+                vars.push_back(dynamic_cast<const variableNode*>(expr));
                 break;
             }
             case BinaryExpression: {

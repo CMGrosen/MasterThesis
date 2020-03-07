@@ -8,9 +8,13 @@
 
 class variableNode : public expressionNode {
 public:
-    variableNode(Type _type, std::string n) {
+    variableNode(Type _type, std::string n) : name{n}, origName{std::move(n)} {
         type = _type;
-        name = std::move(n);
+        setNodeType(Variable);
+    };
+
+    variableNode(Type _type, std::string n, std::string origName) : name{std::move(n)}, origName{std::move(origName)} {
+        type = _type;
         setNodeType(Variable);
     };
 
@@ -27,11 +31,12 @@ public:
     }
 
     std::shared_ptr<expressionNode> copy_expression() const override {
-        std::shared_ptr<expressionNode> _this = std::make_shared<variableNode>(variableNode(type, name));
+        std::shared_ptr<expressionNode> _this = std::make_shared<variableNode>(variableNode(type, name, origName));
         _this->setSSA(onSSA);
         return _this;
     }
     std::string name;
+    std::string origName;
 
     bool operator==(const expressionNode *expr) const override {
         return (nodetype == expr->getNodeType() && name == dynamic_cast<const variableNode *>(expr)->name);

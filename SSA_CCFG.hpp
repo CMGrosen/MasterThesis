@@ -46,17 +46,29 @@ struct SSA_CCFG {
             std::shared_ptr<basicblock> blk = std::make_shared<basicblock>(basicblock(*phiNode.first));
             phiNode.first->statements.resize(phiNode.second->size());
             blk->statements = std::move(stmts);
-            for (const auto &nxt : phiNode.first->nexts) {
+            for (std::shared_ptr<basicblock> &nxt : phiNode.first->nexts) {
                 blk->nexts.push_back(nxt);
                 ccfg->edges.erase({flow, phiNode.first, nxt});
                 ccfg->edges.insert({flow, blk, nxt});
+                for (auto &parent : nxt->parents) {
+                    if (parent.lock() == phiNode.first) {
+                        parent = blk;
+                        break;
+                    }
+                }
             }
             blk->parents = std::vector<std::weak_ptr<basicblock>>{phiNode.first};
             phiNode.first->nexts = std::vector<std::shared_ptr<basicblock>>{blk};
 
+            blk->updateUsedVariables();
+            phiNode.first->updateUsedVariables();
+
+            phiNode.first->type = joinNode;
             ccfg->edges.insert(edge(flow, phiNode.first, blk));
             ccfg->nodes.insert(blk);
         }
+
+        std::cout << "hej";
 
         //remove duplicate variables. Possibly a dumb idea
         /*for (const auto &blk : Aphi) {
@@ -183,7 +195,7 @@ private:
             name = oldName + "_" + std::to_string(i);
             node->setName(name);
         } else return;
-        blk->defines.find(oldName)->second.insert(name);
+        //blk->defines.find(oldName)->second.insert(name);
     }
 
     void update_uses_exprNode(std::shared_ptr<basicblock> &blk, expressionNode *expr) {
@@ -193,7 +205,7 @@ private:
                 std::string oldName = node->getName();
                 std::string name = oldName + ("_" + std::to_string(Stack[node->getName()].top()));
                 node->setName(name);
-                blk->uses.find(oldName)->second.insert(name);
+                //blk->uses.find(oldName)->second.insert(name);
                 update_uses_exprNode(blk, node->getAccessor());
                 break;
             } case ArrayLiteral: {
@@ -207,7 +219,7 @@ private:
                 std::string oldName = node->name;
                 std::string name = oldName + ("_" + std::to_string(Stack[node->name].top()));
                 node->name = name;
-                blk->uses.find(oldName)->second.insert(name);
+                //blk->uses.find(oldName)->second.insert(name);
                 break;
             } case BinaryExpression: {
                 auto binExpr = dynamic_cast<binaryExpressionNode*>(expr);

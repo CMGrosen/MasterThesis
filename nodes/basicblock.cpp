@@ -88,29 +88,49 @@ void basicblock::setConcurrentBlock(const std::shared_ptr<basicblock> &blk, int 
 }
 
 void basicblock::updateUsedVariables() {
+    defines.clear();
+    uses.clear();
     for (auto stmt : statements) {
         switch (stmt->getNodeType()) {
             case Assign: {
                 auto assStmt = dynamic_cast<assignNode*>(stmt.get());
-                defines.insert({assStmt->getName(), std::set<std::string>{}});
+                auto pair = defines.insert({assStmt->getOriginalName(), std::set<std::string>{assStmt->getName()}});
+                if(!pair.second) {
+                    pair.first->second.insert(assStmt->getName());
+                }
+
                 auto expr = assStmt->getExpr();
                 auto res = get_variables_from_expression(expr);
                 for(auto var : res) {
-                    uses.insert({var, std::set<std::string>{}});
+                    auto usepair = uses.insert({var->origName, std::set<std::string>{var->name}});
+                    if (!usepair.second) {
+                        usepair.first->second.insert(var->name);
+                    }
                 }
                 break;
             }
             case AssignArrField: {
                 auto assArrStmt = dynamic_cast<arrayFieldAssignNode*>(stmt.get());
-                defines.insert({assArrStmt->getName(), std::set<std::string>{}});
+                auto pair = defines.insert({assArrStmt->getOriginalName(), std::set<std::string>{assArrStmt->getName()}});
+
+                if(!pair.second) {
+                    pair.first->second.insert(assArrStmt->getName());
+                }
+
                 auto res = get_variables_from_expression(assArrStmt->getField());
                 for(auto var : res) {
-                    uses.insert({var, std::set<std::string>{}});
+                    auto usepair = uses.insert({var->origName, std::set<std::string>{var->name}});
+                    if (!usepair.second) {
+                        usepair.first->second.insert(var->name);
+                    }
                 }
 
                 res = get_variables_from_expression(assArrStmt->getExpr());
                 for(auto var : res) {
-                    uses.insert({var, std::set<std::string>{}});
+                    auto usepair = uses.insert({var->origName, std::set<std::string>{var->name}});
+                    if (!usepair.second) {
+                        usepair.first->second.insert(var->name);
+                    }
                 }
                 break;
             }
@@ -118,7 +138,10 @@ void basicblock::updateUsedVariables() {
                 auto whileStmt = dynamic_cast<whileNode*>(stmt.get());
                 auto res = get_variables_from_expression(whileStmt->getCondition());
                 for(auto var : res) {
-                    uses.insert({var, std::set<std::string>{}});
+                    auto usepair = uses.insert({var->origName, std::set<std::string>{var->name}});
+                    if (!usepair.second) {
+                        usepair.first->second.insert(var->name);
+                    }
                 }
                 break;
             }
@@ -126,7 +149,10 @@ void basicblock::updateUsedVariables() {
                 auto ifStmt = dynamic_cast<ifElseNode*>(stmt.get());
                 auto res = get_variables_from_expression(ifStmt->getCondition());
                 for(auto var : res) {
-                    uses.insert({var, std::set<std::string>{}});
+                    auto usepair = uses.insert({var->origName, std::set<std::string>{var->name}});
+                    if (!usepair.second) {
+                        usepair.first->second.insert(var->name);
+                    }
                 }
                 break;
             }
@@ -134,7 +160,10 @@ void basicblock::updateUsedVariables() {
                 auto writeStmt = dynamic_cast<writeNode*>(stmt.get());
                 auto res = get_variables_from_expression(writeStmt->getExpr());
                 for(auto var : res) {
-                    uses.insert({var, std::set<std::string>{}});
+                    auto usepair = uses.insert({var->origName, std::set<std::string>{var->name}});
+                    if (!usepair.second) {
+                        usepair.first->second.insert(var->name);
+                    }
                 }
                 break;
             }
@@ -142,9 +171,16 @@ void basicblock::updateUsedVariables() {
                 auto eventStmt = dynamic_cast<eventNode*>(stmt.get());
                 auto res = get_variables_from_expression(eventStmt->getCondition());
                 for(auto var : res) {
-                    uses.insert({var, std::set<std::string>{}});
+                    auto usepair = uses.insert({var->origName, std::set<std::string>{var->name}});
+                    if (!usepair.second) {
+                        usepair.first->second.insert(var->name);
+                    }
                 }
                 break;
+            }
+            case Phi: {
+                auto phi = dynamic_cast<phiNode*>(stmt.get());
+                defines.insert({phi->getOriginalName(), std::set<std::string>{phi->getName()}});
             }
             default: {
 

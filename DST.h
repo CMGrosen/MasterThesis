@@ -322,7 +322,8 @@ public:
         } else {
             t = boolType;
         }
-        std::shared_ptr<expressionNode> res = std::make_shared<arrayAccessNode>(arrayAccessNode(t, node, ctx->NAME()->getText()));
+        std::shared_ptr<variableNode> varnode = std::make_shared<variableNode>(variableNode(it->second->getType(), it->first));
+        std::shared_ptr<expressionNode> res = std::make_shared<arrayAccessNode>(arrayAccessNode(t, node, varnode));
         return res;
     }
 

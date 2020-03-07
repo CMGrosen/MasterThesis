@@ -6,22 +6,26 @@
 #define ANTLR_CPP_TUTORIAL_ARRAYACCESSNODE_HPP
 
 #include <nodes/expressions/expressionNode.hpp>
+#include <nodes/expressions/variableNode.hpp>
+
 
 class arrayAccessNode : public expressionNode {
 public:
-    arrayAccessNode(Type t, std::shared_ptr<expressionNode> a, std::string n) : value{std::move(a)}, name{std::move(n)} {type = t; setNodeType(ArrayAccess);};
+    arrayAccessNode(Type t, std::shared_ptr<expressionNode> a, std::shared_ptr<variableNode> n) : value{std::move(a)}, var{std::move(n)} {type = t; setNodeType(ArrayAccess);};
 
     expressionNode *getAccessor() const {return value.get();};
-    std::string getName() const { return name;}
-    void setName(std::string _name) {name = _name;}
+    std::string getName() const { return var->name;}
+    void setName(std::string _name) {var->name = _name;}
+    variableNode *getVar() const {return var.get();}
 
     std::string to_string() override {
-        return nameToTikzName(name, onSSA) + "[" + value->to_string() + "] ";
+        return nameToTikzName(var->name, onSSA) + "[" + value->to_string() + "] ";
     }
 
     std::shared_ptr<expressionNode> copy_expression() const override {
         std::shared_ptr<expressionNode> _val = value->copy_expression();
-        std::shared_ptr<expressionNode> _this = std::make_shared<arrayAccessNode>(arrayAccessNode(getType(), _val, name));
+        std::shared_ptr<variableNode> _var = std::shared_ptr<variableNode>(dynamic_cast<variableNode*>(var->copy_expression().get()));
+        std::shared_ptr<expressionNode> _this = std::make_shared<arrayAccessNode>(arrayAccessNode(getType(), _val, var));
         _this->setSSA(onSSA);
         return _this;
     }
@@ -33,12 +37,12 @@ public:
 
     bool operator==(const expressionNode *expr) const override {
         //doesn't work
-        return (nodetype == expr->getNodeType() && name == dynamic_cast<const arrayAccessNode*>(expr)->getName());
+        return (nodetype == expr->getNodeType() && value == dynamic_cast<const arrayAccessNode*>(expr)->value);
     }
 
 private:
     std::shared_ptr<expressionNode> value;
-    std::string name;
+    std::shared_ptr<variableNode> var;
 };
 
 
