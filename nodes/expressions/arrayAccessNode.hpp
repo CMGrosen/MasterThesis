@@ -24,7 +24,7 @@ public:
 
     std::shared_ptr<expressionNode> copy_expression() const override {
         std::shared_ptr<expressionNode> _val = value->copy_expression();
-        std::shared_ptr<variableNode> _var = std::shared_ptr<variableNode>(dynamic_cast<variableNode*>(var->copy_expression().get()));
+        std::shared_ptr<variableNode> _var = std::make_shared<variableNode>(variableNode(*var));
         std::shared_ptr<expressionNode> _this = std::make_shared<arrayAccessNode>(arrayAccessNode(getType(), _val, var));
         _this->setSSA(onSSA);
         return _this;

@@ -10,10 +10,10 @@ class phiNode : public statementNode {
     std::string origName;
     std::vector<std::string> _variables;
 public:
-    phiNode(std::string name, std::vector<std::string> variables) :
+    phiNode(Type t, std::string name, std::vector<std::string> variables) :
     _name{std::move(name)}, _variables{std::move(variables)} {
         setNodeType(Phi);
-        setType(okType);
+        setType(t);
         origName = _name;
         onSSA = true;
     }
@@ -30,7 +30,7 @@ public:
     }
 
     std::shared_ptr<statementNode> copy_statement() const override {
-        std::shared_ptr<statementNode> _this = std::make_shared<phiNode>(phiNode(_name, _variables));
+        std::shared_ptr<statementNode> _this = std::make_shared<phiNode>(phiNode(type, _name, _variables));
         _this->setSSA(onSSA);
         return _this;
     }

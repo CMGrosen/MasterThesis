@@ -14,9 +14,9 @@
 struct SSA_CCFG {
     std::shared_ptr<CCFG> ccfg;
     SSA_CCFG(std::shared_ptr<CCFG> _ccfg, std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<expressionNode>>> _symboltable, std::shared_ptr<DomTree> _domTree)
-    : ccfg{std::move(_ccfg)}, domTree{std::move(_domTree)} {
-        Variables.reserve(_symboltable->size());
-        for (const auto &it : *_symboltable) {
+    : ccfg{std::move(_ccfg)}, domTree{std::move(_domTree)}, table{std::move(_symboltable)} {
+        Variables.reserve(table->size());
+        for (const auto &it : *table) {
             Count.insert({it.first, 0});
             Stack.insert({it.first, std::stack<uint32_t>{}});
             Stack.find(it.first)->second.push(0);
@@ -90,6 +90,7 @@ struct SSA_CCFG {
     };
 
 private:
+    std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<expressionNode>>> table;
     std::vector<std::string> Variables;
     std::shared_ptr<DomTree> domTree;
     std::unordered_map<std::string, uint32_t> Count;
@@ -97,6 +98,7 @@ private:
     std::unordered_map<std::string, std::list<std::shared_ptr<basicblock>>> defsites;
     std::unordered_map<std::shared_ptr<basicblock>, std::unordered_set<std::string>> Aorig; //variable definitions in block
     std::unordered_map<std::shared_ptr<basicblock>, std::unique_ptr<std::unordered_set<std::string>>> Aphi; //Does block have a phi function for variable
+
 
     void init_AorigMap_and_Aphi() {
         for (const auto &blk : ccfg->nodes) {
@@ -135,7 +137,8 @@ private:
                         std::vector<std::shared_ptr<statementNode>> stmts;
                         std::vector<std::string> args;
                         for (auto i = 0; i < Y->parents.size(); ++i) args.push_back(var);
-                        std::shared_ptr<statementNode> stmt = std::make_shared<phiNode>(phiNode(var, args));
+                        Type t = table->find(var)->second->getType();
+                        std::shared_ptr<statementNode> stmt = std::make_shared<phiNode>(phiNode(t, var, args));
                         stmts.push_back(stmt);
                         for(const auto &s : Y->statements) stmts.push_back(s);
                         Y->statements = stmts;

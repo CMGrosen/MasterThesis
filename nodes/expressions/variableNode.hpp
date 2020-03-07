@@ -18,6 +18,11 @@ public:
         setNodeType(Variable);
     };
 
+    variableNode(const variableNode &other) : name{other.name}, origName{other.origName} {
+        type = other.type;
+        setNodeType(Variable);
+    };
+
     bool operator<(const variableNode& s) const {
         return name < s.name;
     }
