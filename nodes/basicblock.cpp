@@ -291,6 +291,10 @@ void basicblock::setIfParent(const std::shared_ptr<basicblock>& blk) {
     ifparent = blk.get();
 }
 
+void basicblock::setIfParent(basicblock *blk) {
+    ifparent = blk;
+}
+
 basicblock* basicblock::getIfParent() {
     return ifparent;
 }

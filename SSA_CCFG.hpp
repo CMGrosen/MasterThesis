@@ -16,77 +16,24 @@ struct SSA_CCFG {
     SSA_CCFG(std::shared_ptr<CCFG> _ccfg, std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<expressionNode>>> _symboltable, std::shared_ptr<DomTree> _domTree)
     : ccfg{std::move(_ccfg)}, domTree{std::move(_domTree)}, table{std::move(_symboltable)} {
         Variables.reserve(table->size());
-        for (const auto &it : *table) {
-            Count.insert({it.first, 0});
-            Stack.insert({it.first, std::stack<uint32_t>{}});
-            Stack.find(it.first)->second.push(0);
-            defsites.insert({it.first, std::list<std::shared_ptr<basicblock>>{}});
-            Variables.emplace_back(it.first);
-        }
 
-        init_AorigMap_and_Aphi();
+        initialise();
 
         place_phi_functions();
 
         rename(domTree->root);
 
-        for (const auto blk : ccfg->nodes) {
-            if (!blk->statements.empty()) {
-                for (const auto stmt : blk->statements) {
-                    stmt->setSSA(true);
-                }
-            }
-        }
+        setSSA();
 
-        for (const auto &phiNode : Aphi) {
-            std::vector<std::shared_ptr<statementNode>> stmts;
-            for (auto i = phiNode.second->size(); i < phiNode.first->statements.size(); ++i) {
-                stmts.push_back(phiNode.first->statements[i]);
-            }
-            std::shared_ptr<basicblock> blk = std::make_shared<basicblock>(basicblock(*phiNode.first));
-            phiNode.first->statements.resize(phiNode.second->size());
-            blk->statements = std::move(stmts);
-            for (std::shared_ptr<basicblock> &nxt : phiNode.first->nexts) {
-                blk->nexts.push_back(nxt);
-                ccfg->edges.erase({flow, phiNode.first, nxt});
-                ccfg->edges.insert({flow, blk, nxt});
-                for (auto &parent : nxt->parents) {
-                    if (parent.lock() == phiNode.first) {
-                        parent = blk;
-                        break;
-                    }
-                }
-            }
-            blk->parents = std::vector<std::weak_ptr<basicblock>>{phiNode.first};
-            phiNode.first->nexts = std::vector<std::shared_ptr<basicblock>>{blk};
+        update_uses_and_defines();
 
-            blk->updateUsedVariables();
-            phiNode.first->updateUsedVariables();
-
-            phiNode.first->type = joinNode;
-            ccfg->edges.insert(edge(flow, phiNode.first, blk));
-            ccfg->nodes.insert(blk);
-        }
+        splitblocks_with_phinodes();
 
         std::cout << "hej";
 
         //remove duplicate variables. Possibly a dumb idea
-        /*for (const auto &blk : Aphi) {
-            for (const auto &stmt : blk.first->statements) {
-                if (auto phi = dynamic_cast<phiNode*>(stmt.get())) {
-                    std::set<std::string> names;
-                    std::vector<std::string> updateNames;
-                    for (const auto &name : *phi->get_variables()) {
-                        names.insert(name);
-                    }
-                    updateNames.reserve(names.size());
-                    for (const auto &name : names) {
-                        updateNames.push_back(name);
-                    }
-                    phi->set_variables(std::move(updateNames));
-                }
-            }
-        }*/
+        //remove_duplicates();
+
     };
 
 private:
@@ -100,7 +47,16 @@ private:
     std::unordered_map<std::shared_ptr<basicblock>, std::unique_ptr<std::unordered_set<std::string>>> Aphi; //Does block have a phi function for variable
 
 
-    void init_AorigMap_and_Aphi() {
+    void initialise() {
+        for (const auto &it : *table) {
+            Count.insert({it.first, 0});
+            Stack.insert({it.first, std::stack<uint32_t>{}});
+            Stack.find(it.first)->second.push(0);
+            defsites.insert({it.first, std::list<std::shared_ptr<basicblock>>{}});
+            Variables.emplace_back(it.first);
+        }
+
+        //initialise Aorig and Aphi maps
         for (const auto &blk : ccfg->nodes) {
             std::unordered_set<std::string> variables;
             if (!blk->statements.empty()) {
@@ -298,6 +254,76 @@ private:
         }
         for (const auto &def : defcounts) {
             Stack[def.first].pop();
+        }
+    }
+
+    void setSSA() {
+        for (const auto blk : ccfg->nodes) {
+            if (!blk->statements.empty()) {
+                for (const auto stmt : blk->statements) {
+                    stmt->setSSA(true);
+                }
+            }
+        }
+    }
+
+    void update_uses_and_defines() {
+        for (const auto &blk : ccfg->nodes) {
+            blk->updateUsedVariables();
+        }
+    }
+
+    void splitblocks_with_phinodes() {
+        for (const auto &phiNode : Aphi) {
+            std::vector<std::shared_ptr<statementNode>> stmts;
+            for (auto i = phiNode.second->size(); i < phiNode.first->statements.size(); ++i) {
+                stmts.push_back(phiNode.first->statements[i]);
+            }
+            std::shared_ptr<basicblock> blk = std::make_shared<basicblock>(basicblock(*phiNode.first));
+            phiNode.first->statements.resize(phiNode.second->size());
+            blk->statements = std::move(stmts);
+            for (std::shared_ptr<basicblock> &nxt : phiNode.first->nexts) {
+                blk->nexts.push_back(nxt);
+                ccfg->edges.erase({flow, phiNode.first, nxt});
+                ccfg->edges.insert({flow, blk, nxt});
+                for (auto &parent : nxt->parents) {
+                    if (parent.lock() == phiNode.first) {
+                        parent = blk;
+                        break;
+                    }
+                }
+            }
+            blk->parents = std::vector<std::weak_ptr<basicblock>>{phiNode.first};
+            phiNode.first->nexts = std::vector<std::shared_ptr<basicblock>>{blk};
+
+            blk->updateUsedVariables();
+            phiNode.first->updateUsedVariables();
+
+            blk->concurrentBlock = phiNode.first->concurrentBlock;
+            blk->setIfParent(phiNode.first->getIfParent());
+
+            phiNode.first->type = joinNode;
+            ccfg->edges.insert(edge(flow, phiNode.first, blk));
+            ccfg->nodes.insert(blk);
+        }
+    }
+
+    void remove_duplicates() {
+        for (const auto &blk : Aphi) {
+            for (const auto &stmt : blk.first->statements) {
+                if (auto phi = dynamic_cast<phiNode*>(stmt.get())) {
+                    std::set<std::string> names;
+                    std::vector<std::string> updateNames;
+                    for (const auto &name : *phi->get_variables()) {
+                        names.insert(name);
+                    }
+                    updateNames.reserve(names.size());
+                    for (const auto &name : names) {
+                        updateNames.push_back(name);
+                    }
+                    phi->set_variables(std::move(updateNames));
+                }
+            }
         }
     }
 };

@@ -92,23 +92,24 @@ struct CCFG {
 
 private:
     void copy_tree(const CCFG& a) {
-        auto oldMapsTo = std::map<std::shared_ptr<basicblock>, std::shared_ptr<basicblock>>{};
+        auto oldMapsTo = std::map<basicblock*, std::shared_ptr<basicblock>>{};
         for (auto &n : a.nodes) {
             auto newNode = std::make_shared<basicblock>(basicblock(*n));
             if (newNode->type == Entry) startNode = newNode;
             else if (newNode->type == Exit) exitNode = newNode;
             nodes.insert(newNode);
-            oldMapsTo.insert({n, newNode});
+            oldMapsTo.insert({n.get(), newNode});
         }
         for (const auto &n : a.nodes) {
-            oldMapsTo[n]->concurrentBlock = std::make_pair(oldMapsTo[n->concurrentBlock.first], n->concurrentBlock.second);
+            oldMapsTo[n.get()]->concurrentBlock = std::make_pair(oldMapsTo[n->concurrentBlock.first.get()], n->concurrentBlock.second);
+            oldMapsTo[n.get()]->setIfParent(oldMapsTo[n->getIfParent()]);
             for (const auto &next : n->nexts) {
-                oldMapsTo[n]->nexts.push_back(oldMapsTo[next]);
-                oldMapsTo[next]->parents.push_back(oldMapsTo[n]);
+                oldMapsTo[n.get()]->nexts.push_back(oldMapsTo[next.get()]);
+                oldMapsTo[next.get()]->parents.push_back(oldMapsTo[n.get()]);
             }
         }
         for (const auto &ed : a.edges) {
-            edges.insert(edge(ed.type, oldMapsTo[ed.neighbours[0]], oldMapsTo[ed.neighbours[1]]));
+            edges.insert(edge(ed.type, oldMapsTo[ed.neighbours[0].get()], oldMapsTo[ed.neighbours[1].get()]));
         }
 
     }
@@ -128,7 +129,7 @@ private:
             for (auto cmp : nodes) {
                 if (concurrent(blk, cmp)) {
                     for (const auto var : blk->defines) {
-                        if ((cmp->uses.find(var.first)) != cmp->uses.end() || cmp->defines.find(var.first) != cmp->defines.end()) {
+                        if ((cmp->uses.find(var.first)) != cmp->uses.end()) {//|| cmp->defines.find(var.first) != cmp->defines.end()) {
                             //blocks are concurrent
                             // and have a variable in common,
                             // thus there's a conflict
@@ -201,7 +202,7 @@ public:
                     stmts.push_back(stmt);
                 }
                 stmts.pop_front();
-                auto blk = split_up_concurrent_basicblocks(&blocksToAdd, &edgesToAdd, it->nexts, stmts, it->concurrentBlock, &tmpSet);
+                auto blk = split_up_concurrent_basicblocks(&blocksToAdd, &edgesToAdd, it->nexts, {it, stmts}, it->concurrentBlock, &tmpSet);
                 edgesToAdd.push_back(edge(it, blk));
                 for (auto nxt : it->nexts)
                     edges.erase(edge(it, nxt));
@@ -289,9 +290,9 @@ public:
                 }
                 auto trueBranch = get_tree(ifNode->getTrueBranch(), nxt);
                 auto falseBranch = get_tree(ifNode->getFalseBranch(), nxt);
-                nxt->setIfParent(block);
                 auto nxts = std::vector<std::shared_ptr<basicblock>>{trueBranch, falseBranch};
                 block = std::make_shared<basicblock>(basicblock(std::vector<std::shared_ptr<statementNode>>{startTree}, nxts));
+                nxt->setIfParent(block);
                 block->type = Condition;
                 break;
             }
@@ -332,22 +333,24 @@ private:
         }
     }
 
-    std::shared_ptr<basicblock> split_up_concurrent_basicblocks(std::vector<std::shared_ptr<basicblock>> *blocksToAdd, std::vector<edge> *edgesToAdd, std::vector<std::shared_ptr<basicblock>> it, std::list<std::shared_ptr<statementNode>> stmts, std::pair<std::shared_ptr<basicblock>, int> conBlock, std::set<basicblock *> *whileloops) {
-        if (stmts.size() == 1) {
-            std::shared_ptr<basicblock> blk = std::make_shared<basicblock>(basicblock(stmts.front()));
+    std::shared_ptr<basicblock> split_up_concurrent_basicblocks(std::vector<std::shared_ptr<basicblock>> *blocksToAdd, std::vector<edge> *edgesToAdd, std::vector<std::shared_ptr<basicblock>> it, std::pair<std::shared_ptr<basicblock>, std::list<std::shared_ptr<statementNode>>> blockAndstmts, std::pair<std::shared_ptr<basicblock>, int> conBlock, std::set<basicblock *> *whileloops) {
+        if (blockAndstmts.second.size() == 1) {
+            std::shared_ptr<basicblock> blk = std::make_shared<basicblock>(basicblock(blockAndstmts.second.front()));
             blk->nexts = it;
+            blk->setIfParent(blockAndstmts.first->getIfParent());
             for (auto ed : it) edgesToAdd->push_back(edge(blk, ed));
             blocksToAdd->push_back(blk);
             blk->setConcurrentBlock(conBlock.first, conBlock.second, whileloops);
             return blk;
         } else {
-            auto firstStmt = stmts.front();
-            stmts.pop_front();
-            auto nxt = split_up_concurrent_basicblocks(blocksToAdd, edgesToAdd, it, stmts, conBlock, whileloops);
+            auto firstStmt = blockAndstmts.second.front();
+            blockAndstmts.second.pop_front();
+            auto nxt = split_up_concurrent_basicblocks(blocksToAdd, edgesToAdd, it, blockAndstmts, conBlock, whileloops);
             std::shared_ptr<basicblock> blk = std::make_shared<basicblock>(basicblock(firstStmt, nxt));
             edgesToAdd->push_back(edge(blk, nxt));
             blocksToAdd->push_back(blk);
             blk->setConcurrentBlock(conBlock.first, conBlock.second, whileloops);
+            blk->setIfParent(blockAndstmts.first->getIfParent());
             return blk;
         }
     }

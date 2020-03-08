@@ -46,6 +46,8 @@ struct basicblock {
     void updateUsedVariables();
 
     void setIfParent(const std::shared_ptr<basicblock>&);
+    void setIfParent(basicblock *blk);
+
     basicblock *getIfParent();
 
     std::string draw_picture(std::unordered_set<edge> *edges);
