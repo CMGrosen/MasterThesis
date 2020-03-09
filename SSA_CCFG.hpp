@@ -322,7 +322,7 @@ private:
                 ccfg->edges.insert(edge(flow, phiN.first, blk));
                 ccfg->nodes.insert(blk);
             } else {
-                for (const auto &stmt : phiN.first->statements) {
+                /*for (const auto &stmt : phiN.first->statements) {
                     if (auto phi = dynamic_cast<phiNode*>(stmt.get())) {
                         auto vars = *phi->get_variables();
                         std::vector<std::string> res;
@@ -336,7 +336,7 @@ private:
                         }
                         phi->set_variables(res);
                     }
-                }
+                }*/
             }
         }
     }

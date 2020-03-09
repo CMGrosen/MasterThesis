@@ -22,6 +22,7 @@ std::vector<std::shared_ptr<trace>> symEngine::execute() {
 
     z3::solver s(c);
     s.add(t);
+
     //s.add(c.int_const("a_4") == c.int_val(8));
     if (s.check() == z3::sat) {
         auto model = s.get_model();
@@ -43,7 +44,7 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
 
 
     if (node->type == Coend) {
-        std::cout << "test";
+        return c->bool_val(true);
     }
 
     for (const auto &stmt : node->statements) {
@@ -131,8 +132,8 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
 
             int index = 0;
             for (const auto &st : endConc->statements) {
-                phinodeAssignments.emplace_back();
                 if (auto phi = dynamic_cast<phiNode*>(st.get())) {
+                    phinodeAssignments.emplace_back();
                     auto vars = *phi->get_variables();
                     for (const auto &var : vars) {
                         switch (phi->getType()) {
