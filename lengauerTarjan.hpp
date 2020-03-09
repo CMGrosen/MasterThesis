@@ -53,8 +53,8 @@ public:
         Dominators(ccfg); // Lengauer and Tarjan algorithm
         // creates the dominator tree
         CreateDomTree();
-        // creates the dominanc frontier
-        CreateDominanceFrontier(nodes.find(0)->second); // Andrew Appel algorithm
+        // creates the dominance frontier
+        //CreateDominanceFrontier(nodes.find(0)->second); // Andrew Appel algorithm
         // prints immediate-dominators
         PrintIdom(); // for debugging purposes
     }
@@ -174,7 +174,7 @@ private:
             DOMTree.insert({basic_block, node});
         }
     }
-
+    /*
     // Andrew Appel algorithm
     void CreateDominanceFrontier(std::shared_ptr<basicblock> n){
         std::vector<std::shared_ptr<basicblock>> S = {};
@@ -202,6 +202,19 @@ private:
             }
         }
         DF.insert({n, S});
+    }
+    */
+
+    void CreateDominanceFrontier(const std::shared_ptr<CCFG>& ccfg){
+        for(auto child : ccfg->nodes){
+            DF.insert({child, std::vector<std::shared_ptr<basicblock>>()});
+        }
+        for(int i = 0; i < n; i++){
+            std::shared_ptr<basicblock> node = nodes.find(i)->second;
+            std::shared_ptr<basicblock> dom = nodes.find(idom[i])->second;
+            DF.find(dom)->second.emplace_back(node);
+        }
+        //DF.insert({n, S});
     }
 
     void PrintIdom(){
