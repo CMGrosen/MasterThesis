@@ -102,7 +102,9 @@ private:
         }
         for (const auto &n : a.nodes) {
             oldMapsTo[n.get()]->concurrentBlock = std::make_pair(oldMapsTo[n->concurrentBlock.first.get()], n->concurrentBlock.second);
-            oldMapsTo[n.get()]->setIfParent(oldMapsTo[n->getIfParent()]);
+            for (const auto &parent : n->getIfParents()) {
+                oldMapsTo[n.get()]->addIfParent(oldMapsTo[parent]);
+            }
             for (const auto &next : n->nexts) {
                 oldMapsTo[n.get()]->nexts.push_back(oldMapsTo[next.get()]);
                 oldMapsTo[next.get()]->parents.push_back(oldMapsTo[n.get()]);
@@ -210,7 +212,7 @@ public:
                     edges.erase(edge(it, nxt));
                 it->nexts = std::vector<std::shared_ptr<basicblock>>{blk};
                 it->statements.resize(1);
-                it->setIfParent(nullptr);
+                it->setIfParents(std::vector<basicblock *>{});
             }
         }
 
@@ -305,7 +307,7 @@ public:
                 auto falseBranch = get_tree(ifNode->getFalseBranch(), nxt);
                 auto nxts = std::vector<std::shared_ptr<basicblock>>{trueBranch, falseBranch};
                 block = std::make_shared<basicblock>(basicblock(std::vector<std::shared_ptr<statementNode>>{startTree}, nxts));
-                nxt->setIfParent(block);
+                nxt->addIfParent(block);
                 block->type = Condition;
                 break;
             }
@@ -350,7 +352,7 @@ private:
         if (blockAndstmts.second.size() == 1) {
             std::shared_ptr<basicblock> blk = std::make_shared<basicblock>(basicblock(blockAndstmts.second.front()));
             blk->nexts = it;
-            blk->setIfParent(blockAndstmts.first->getIfParent());
+            blk->setIfParents(blockAndstmts.first->getIfParents());
             for (auto ed : it) edgesToAdd->push_back(edge(blk, ed));
             blocksToAdd->push_back(blk);
             blk->setConcurrentBlock(conBlock.first, conBlock.second, whileloops);

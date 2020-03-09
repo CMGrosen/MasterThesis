@@ -273,40 +273,70 @@ private:
         }
     }
 
+    static int get_num_from_string(const std::string &str) {
+        int i = 0;
+        int pos = 1;
+        for (auto it = str.rbegin(); it != str.rend(); ++it) {
+            if (*it == '_') {
+                return i;
+            } else {
+                i += (*it-'0') * pos;
+                pos *= 10;
+            }
+        }
+        return i;
+    }
+
     void splitblocks_with_phinodes() {
-        for (const auto &phiNode : Aphi) {
-            if (phiNode.first->type != Coend) {
+        for (const auto &phiN : Aphi) {
+            if (phiN.first->type != Coend) {
                 std::vector<std::shared_ptr<statementNode>> stmts;
-                for (auto i = phiNode.second->size(); i < phiNode.first->statements.size(); ++i) {
-                    stmts.push_back(phiNode.first->statements[i]);
+                for (auto i = phiN.second->size(); i < phiN.first->statements.size(); ++i) {
+                    stmts.push_back(phiN.first->statements[i]);
                 }
 
-                std::shared_ptr<basicblock> blk = std::make_shared<basicblock>(basicblock(*phiNode.first));
-                phiNode.first->statements.resize(phiNode.second->size());
+                std::shared_ptr<basicblock> blk = std::make_shared<basicblock>(basicblock(*phiN.first));
+                phiN.first->statements.resize(phiN.second->size());
                 blk->statements = std::move(stmts);
-                for (std::shared_ptr<basicblock> &nxt : phiNode.first->nexts) {
+                for (std::shared_ptr<basicblock> &nxt : phiN.first->nexts) {
                     blk->nexts.push_back(nxt);
-                    ccfg->edges.erase({flow, phiNode.first, nxt});
+                    ccfg->edges.erase({flow, phiN.first, nxt});
                     ccfg->edges.insert({flow, blk, nxt});
                     for (auto &parent : nxt->parents) {
-                        if (parent.lock() == phiNode.first) {
+                        if (parent.lock() == phiN.first) {
                             parent = blk;
                             break;
                         }
                     }
                 }
-                blk->parents = std::vector<std::weak_ptr<basicblock>>{phiNode.first};
-                phiNode.first->nexts = std::vector<std::shared_ptr<basicblock>>{blk};
+                blk->parents = std::vector<std::weak_ptr<basicblock>>{phiN.first};
+                phiN.first->nexts = std::vector<std::shared_ptr<basicblock>>{blk};
 
                 blk->updateUsedVariables();
-                phiNode.first->updateUsedVariables();
+                phiN.first->updateUsedVariables();
 
-                blk->concurrentBlock = phiNode.first->concurrentBlock;
-                blk->setIfParent(phiNode.first->getIfParent());
+                blk->concurrentBlock = phiN.first->concurrentBlock;
+                blk->setIfParents(phiN.first->getIfParents());
 
-                phiNode.first->type = joinNode;
-                ccfg->edges.insert(edge(flow, phiNode.first, blk));
+                phiN.first->type = joinNode;
+                ccfg->edges.insert(edge(flow, phiN.first, blk));
                 ccfg->nodes.insert(blk);
+            } else {
+                for (const auto &stmt : phiN.first->statements) {
+                    if (auto phi = dynamic_cast<phiNode*>(stmt.get())) {
+                        auto vars = *phi->get_variables();
+                        std::vector<std::string> res;
+                        int current = 0;
+                        for (const auto &var : vars) {
+                            int num = get_num_from_string(var);
+                            if (current < get_num_from_string(var)) {
+                                res.push_back(var);
+                                current = num;
+                            }
+                        }
+                        phi->set_variables(res);
+                    }
+                }
             }
         }
     }

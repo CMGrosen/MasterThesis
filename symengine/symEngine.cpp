@@ -41,13 +41,10 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
     std::vector<z3::expr> constraints;
     std::stack<z3::expr> evaluated;
 
-    /*
+
     if (node->type == Coend) {
-        auto coend = dynamic_cast<endConcNode*>(node->statements.back().get());
-        int threads = coend->getConcNode()->nexts.size();
-        std::vector<std::vector<z3::expr>> phinodeAssignments;
-        phinodeAssignments.reserve(threads);
-    }*/
+        std::cout << "test";
+    }
 
     for (const auto &stmt : node->statements) {
         if (stmt->getNodeType() == Phi) {
@@ -116,8 +113,9 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
         } else if (stmt->getNodeType() == Concurrent) {
             auto endConc = get_end_of_concurrent_node(node);
             std::stack<z3::expr> expressions;
+            int i = 0;
             for (const auto &nxt : node->nexts) {
-                expressions.push(get_run(c, node, nxt, endConc));
+                expressions.push(get_run(c, node, nxt, endConc->parents[i++].lock()));
             }
             z3::expr final = expressions.top();
             expressions.pop();
@@ -125,6 +123,57 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
                 final = final && expressions.top();
                 expressions.pop();
             }
+
+            auto coend = dynamic_cast<endConcNode*>(endConc->statements.back().get());
+            int threads = coend->getConcNode()->nexts.size();
+            std::vector<std::vector<z3::expr>> phinodeAssignments;
+            phinodeAssignments.reserve(threads);
+
+            int index = 0;
+            for (const auto &st : endConc->statements) {
+                phinodeAssignments.emplace_back();
+                if (auto phi = dynamic_cast<phiNode*>(st.get())) {
+                    auto vars = *phi->get_variables();
+                    for (const auto &var : vars) {
+                        switch (phi->getType()) {
+                            case intType: {
+                                z3::expr name = c->int_const(phi->getName().c_str());
+                                phinodeAssignments[index].push_back(name == c->int_const(var.c_str()));
+                                break;
+                            }
+                            case boolType: {
+                                z3::expr name = c->bool_const(phi->getName().c_str());
+                                phinodeAssignments[index].push_back(name == c->bool_const(var.c_str()));
+                                break;
+                            }
+                            case arrayIntType: {
+                                break;
+                            }
+                            case arrayBoolType: {
+                                break;
+                            }
+                            default:
+                                break;
+                        }
+                    }
+                }
+                ++index;
+            }
+
+
+            for (const auto &exprVec : phinodeAssignments) {
+                for (const auto &expr : exprVec) {
+                    expressions.push(expr);
+                }
+                z3::expr conjunction = expressions.top();
+                expressions.pop();
+                while (!expressions.empty()) {
+                    conjunction = conjunction || expressions.top();
+                    expressions.pop();
+                }
+                final = final && conjunction;
+            }
+
             if (endConc->nexts.empty()) {
                 return final;
             } else {
@@ -173,7 +222,7 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
                         return final;
                     }
                 }
-                if (firstCommonChild && !firstCommonChild->nexts.empty())
+                if (firstCommonChild && !firstCommonChild->nexts.empty() && firstCommonChild != end)
                     return final && get_run(c, firstCommonChild.get(), firstCommonChild->nexts[0], end);
                 else return final;
             }
@@ -269,9 +318,10 @@ std::shared_ptr<basicblock> symEngine::find_common_child(basicblock *parent) {
     found.insert(parent->nexts[0]);
     basicblock *current = parent->nexts[0].get();
     for (const auto &blk : ccfg->nodes) {
-        auto ifparent = blk->getIfParent();
-        if (ifparent && ifparent == parent) {
-            return blk;
+        for (const auto &ifparent : blk->getIfParents()) {
+            if (ifparent && ifparent == parent) {
+                return blk;
+            }
         }
     }
     return nullptr;
