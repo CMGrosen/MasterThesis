@@ -76,130 +76,128 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
             }
         } else if (stmt->getNodeType() == Pi) {
 
-        }
-        else {
-            auto current = dynamic_cast<unpackedstmt *>(stmt.get())->_this;
+        } else if (stmt->getNodeType() == Concurrent) {
 
-            while (current) {
-                switch (current->getNodeType()) {
-                    case Assign: {
-                        switch (current->getType()) {
-                            case intType:
-                                constraints.push_back(c->int_const(current->value.c_str()) == evaluated.top());
-                                break;
-                            case boolType:
-                                constraints.push_back(c->bool_const(current->value.c_str()) == evaluated.top());
-                                break;
-                            case arrayIntType:
-                                break;
-                            case arrayBoolType:
-                                break;
-                            case okType:
-                                break;
-                            case errorType:
-                                break;
-                        }
-                        evaluated.pop();
+        } else if (stmt->getNodeType() == EndConcurrent) {
+
+        } else {
+    auto current = dynamic_cast<unpackedstmt *>(stmt.get())->_this;
+
+    while (current) {
+        switch (current->getNodeType()) {
+            case Assign: {
+                switch (current->getType()) {
+                    case intType:
+                        constraints.push_back(c->int_const(current->value.c_str()) == evaluated.top());
                         break;
-                    }
-                    case If: {
-                        std::shared_ptr<basicblock> firstCommonChild = find_common_child(node);
-                        z3::expr final = z3::ite(evaluated.top(), get_run(c, node, node->nexts[0], firstCommonChild),
-                                                 get_run(c, node, node->nexts[1], firstCommonChild));
-
-                        for (const auto &constraint : constraints) {
-                            final = final && constraint;
-                        }
-
-                        while (firstCommonChild && firstCommonChild->type == Condition) {
-                            if (firstCommonChild->statements.back()->getNodeType() == If) {
-                                firstCommonChild = find_common_child(firstCommonChild.get());
-                            } else { //Event
-                                return final;
-                            }
-                        }
-                        if (firstCommonChild && !firstCommonChild->nexts.empty())
-                            return final && get_run(c, firstCommonChild.get(), firstCommonChild->nexts[0], end);
-                        else return final;
-                    }
-                    case Read: {
-                        z3::expr intermediate = c->int_const(current->value.c_str());
-                        constraints.push_back((intermediate >= INT16_MIN) && (intermediate <= INT16_MAX));
-                        evaluated.push(intermediate);
+                    case boolType:
+                        constraints.push_back(c->bool_const(current->value.c_str()) == evaluated.top());
                         break;
-                    }
-                    case Literal: {
-                        if (current->getType() == intType)
-                            evaluated.push(c->int_val(std::stoi(current->value)));
-                        else
-                            evaluated.push(c->bool_val(current->value == "true"));
+                    case arrayIntType:
                         break;
-                    }
-                    case Event: {
-                        z3::expr finalconstraint = z3::ite(evaluated.top(), get_run(c, node, node->nexts[0], end),
-                                                           c->bool_val(true));
-                        for (const auto &constraint : constraints) {
-                            finalconstraint = finalconstraint && constraint;
-                        }
-                        return finalconstraint;
-                    }
-                    case Variable: {
-                        switch (current->getType()) {
-                            case intType:
-                                evaluated.push(c->int_const(current->value.c_str()));
-                                break;
-                            case boolType:
-                                evaluated.push(c->bool_const(current->value.c_str()));
-                                break;
-                            case arrayIntType:
-                                break;
-                            case arrayBoolType:
-                                break;
-                            case okType:
-                                break;
-                            case errorType:
-                                break;
-                        }
+                    case arrayBoolType:
                         break;
-                    }
-                    case BinaryExpression: {
-                        z3::expr right = evaluated.top();
-                        evaluated.pop();
-                        z3::expr left = evaluated.top();
-                        evaluated.pop();
-                        evaluated.push(evaluate_expression(left, right, current->_operator));
+                    case okType:
                         break;
-                    }
-                    case UnaryExpression: {
-                        z3::expr top = evaluated.top();
-                        evaluated.pop();
-                        evaluated.push(evaluate_expression(top, top, current->_operator));
-                        break;
-                    }
-                    case ArrayAccess:
-
-                    case ArrayLiteral:
-
-                    case AssignArrField:
-
-                    case Concurrent:
-
-                    case EndConcurrent:
-
-                    case Skip:
-                    case Write:
-                    case BasicBlock:
-                    case Sequential:
-                    case While:
-                        constraints.push_back(c->bool_val(true));
-                        break;
-                    default:
+                    case errorType:
                         break;
                 }
-                current = current->next;
+                evaluated.pop();
+                break;
             }
+            case If: {
+                std::shared_ptr<basicblock> firstCommonChild = find_common_child(node);
+                z3::expr final = z3::ite(evaluated.top(), get_run(c, node, node->nexts[0], firstCommonChild),
+                                         get_run(c, node, node->nexts[1], firstCommonChild));
+
+                for (const auto &constraint : constraints) {
+                    final = final && constraint;
+                }
+
+                while (firstCommonChild && firstCommonChild->type == Condition) {
+                    if (firstCommonChild->statements.back()->getNodeType() == If) {
+                        firstCommonChild = find_common_child(firstCommonChild.get());
+                    } else { //Event
+                        return final;
+                    }
+                }
+                if (firstCommonChild && !firstCommonChild->nexts.empty())
+                    return final && get_run(c, firstCommonChild.get(), firstCommonChild->nexts[0], end);
+                else return final;
+            }
+            case Read: {
+                z3::expr intermediate = c->int_const(current->value.c_str());
+                constraints.push_back((intermediate >= INT16_MIN) && (intermediate <= INT16_MAX));
+                evaluated.push(intermediate);
+                break;
+            }
+            case Literal: {
+                if (current->getType() == intType)
+                    evaluated.push(c->int_val(std::stoi(current->value)));
+                else
+                    evaluated.push(c->bool_val(current->value == "true"));
+                break;
+            }
+            case Event: {
+                z3::expr finalconstraint = z3::ite(evaluated.top(), get_run(c, node, node->nexts[0], end),
+                                                   c->bool_val(true));
+                for (const auto &constraint : constraints) {
+                    finalconstraint = finalconstraint && constraint;
+                }
+                return finalconstraint;
+            }
+            case Variable: {
+                switch (current->getType()) {
+                    case intType:
+                        evaluated.push(c->int_const(current->value.c_str()));
+                        break;
+                    case boolType:
+                        evaluated.push(c->bool_const(current->value.c_str()));
+                        break;
+                    case arrayIntType:
+                        break;
+                    case arrayBoolType:
+                        break;
+                    case okType:
+                        break;
+                    case errorType:
+                        break;
+                }
+                break;
+            }
+            case BinaryExpression: {
+                z3::expr right = evaluated.top();
+                evaluated.pop();
+                z3::expr left = evaluated.top();
+                evaluated.pop();
+                evaluated.push(evaluate_expression(left, right, current->_operator));
+                break;
+            }
+            case UnaryExpression: {
+                z3::expr top = evaluated.top();
+                evaluated.pop();
+                evaluated.push(evaluate_expression(top, top, current->_operator));
+                break;
+            }
+            case ArrayAccess:
+
+            case ArrayLiteral:
+
+            case AssignArrField:
+
+            case Skip:
+            case Write:
+            case BasicBlock:
+            case Sequential:
+            case While:
+                constraints.push_back(c->bool_val(true));
+                break;
+            default:
+                break;
         }
-    }
+        current = current->next;
+    }}}
+
     z3::expr final = constraints.back();
     constraints.pop_back();
     for (const auto &constraint : constraints) {
