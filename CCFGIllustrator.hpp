@@ -202,6 +202,8 @@ class CCFGTree {
                     children.front()->v_distance =  v_padding;
                     _left_width = children.front()->left_width;
                     _right_width = children.front()->right_width;
+                } else {
+                    _left_width = _right_width = 0;
                 }
             } else {
                 if(count % 2 == 1){
