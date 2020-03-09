@@ -208,6 +208,7 @@ public:
                     edges.erase(edge(it, nxt));
                 it->nexts = std::vector<std::shared_ptr<basicblock>>{blk};
                 it->statements.resize(1);
+                it->setIfParent(nullptr);
             }
         }
 
@@ -350,7 +351,6 @@ private:
             edgesToAdd->push_back(edge(blk, nxt));
             blocksToAdd->push_back(blk);
             blk->setConcurrentBlock(conBlock.first, conBlock.second, whileloops);
-            blk->setIfParent(blockAndstmts.first->getIfParent());
             return blk;
         }
     }
