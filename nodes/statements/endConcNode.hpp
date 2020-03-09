@@ -7,7 +7,7 @@
 
 class endConcNode : public statementNode {
     const int threadCount;
-    const std::shared_ptr<basicblock> concNode;
+    std::shared_ptr<basicblock> concNode;
 
 public:
     endConcNode(int number_of_threads) : threadCount{number_of_threads} {
@@ -22,12 +22,13 @@ public:
 
     int get_number_of_threads () {return threadCount;}
 
-    basicblock *getConcNode() const {return concNode.get();}
+    std::shared_ptr<basicblock> getConcNode() const {return concNode;}
+    void setConcNode(std::shared_ptr<basicblock> blk) {concNode = std::move(blk);}
     std::string to_string() override {
         return "end conc-node of " + std::to_string(threadCount) + " threads";
     }
     std::shared_ptr<statementNode> copy_statement() const override {
-        std::shared_ptr<statementNode> _this = std::make_shared<endConcNode>(endConcNode(threadCount));
+        std::shared_ptr<statementNode> _this = std::make_shared<endConcNode>(endConcNode(threadCount, concNode));
         _this->setSSA(onSSA);
         return _this;
     }

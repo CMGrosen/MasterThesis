@@ -107,11 +107,13 @@ private:
                 oldMapsTo[n.get()]->nexts.push_back(oldMapsTo[next.get()]);
                 oldMapsTo[next.get()]->parents.push_back(oldMapsTo[n.get()]);
             }
+            if (n->type == Coend) {
+                dynamic_cast<endConcNode*>(oldMapsTo[n.get()]->statements.back().get())->setConcNode(oldMapsTo[dynamic_cast<endConcNode*>(n->statements.back().get())->getConcNode().get()]);
+            }
         }
         for (const auto &ed : a.edges) {
             edges.insert(edge(ed.type, oldMapsTo[ed.neighbours[0].get()], oldMapsTo[ed.neighbours[1].get()]));
         }
-
     }
 
     void assign_parents() {
@@ -238,11 +240,21 @@ public:
                 //auto concNode = std::make_shared<concurrentNode>(concurrentNode(okType, threads));
                 block = std::make_shared<basicblock>(basicblock(startTree));
                 block->type = Cobegin;
+                std::vector<std::shared_ptr<basicblock>> inters;
+                inters.reserve(conNode->threads.size());
+
                 auto endConc = std::make_shared<basicblock>(
                         basicblock(std::make_shared<endConcNode>(endConcNode(conNode->threads.size(), block)), nxt));
                 endConc->type = Coend;
+
+                for (auto i = 0; i < inters.capacity(); ++i) {
+                    std::shared_ptr<statementNode> stmt = std::make_shared<skipNode>(skipNode());
+                    inters.push_back(std::make_shared<basicblock>(basicblock(stmt, endConc)));
+                }
+
+                int i = 0;
                 for (const auto &t : conNode->threads) {
-                    threads.push_back(get_tree(t, endConc));
+                    threads.push_back(get_tree(t, inters[i++]));
                 }
 
                 //for (auto blk : threads) concNode->threads.push_back(blk);

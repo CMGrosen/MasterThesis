@@ -75,7 +75,7 @@ void basicblock::setConcurrentBlock(const std::shared_ptr<basicblock> &blk, int 
         for (int i = 0; i < nexts.size(); ++i) {
             nexts[i]->setConcurrentBlock(blk, threadNum + i, whileLoop);
         }
-    } else if (!statements.empty() && type == Coend && dynamic_cast<endConcNode*>(statements[0].get())->getConcNode() == blk.get()) {
+    } else if (!statements.empty() && type == Coend && dynamic_cast<endConcNode*>(statements[0].get())->getConcNode() == blk) {
         concurrentBlock = std::pair<std::shared_ptr<basicblock>, int>{blk, blk->concurrentBlock.second};
     } else {
         //If this block has already been visited (while loop), then stop recursion

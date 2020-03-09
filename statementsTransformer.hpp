@@ -63,8 +63,11 @@ private:
                 unpack->get_last()->next = std::make_shared<unpacked>(boolType, Event);
                 unStmt = std::make_shared<unpackedstmt>(unpackedstmt(unpack));
                 break;
-            } default:
-                return stmt;
+            } case Skip: {
+                unStmt = std::make_shared<unpackedstmt>(unpackedstmt(std::make_shared<unpacked>(unpacked(okType, Skip))));
+                break;
+            }
+            default: return stmt;
         }
         return unStmt;
     }

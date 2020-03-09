@@ -22,7 +22,7 @@ std::vector<std::shared_ptr<trace>> symEngine::execute() {
 
     z3::solver s(c);
     s.add(t);
-
+    //s.add(c.int_const("a_4") == c.int_val(8));
     if (s.check() == z3::sat) {
         auto model = s.get_model();
         std::cout << "sat\n";
@@ -40,6 +40,15 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
     auto node = start.get();
     std::vector<z3::expr> constraints;
     std::stack<z3::expr> evaluated;
+
+    /*
+    if (node->type == Coend) {
+        auto coend = dynamic_cast<endConcNode*>(node->statements.back().get());
+        int threads = coend->getConcNode()->nexts.size();
+        std::vector<std::vector<z3::expr>> phinodeAssignments;
+        phinodeAssignments.reserve(threads);
+    }*/
+
     for (const auto &stmt : node->statements) {
         if (stmt->getNodeType() == Phi) {
             auto phi = dynamic_cast<phiNode*>(stmt.get());
@@ -75,11 +84,54 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
                     break;
             }
         } else if (stmt->getNodeType() == Pi) {
+            auto pi = dynamic_cast<piNode*>(stmt.get());
+            auto vars = pi->get_variables();
+            std::stack<z3::expr> expressions;
+            switch (pi->getType()) {
+                case intType: {
+                    z3::expr name = c->int_const(pi->getName().c_str());
+                    for (const auto &conflict : *vars) {
+                        expressions.push(name == c->int_const(conflict.c_str()));
+                    }
+                    break;
+                } case boolType: {
+                    z3::expr name = c->bool_const(pi->getName().c_str());
+                    for (const auto &conflict : *vars) {
+                        expressions.push(name == c->bool_const(conflict.c_str()));
+                    }
+                    break;
+                } case arrayIntType: {
+                        break;
+                } case arrayBoolType: {
+                    break;
+                } default: break;
+            }
 
+            z3::expr final = expressions.top();
+            while (!expressions.empty()) {
+                final = final || expressions.top();
+                expressions.pop();
+            }
+            constraints.push_back(final);
         } else if (stmt->getNodeType() == Concurrent) {
-
+            auto endConc = get_end_of_concurrent_node(node);
+            std::stack<z3::expr> expressions;
+            for (const auto &nxt : node->nexts) {
+                expressions.push(get_run(c, node, nxt, endConc));
+            }
+            z3::expr final = expressions.top();
+            expressions.pop();
+            while (!expressions.empty()) {
+                final = final && expressions.top();
+                expressions.pop();
+            }
+            if (endConc->nexts.empty()) {
+                return final;
+            } else {
+                return final && get_run(c, endConc.get(), endConc->nexts[0], end);
+            }
         } else if (stmt->getNodeType() == EndConcurrent) {
-
+            constraints.push_back(c->bool_val(true));
         } else {
     auto current = dynamic_cast<unpackedstmt *>(stmt.get())->_this;
 
@@ -260,6 +312,18 @@ z3::expr symEngine::evaluate_expression(const z3::expr& left, const z3::expr& ri
     }
 }
 
+std::shared_ptr<basicblock> symEngine::get_end_of_concurrent_node(basicblock *node) {
+    for (const auto &blk : ccfg->nodes) {
+        if (blk->type == Coend) {
+            if (auto coend = dynamic_cast<endConcNode*>(blk->statements.back().get())) {
+                if (coend->getConcNode().get() == node) {
+                    return blk;
+                }
+            }
+        }
+    }
+    return nullptr;
+}
 
 std::vector<std::shared_ptr<trace>> symEngine::find_race_condition() {
     std::vector<std::shared_ptr<trace>> traces;
