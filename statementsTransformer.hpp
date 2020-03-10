@@ -35,14 +35,22 @@ private:
             case Assign: {
                 auto assNode = dynamic_cast<assignNode*>(stmt.get());
                 auto unpack = unpackExpr(assNode->getExpr(), counter);
-                unpack->get_last()->next = std::make_shared<unpacked>(unpacked(assNode->getExpr()->getType(), Assign, assNode->getName()));
+                std::string newname;
+                auto chars_to_remove = assNode->getOriginalName().size()+1;
+                int num = std::stoi(assNode->getName().erase(0,chars_to_remove)) - 1;
+                newname = assNode->getOriginalName() + "_" + std::to_string(num);
+                unpack->get_last()->next = std::make_shared<unpacked>(unpacked(assNode->getExpr()->getType(), Assign, assNode->getName(), newname));
                 unStmt = std::make_shared<unpackedstmt>(unpackedstmt(unpack));
                 break;
             } case AssignArrField: {
                 auto assignArF = dynamic_cast<arrayFieldAssignNode*>(stmt.get());
                 auto unpack = unpackExpr(assignArF->getField(), counter);
                 unpack->get_last()->next = unpackExpr(assignArF->getExpr(), counter);
-                unpack->get_last()->next = std::make_shared<unpacked>(unpacked(assignArF->getExpr()->getType(), AssignArrField));
+                std::string newname;
+                auto chars_to_remove = assignArF->getOriginalName().size()+1;
+                int num = std::stoi(assignArF->getName().erase(0,chars_to_remove)) - 1;
+                newname = assignArF->getOriginalName() + "_" + std::to_string(num);
+                unpack->get_last()->next = std::make_shared<unpacked>(unpacked(assignArF->getExpr()->getType(), AssignArrField, assignArF->getName(), newname));
                 unStmt = std::make_shared<unpackedstmt>(unpackedstmt(unpack));
                 break;
             } case If: {

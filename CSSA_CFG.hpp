@@ -180,7 +180,8 @@ private:
                             if (!hasPiFunction) {                       //if b does not have a pi function
                                 std::vector<std::shared_ptr<statementNode>> vec;
                                 vec.reserve(1+b->statements.size());
-                                std::shared_ptr<statementNode> pi = std::make_shared<piNode>(piNode(v.first, counter,
+                                Type t = symboltable->find(v.first)->second->getType();
+                                std::shared_ptr<statementNode> pi = std::make_shared<piNode>(piNode(t, v.first, counter,
                                         std::vector<std::string>{*(b->uses.find(v.first)->second.begin())}));
                                 vec.push_back(pi);
                                 for (const auto &stmt: b->statements) {

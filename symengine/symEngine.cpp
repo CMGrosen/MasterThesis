@@ -21,7 +21,9 @@ std::vector<std::shared_ptr<trace>> symEngine::execute() {
     auto t = get_run(&c, nullptr, ccfg->startNode, ccfg->exitNode);
 
     z3::solver s(c);
+    std::cout << t.to_string() << "\n\n" << std::endl;
     s.add(t);
+    s.add(c.int_const("-T_b_2") == c.int_const("b_5"));
 
     //s.add(c.int_const("a_4") == c.int_val(8));
     if (s.check() == z3::sat) {
@@ -106,6 +108,7 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
             }
 
             z3::expr final = expressions.top();
+            expressions.pop();
             while (!expressions.empty()) {
                 final = final || expressions.top();
                 expressions.pop();

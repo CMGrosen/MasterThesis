@@ -288,6 +288,7 @@ private:
     }
 
     void splitblocks_with_phinodes() {
+        std::unordered_map<std::shared_ptr<basicblock>, std::shared_ptr<basicblock>> splitConcnodes;
         for (const auto &phiN : Aphi) {
             if (phiN.first->type != Coend) {
                 std::vector<std::shared_ptr<statementNode>> stmts;
@@ -319,6 +320,9 @@ private:
                     blk->concurrentBlock = phiN.first->concurrentBlock;
                     blk->setIfParents(phiN.first->getIfParents());
 
+                    if (phiN.first->type == Cobegin) {
+                        splitConcnodes.insert({phiN.first, blk});
+                    }
                     phiN.first->type = joinNode;
                     ccfg->edges.insert(edge(flow, phiN.first, blk));
                     ccfg->nodes.insert(blk);
@@ -346,6 +350,22 @@ private:
                         phi->set_variables(res);
                     }
                 }
+            }
+        }
+        for (const auto &pair : splitConcnodes) {
+            for (const auto &blk : ccfg->nodes) {
+                if (blk->concurrentBlock.first == pair.first.get()) {
+                    blk->concurrentBlock.first = pair.second.get();
+                }
+                if (blk->type == Coend) {
+                    if (auto coend = dynamic_cast<endConcNode*>(blk->statements.back().get())) {
+                        if (coend->getConcNode() == pair.first) {
+                            coend->setConcNode(pair.second);
+                        }
+                    }
+                }
+            }
+        }
                 /*
                 for (const auto &stmt : phiN.first->statements) {
                     if (auto phi = dynamic_cast<phiNode *>(stmt.get())) {
@@ -362,8 +382,6 @@ private:
                         phi->set_variables(res);
                     }
                 }*/
-            }
-        }
     }
 
     void remove_duplicates() {

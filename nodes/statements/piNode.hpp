@@ -12,10 +12,10 @@ class piNode : public statementNode {
     std::vector<std::string> _possible_variables;
 
 public:
-    piNode(std::string variable, int _num, std::vector<std::string> possible_variables)
+    piNode(Type t, std::string variable, int _num, std::vector<std::string> possible_variables)
         : _variable{std::move(variable)}, _possible_variables{std::move(possible_variables)}, num{_num} {
         name = "-T_" + _variable + "_" + std::to_string(num);
-        setType(okType);
+        setType(t);
         setNodeType(Pi);
         setSSA(true);
     }
@@ -36,7 +36,7 @@ public:
         for (const auto &v : _possible_variables) {
             _pos_vars.push_back(v);
         }
-        auto _this = std::make_shared<piNode>(piNode(_variable, num, std::move(_pos_vars)));
+        auto _this = std::make_shared<piNode>(piNode(type, _variable, num, std::move(_pos_vars)));
         _this->setSSA(onSSA);
         return _this;
     }

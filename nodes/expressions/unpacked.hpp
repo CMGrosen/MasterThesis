@@ -16,6 +16,11 @@ struct unpacked : public node {
         nodetype = nt;
         _operator = NOTUSED;
     }
+    unpacked(Type t, NodeType nt, std::string _value, std::string _prevName) : value{std::move(_value)}, previous_name{std::move(_prevName)} {
+        type = t;
+        nodetype = nt;
+        _operator = NOTUSED;
+    }
     unpacked(Type t, NodeType nt, op _operator) : _operator{_operator} {
         type = t;
         nodetype = nt;
@@ -72,6 +77,7 @@ struct unpacked : public node {
     }
     std::shared_ptr<unpacked> next;
     std::string value;
+    std::string previous_name;
     op _operator;
 };
 

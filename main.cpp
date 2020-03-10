@@ -37,7 +37,8 @@ static std::map< const char *, const char * > files = {
         {"testUnwrap", "../code_examples/testUnwrap.small"},
         {"phitest", "../code_examples/phiTest.small"},
         {"multiplepaths", "../code_examples/multiple_paths.small"},
-        {"loop_unroll_test", "../code_examples/while_unroll_test.small"}
+        {"loop_unroll_test", "../code_examples/while_unroll_test.small"},
+        {"arrays", "../code_examples/array.small"}
 };
 
 SSA_CCFG do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_ptr<statementNode>, const std::unordered_map<std::string, std::shared_ptr<expressionNode>>> *treeAndSymbolTable) {
@@ -118,7 +119,7 @@ int main(int argc, const char* argv[]) {
     auto treeAndSymbolTable = visitor.getTree(tree);
 
     //auto tmp = treeAndSymbolTable.first->debug_getAllNodes();
-    if(visitor.getNumErrors())// || treeAndSymbolTable.first->getType() == errorType)
+    if(visitor.getNumErrors() || treeAndSymbolTable.first->getType() == errorType)
         return 0;
 
 
