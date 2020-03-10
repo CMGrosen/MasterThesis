@@ -1,0 +1,30 @@
+a = 10;
+b = 2;
+e = 10;
+fork {
+    a = 2;
+} and {
+    c = 10;
+    fork {
+        b = 2;
+    } and {
+        c = 2;
+    };
+    d = 2;
+    d = 3;
+    if (a > 10) {
+        b = a+10;
+        b = e + 10;
+    } else {
+        b = b+10;
+    };
+    fork {
+        skip;
+    } and {
+        e = 10;
+    };
+} and {
+    e = 10;
+};
+write (2, a);
+
