@@ -35,7 +35,8 @@ static std::map< const char *, const char * > files = {
         {"tripple_maker", "../code_examples/tripple_maker.small"},
         {"if_test", "../code_examples/if_test.small"},
         {"testUnwrap", "../code_examples/testUnwrap.small"},
-        {"phitest", "../code_examples/phiTest.small"}
+        {"phitest", "../code_examples/phiTest.small"},
+        {"multiplepaths", "../code_examples/multiple_paths.small"}
 };
 
 SSA_CCFG do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_ptr<statementNode>, const std::unordered_map<std::string, std::shared_ptr<expressionNode>>> *treeAndSymbolTable) {
@@ -100,7 +101,7 @@ SSA_CCFG do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_pt
 int main(int argc, const char* argv[]) {
     std::ifstream stream;
     //stream.open("../code.small");
-    stream.open(files["phitest"]);
+    stream.open(files["if_test"]);
     //stream.open("shortExpr.small");
 
     ANTLRInputStream input(stream);

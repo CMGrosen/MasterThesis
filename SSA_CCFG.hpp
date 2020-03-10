@@ -291,36 +291,38 @@ private:
         for (const auto &phiN : Aphi) {
             if (phiN.first->type != Coend) {
                 std::vector<std::shared_ptr<statementNode>> stmts;
-                for (auto i = phiN.second->size(); i < phiN.first->statements.size(); ++i) {
-                    stmts.push_back(phiN.first->statements[i]);
-                }
+                if (phiN.second->size() != phiN.first->statements.size()) {
+                    for (auto i = phiN.second->size(); i < phiN.first->statements.size(); ++i) {
+                        stmts.push_back(phiN.first->statements[i]);
+                    }
 
-                std::shared_ptr<basicblock> blk = std::make_shared<basicblock>(basicblock(*phiN.first));
-                phiN.first->statements.resize(phiN.second->size());
-                blk->statements = std::move(stmts);
-                for (std::shared_ptr<basicblock> &nxt : phiN.first->nexts) {
-                    blk->nexts.push_back(nxt);
-                    ccfg->edges.erase({flow, phiN.first, nxt});
-                    ccfg->edges.insert({flow, blk, nxt});
-                    for (auto &parent : nxt->parents) {
-                        if (parent.lock() == phiN.first) {
-                            parent = blk;
-                            break;
+                    std::shared_ptr<basicblock> blk = std::make_shared<basicblock>(basicblock(*phiN.first));
+                    phiN.first->statements.resize(phiN.second->size());
+                    blk->statements = std::move(stmts);
+                    for (std::shared_ptr<basicblock> &nxt : phiN.first->nexts) {
+                        blk->nexts.push_back(nxt);
+                        ccfg->edges.erase({flow, phiN.first, nxt});
+                        ccfg->edges.insert({flow, blk, nxt});
+                        for (auto &parent : nxt->parents) {
+                            if (parent.lock() == phiN.first) {
+                                parent = blk;
+                                break;
+                            }
                         }
                     }
+                    blk->parents = std::vector<std::weak_ptr<basicblock>>{phiN.first};
+                    phiN.first->nexts = std::vector<std::shared_ptr<basicblock>>{blk};
+
+                    blk->updateUsedVariables();
+                    phiN.first->updateUsedVariables();
+
+                    blk->concurrentBlock = phiN.first->concurrentBlock;
+                    blk->setIfParents(phiN.first->getIfParents());
+
+                    phiN.first->type = joinNode;
+                    ccfg->edges.insert(edge(flow, phiN.first, blk));
+                    ccfg->nodes.insert(blk);
                 }
-                blk->parents = std::vector<std::weak_ptr<basicblock>>{phiN.first};
-                phiN.first->nexts = std::vector<std::shared_ptr<basicblock>>{blk};
-
-                blk->updateUsedVariables();
-                phiN.first->updateUsedVariables();
-
-                blk->concurrentBlock = phiN.first->concurrentBlock;
-                blk->setIfParents(phiN.first->getIfParents());
-
-                phiN.first->type = joinNode;
-                ccfg->edges.insert(edge(flow, phiN.first, blk));
-                ccfg->nodes.insert(blk);
             }
         }
         ccfg->update_defs();

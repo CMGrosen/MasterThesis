@@ -1,0 +1,15 @@
+path = read(1);
+result = 0;
+if (path == 1) {
+    result = path;
+} else {
+    if (path == 2) {
+        result = path;
+    } else {
+        if (path == 3) {
+            result = path;
+        } else {
+            result = path;
+        };
+    };
+};
