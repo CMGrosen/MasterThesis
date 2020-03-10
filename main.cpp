@@ -36,7 +36,8 @@ static std::map< const char *, const char * > files = {
         {"if_test", "../code_examples/if_test.small"},
         {"testUnwrap", "../code_examples/testUnwrap.small"},
         {"phitest", "../code_examples/phiTest.small"},
-        {"multiplepaths", "../code_examples/multiple_paths.small"}
+        {"multiplepaths", "../code_examples/multiple_paths.small"},
+        {"loop_unroll_test", "../code_examples/while_unroll_test.small"}
 };
 
 SSA_CCFG do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_ptr<statementNode>, const std::unordered_map<std::string, std::shared_ptr<expressionNode>>> *treeAndSymbolTable) {
