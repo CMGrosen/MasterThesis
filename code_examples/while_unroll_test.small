@@ -1,0 +1,4 @@
+while(true) {
+    a = read(1);
+    write(2, a);
+};

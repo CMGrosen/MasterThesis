@@ -26,7 +26,6 @@ class CCFGTree {
             distance = 0;
             left_width = node_size/2;
             right_width = node_size/2;
-            //size = node_size;
         }
 
         CCFGNode(std::shared_ptr<CCFGNode> _parent, std::shared_ptr<basicblock> blk) : basicblockInfo{blk}, parent{std::move(_parent)}, name{blk->get_name()} {
@@ -63,7 +62,6 @@ class CCFGTree {
             v_distance = vertical_padding;
             left_width = node_size/2;
             right_width = node_size/2;
-            //size = node_size;
         }
 
 
@@ -170,9 +168,6 @@ class CCFGTree {
         float get_node_size(){
             return node_size;
         }
-        float get_size(){
-            return size;
-        }
         std::string get_content(){
             return content;
         }
@@ -184,17 +179,16 @@ class CCFGTree {
         std::string content;
         float  v_padding;
         float node_size;
-        float size;
 
         std::pair<float, float> calc_children_size(std::set<std::shared_ptr<CCFGNode>> *placedBlocks){
             if(children.empty()){
                 return{0,0};
             }
             int count = children.size();
-            float _left_width, _right_width;
+            float _left_width = 0, _right_width = 0;
 
-            float dist, left_dist, right_dist;
-            int left, right;
+            float dist = 0, left_dist = 0, right_dist = 0;
+            int left = 0, right = 0;
 
             if(count == 1){
                 if(placedBlocks->insert(children.front()).second){
