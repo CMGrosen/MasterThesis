@@ -41,7 +41,7 @@ struct basicblock {
     std::vector<std::weak_ptr<basicblock>> parents;
     std::vector<std::shared_ptr<basicblock>> nexts;
 
-    void setConcurrentBlock(const std::shared_ptr<basicblock> &blk, int threadNum, std::set<basicblock *> *whileLoop);
+    void setConcurrentBlock(basicblock *blk, int threadNum, std::set<basicblock *> *whileLoop);
 
     void updateUsedVariables();
 
@@ -64,7 +64,7 @@ struct basicblock {
     std::map<std::string, std::set<std::string>> defines;
 
 
-    std::pair<std::shared_ptr<basicblock>, int> concurrentBlock;
+    std::pair<basicblock*, int> concurrentBlock;
     std::string get_name();
 
     blocktype type;

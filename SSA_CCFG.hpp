@@ -321,9 +321,32 @@ private:
                 phiN.first->type = joinNode;
                 ccfg->edges.insert(edge(flow, phiN.first, blk));
                 ccfg->nodes.insert(blk);
-            } else {
-                /*for (const auto &stmt : phiN.first->statements) {
-                    if (auto phi = dynamic_cast<phiNode*>(stmt.get())) {
+            }
+        }
+        ccfg->update_defs();
+        for (const auto &phiN : Aphi) {
+            if (phiN.first->type == Coend) {
+                for (const auto &stmt : phiN.first->statements) {
+                    if (auto phi = dynamic_cast<phiNode *>(stmt.get())) {
+                        auto vars = *phi->get_variables();
+                        std::vector<std::string> res;
+                        for (const auto &var : vars) {
+                            auto conc = phiN.first->concurrentBlock.first;
+                            basicblock *current_concnode = ccfg->defs[var].get();
+                            while (current_concnode) {
+                                if (current_concnode == conc) {
+                                    res.push_back(var);
+                                    break;
+                                }
+                                current_concnode = current_concnode->concurrentBlock.first;
+                            }
+                        }
+                        phi->set_variables(res);
+                    }
+                }
+                /*
+                for (const auto &stmt : phiN.first->statements) {
+                    if (auto phi = dynamic_cast<phiNode *>(stmt.get())) {
                         auto vars = *phi->get_variables();
                         std::vector<std::string> res;
                         int current = 0;

@@ -100,7 +100,7 @@ SSA_CCFG do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_pt
 int main(int argc, const char* argv[]) {
     std::ifstream stream;
     //stream.open("../code.small");
-    stream.open(files["if_test"]);
+    stream.open(files["phitest"]);
     //stream.open("shortExpr.small");
 
     ANTLRInputStream input(stream);

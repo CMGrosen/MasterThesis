@@ -3,6 +3,7 @@
 //
 
 #include "basicblock.hpp"
+#include <cassert>
 
 basicblock::basicblock() : statements{}, nexts{} {counterblocks++;}
 basicblock::basicblock(std::shared_ptr<statementNode> stmt) :
@@ -65,22 +66,30 @@ basicblock::~basicblock() {counterblocks--;}
 
 int basicblock::get_number_of_blocks() {return counterblocks;}
 
-void basicblock::setConcurrentBlock(const std::shared_ptr<basicblock> &blk, int threadNum, std::set<basicblock *> *whileLoop) {
-    if (!statements.empty() && statements[0]->getNodeType() == Concurrent && this != blk.get()) {
-        concurrentBlock = std::pair<std::shared_ptr<basicblock>, int>{blk, threadNum};
-        for (int i = 0; i < nexts.size(); ++i) {
-            nexts[i]->setConcurrentBlock(std::shared_ptr<basicblock>{this}, threadNum + i, whileLoop);
+void basicblock::setConcurrentBlock(basicblock *blk, int threadNum, std::set<basicblock *> *whileLoop) {
+    if (type == Cobegin) {
+        concurrentBlock = {blk, threadNum};
+        int i = threadNum;
+        for (const auto &nxt : nexts) {
+            nxt->setConcurrentBlock(this, i++, whileLoop);
         }
-    } else if (!statements.empty() && statements[0]->getNodeType() == Concurrent) {
-        for (int i = 0; i < nexts.size(); ++i) {
-            nexts[i]->setConcurrentBlock(blk, threadNum + i, whileLoop);
+        auto nxt = nexts[0];
+        while (nxt) {
+            if (auto endconc = dynamic_cast<endConcNode*>(nxt->statements.back().get())) {
+                if (endconc->getConcNode().get() == this) {
+                    break;
+                }
+            }
+            nxt = nxt->nexts[0];
         }
-    } else if (!statements.empty() && type == Coend && dynamic_cast<endConcNode*>(statements[0].get())->getConcNode() == blk) {
-        concurrentBlock = std::pair<std::shared_ptr<basicblock>, int>{blk, blk->concurrentBlock.second};
+        assert(nxt);
+        for (const auto &n : nxt->nexts) {
+            n->setConcurrentBlock(blk, threadNum, whileLoop);
+        }
+    } else if (type == Coend) {
+        concurrentBlock = {blk, threadNum};
     } else {
-        //If this block has already been visited (while loop), then stop recursion
-        if (whileLoop && !this->statements.empty() && this->statements[0]->getNodeType() == While && !whileLoop->insert(this).second) {return;}
-        concurrentBlock = std::pair<std::shared_ptr<basicblock>, int>{blk, threadNum};
+        concurrentBlock = {blk, threadNum};
         for (const auto &nxt : nexts) {
             nxt->setConcurrentBlock(blk, threadNum, whileLoop);
         }

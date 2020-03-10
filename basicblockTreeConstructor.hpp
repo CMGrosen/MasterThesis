@@ -16,6 +16,7 @@ struct CCFG {
     std::unordered_set<edge> edges;
     std::shared_ptr<basicblock> startNode;
     std::shared_ptr<basicblock> exitNode;
+    std::map<std::string, std::shared_ptr<basicblock>> defs;
     void updateConflictEdges() {add_conflict_edges();};
     CCFG(std::set<std::shared_ptr<basicblock>> _nodes, std::unordered_set<edge> _edges, std::shared_ptr<basicblock> _start, std::shared_ptr<basicblock> _exit)
         : nodes{std::move(_nodes)}, edges{std::move(_edges)}, startNode{std::move(_start)}, exitNode{std::move(_exit)} {
@@ -90,7 +91,34 @@ struct CCFG {
         }
     }
 
+    void update_defs() {
+        for (const auto &blk : nodes) {
+            for (const auto &def : blk->defines) {
+                std::string largest = *def.second.begin();
+                int num = get_num(largest);
+                for (const auto &item : def.second) {
+                    if (num < get_num(item)) {
+                        num = get_num(item);
+                        largest = item;
+                    }
+                }
+                defs.emplace(largest, blk);
+            }
+        }
+    }
 private:
+    static int get_num(std::string var) {
+        int pos = 1;
+        int res = 0;
+        for (auto it = var.rbegin(); it != var.rend(); ++it) {
+            if (*it == '_') {
+                return res;
+            } else {
+                res += (pos * (*it - '0'));
+            }
+        }
+        return 0;
+    }
     void copy_tree(const CCFG& a) {
         auto oldMapsTo = std::map<basicblock*, std::shared_ptr<basicblock>>{};
         for (auto &n : a.nodes) {
@@ -101,7 +129,7 @@ private:
             oldMapsTo.insert({n.get(), newNode});
         }
         for (const auto &n : a.nodes) {
-            oldMapsTo[n.get()]->concurrentBlock = std::make_pair(oldMapsTo[n->concurrentBlock.first.get()], n->concurrentBlock.second);
+            oldMapsTo[n.get()]->concurrentBlock = std::make_pair(oldMapsTo[n->concurrentBlock.first].get(), n->concurrentBlock.second);
             for (const auto &parent : n->getIfParents()) {
                 oldMapsTo[n.get()]->addIfParent(oldMapsTo[parent]);
             }
@@ -115,6 +143,11 @@ private:
         }
         for (const auto &ed : a.edges) {
             edges.insert(edge(ed.type, oldMapsTo[ed.neighbours[0].get()], oldMapsTo[ed.neighbours[1].get()]));
+        }
+        if (!a.defs.empty()) {
+            for (const auto &def : a.defs) {
+                defs.emplace(def.first, oldMapsTo[def.second.get()]);
+            }
         }
     }
 
@@ -146,13 +179,33 @@ private:
         }
     }
 
+    static bool is_sequential_helper(const std::shared_ptr<basicblock> &a, const std::shared_ptr<basicblock> &b, std::set<std::shared_ptr<basicblock>> *visited) {
+        if (!a) return false;
+        else if (a == b) return true;
+        else if (visited->insert(a).second) {
+            for (const auto &nxt : a->nexts) {
+                if (is_sequential_helper(nxt, b, visited)) return true;
+            }
+            return false;
+        }
+        else return false;
+    }
+
+    static bool is_sequential(std::shared_ptr<basicblock> &a, std::shared_ptr<basicblock> &b) {
+        std::set<std::shared_ptr<basicblock>> visited;
+        bool sequential = is_sequential_helper(a,b,&visited);
+        if (sequential) return true;
+        visited.clear();
+        return is_sequential_helper(b,a,&visited);
+    }
+
     static bool concurrent(std::shared_ptr<basicblock> &a, std::shared_ptr<basicblock> &b) {
         if (a == b) return false; //same nodes aren't concurrent
         if (a->concurrentBlock.second == b->concurrentBlock.second) { //If they're in the same thread, they're not concurrent
             return false;
         }
-        std::vector<std::shared_ptr<basicblock>> concurrentNodesForA;
-        std::shared_ptr<basicblock> tmp = a->concurrentBlock.first;
+        std::vector<basicblock*> concurrentNodesForA;
+        basicblock *tmp = a->concurrentBlock.first;
         while (tmp) {
             concurrentNodesForA.push_back(tmp);
             tmp = tmp->concurrentBlock.first;
@@ -166,6 +219,7 @@ private:
                 if (tmp == n && !(a->type == Coend || b->type == Coend)) {
                     // common fork ancestor between nodes, making them concurrent.
                     // Doesn't work for nested forks
+                    return (!is_sequential(a, b));
                     return true;
                 }
             }
@@ -191,9 +245,11 @@ public:
         for(auto it : res.second) edges.insert(it);
 
         tmpSet = std::set<basicblock *>();
-        for(const auto &it : res.first) //add threadnum to blocks. Don't want to add to children already visited
+        /*for(const auto &it : res.first) //add threadnum to blocks. Don't want to add to children already visited
             if (!it->statements.empty() && it->statements[0]->getNodeType() == Concurrent && !it->concurrentBlock.first)
                 it->setConcurrentBlock(it, 0, &tmpSet);
+        */
+        startNode->setConcurrentBlock(nullptr, 0, &tmpSet);
 
         std::vector<std::shared_ptr<basicblock>> blocksToAdd;
         std::vector<edge> edgesToAdd;
@@ -348,7 +404,7 @@ private:
         }
     }
 
-    std::shared_ptr<basicblock> split_up_concurrent_basicblocks(std::vector<std::shared_ptr<basicblock>> *blocksToAdd, std::vector<edge> *edgesToAdd, std::vector<std::shared_ptr<basicblock>> it, std::pair<std::shared_ptr<basicblock>, std::list<std::shared_ptr<statementNode>>> blockAndstmts, std::pair<std::shared_ptr<basicblock>, int> conBlock, std::set<basicblock *> *whileloops) {
+    std::shared_ptr<basicblock> split_up_concurrent_basicblocks(std::vector<std::shared_ptr<basicblock>> *blocksToAdd, std::vector<edge> *edgesToAdd, std::vector<std::shared_ptr<basicblock>> it, std::pair<std::shared_ptr<basicblock>, std::list<std::shared_ptr<statementNode>>> blockAndstmts, std::pair<basicblock*, int> conBlock, std::set<basicblock *> *whileloops) {
         if (blockAndstmts.second.size() == 1) {
             std::shared_ptr<basicblock> blk = std::make_shared<basicblock>(basicblock(blockAndstmts.second.front()));
             blk->nexts = it;
