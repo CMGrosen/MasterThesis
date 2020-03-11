@@ -47,7 +47,8 @@ static std::map< const char *, const char * > test_files = {
         {"inner_while_test", "../code_examples/test_programs/coffee_maker_inner_while.small"},
         {"outer_while_test", "../code_examples/test_programs/coffee_maker_outer_while.small"},
         {"event_based_duo_test", "../code_examples/test_programs/coffee_maker_duo_event_based.small"},
-        {"event_based_trio_test", "../code_examples/test_programs/coffee_maker_trio_event_based.small"}
+        {"event_based_trio_test", "../code_examples/test_programs/coffee_maker_trio_event_based.small"},
+        {"statements_after_event_test", "../code_examples/test_programs/statements_after_event.small"}
 };
 
 
@@ -135,7 +136,7 @@ void run(const std::string& path) {
 
 int main(int argc, const char* argv[]) {
 
-    run(test_files["event_test"]);
+    run(test_files["statements_after_event_test"]);
 
     std::cout << "done: " << std::to_string(basicblock::get_number_of_blocks()) << "\n";
 

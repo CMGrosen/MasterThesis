@@ -6,9 +6,9 @@
 #include <limits>
 #include <string>
 
-symEngine::symEngine(std::shared_ptr<CCFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table) : ccfg{std::move(ccfg)}, symboltable{std::move(table)} {}
-symEngine::symEngine(std::shared_ptr<SSA_CCFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table) : ccfg{std::move(ccfg->ccfg)}, symboltable(std::move(table)) {}
-symEngine::symEngine(std::shared_ptr<CSSA_CFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table) : ccfg{std::move(ccfg->ccfg)}, symboltable(std::move(table)) {}
+symEngine::symEngine(std::shared_ptr<CCFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table) : ccfg{std::move(ccfg)}, symboltable{std::move(table)}, event_encountered{false} {}
+symEngine::symEngine(std::shared_ptr<SSA_CCFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table) : ccfg{std::move(ccfg->ccfg)}, symboltable(std::move(table)), event_encountered{false} {}
+symEngine::symEngine(std::shared_ptr<CSSA_CFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table) : ccfg{std::move(ccfg->ccfg)}, symboltable(std::move(table)), event_encountered{false} {}
 std::vector<std::shared_ptr<trace>> symEngine::execute() {
     std::set<std::shared_ptr<basicblock>> visited_blocks;
     std::vector<std::shared_ptr<trace>> traces;
@@ -23,9 +23,7 @@ std::vector<std::shared_ptr<trace>> symEngine::execute() {
     z3::solver s(c);
     std::cout << t.to_string() << "\n\n" << std::endl;
     s.add(t);
-    //s.add(c.int_const("-T_b_2") == c.int_const("b_5"));
 
-    //s.add(c.int_const("a_4") == c.int_val(8));
     if (s.check() == z3::sat) {
         auto model = s.get_model();
         std::cout << "sat\n";
@@ -96,10 +94,7 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
             }
             constraints.push_back(conjunction);
         }
-    } else if (node->type == Exit) {
-        return c->bool_val(true);
-    }
-    else {
+    } else {
     for (const auto &stmt : node->statements) {
         if (stmt->getNodeType() == Phi) {
             auto phi = dynamic_cast<phiNode*>(stmt.get());
@@ -170,7 +165,12 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
             auto endConc = get_end_of_concurrent_node(node);
             std::stack<z3::expr> expressions;
             int i = 0;
+            bool changed_event = false;
             for (const auto &nxt : node->nexts) {
+                if (event_encountered) {
+                    event_encountered = false;
+                    changed_event = true;
+                }
                 expressions.push(get_run(c, node, nxt, endConc->parents[i++].lock()));
             }
             z3::expr final = expressions.top();
@@ -180,6 +180,7 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
                 expressions.pop();
             }
             constraints.push_back(final);
+            if (changed_event) event_encountered = true;
         } else if (stmt->getNodeType() == EndConcurrent || stmt->getNodeType() == EndFi) {
             constraints.push_back(c->bool_val(true));
         } else {
@@ -209,12 +210,26 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
             }
             case If: {
                 std::shared_ptr<basicblock> firstCommonChild = find_common_child(node);
-                z3::expr final = z3::ite(evaluated.top(), get_run(c, node, node->nexts[0], firstCommonChild),
-                                         get_run(c, node, node->nexts[1], firstCommonChild));
+                bool changed_event = false;
+                if (event_encountered) {
+                    event_encountered = false;
+                    changed_event = true;
+                }
+                z3::expr truebranch = get_run(c, node, node->nexts[0], firstCommonChild);
+                if (event_encountered) {
+                    event_encountered = false;
+                    changed_event = true;
+                }
+                z3::expr falsebranch = get_run(c, node, node->nexts[1], firstCommonChild);
+                if (event_encountered) {
+                    changed_event = true;
+                }
+                z3::expr final = z3::ite(evaluated.top(), truebranch, falsebranch);
 
                 for (const auto &constraint : constraints) {
                     final = final && constraint;
                 }
+                if (changed_event) return final;
 
                 while (firstCommonChild && firstCommonChild->type == Condition) {
                     if (firstCommonChild->statements.back()->getNodeType() == If) {
@@ -241,12 +256,14 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
                 break;
             }
             case Event: {
-                z3::expr finalconstraint = z3::ite(evaluated.top(), get_run(c, node, node->nexts[0], end),
-                                                   c->bool_val(true));
-                for (const auto &constraint : constraints) {
-                    finalconstraint = finalconstraint && constraint;
+                z3::expr truebranch = get_run(c, node, node->nexts[0], end);
+                if (end != ccfg->exitNode) {
+                    for (const auto &nxt : end->nexts) {
+                        truebranch = truebranch && get_run(c, end.get(), nxt, ccfg->exitNode);
+                    }
                 }
-                return finalconstraint;
+                event_encountered = true;
+                return z3::ite(evaluated.top(), truebranch, c->bool_val(true));
             }
             case Variable: {
                 switch (current->getType()) {
@@ -306,7 +323,7 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
         final = final && constraint;
     }
 
-    if (node == end.get() || node->nexts.empty()) {
+    if (node == end.get() || node->nexts.empty() || event_encountered) {
         return final;
     } else {
         return final && get_run(c, node, node->nexts[0], end);
