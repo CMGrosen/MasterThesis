@@ -52,6 +52,9 @@ struct basicblock {
     std::string draw_children(basicblock *parent, std::set<basicblock *> *drawnBlocks);
 
     static int get_number_of_blocks();
+    std::string to_string();
+    int32_t get_stmt_length();
+    int32_t get_stmt_count();
 
     std::map<std::string, std::set<std::string>> uses;
     std::map<std::string, std::set<std::string>> defines;

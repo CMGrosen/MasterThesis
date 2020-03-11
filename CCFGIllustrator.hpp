@@ -26,9 +26,9 @@ public:
     std::shared_ptr<basicblock> basicblockInfo;
 
     CCFGNode(std::shared_ptr<CCFGNode> _parent, std::shared_ptr<basicblock> blk) : basicblockInfo{blk}, parent{std::move(_parent)}, name{blk->get_name()} {
-        content = blk.to_string();
-        node_width = blk.get_stmt_length() * symbol_width;
-        node_height = blk.get_stmt_count() * symbol_height;
+        content = blk->to_string();
+        node_width = blk->get_stmt_length() * symbol_width;
+        node_height = blk->get_stmt_count() * symbol_height*2;
         left_width = node_width/2;
         right_width = node_width/2;
         distance = 0;

@@ -4,6 +4,7 @@
 
 #include "basicblock.hpp"
 #include <cassert>
+#include <iostream>
 
 basicblock::basicblock() : statements{}, nexts{} {counterblocks++;}
 basicblock::basicblock(std::shared_ptr<statementNode> stmt) :
@@ -26,6 +27,7 @@ basicblock::basicblock(const basicblock &o) {
     for (auto stmt : o.statements) {
         statements.push_back(stmt->copy_statement());
     }
+    type = o.type;
     uses = o.uses;
     defines = o.defines;
     type = o.type;
@@ -40,9 +42,11 @@ basicblock& basicblock::operator=(const basicblock &o) {
     for (auto stmt : o.statements) {
         statements.push_back(stmt->copy_statement());
     }
+    type = o.type;
     uses = o.uses;
     defines = o.defines;
     type = o.type;
+
     counterblocks++;
     return *this;
 }
@@ -295,5 +299,50 @@ std::pair<std::string, std::int32_t> basicblock::statements_as_string() {
     //call children
     return std::pair<std::string, std::int32_t>{res, length};
 }
+
+
+std::string basicblock::to_string() {
+    std::string res;
+    for (const auto &stmt : statements) {
+        res += stmt->to_string() + "\\\\";
+    }
+    return res;
+}
+
+int32_t basicblock::get_stmt_length() {
+    int32_t longest_stmt = 0;
+    for (const auto &stmt : statements) {
+        std::string str = stmt->to_string();
+        int32_t stmtlen = str.length();
+        for (auto it = str.begin(); it != str.end(); ++it) {
+            if (*it == '\\' || *it == '$' || *it == '{' || *it == '}' || (*it == '_' && *(it-1) != '\\')) {
+                --stmtlen;
+            }
+        }
+        for (auto it = str.begin(); it != str.end(); ++it) {
+            if (*it == '$' && *(it+1) == '\\' && *(it+2) == 'p') {
+                if (*(it+3) == 'h') {
+                    it += 4;
+                    stmtlen -= 2; //remove "phi" length, and replace with the greek symbol phi
+                } else {
+                    it += 3;
+                    --stmtlen; //remove "pi" length, and replace with the greek symbol pi
+                }
+            }
+        }
+        if (longest_stmt < stmtlen) {
+            longest_stmt = stmtlen;
+        }
+    }
+    return longest_stmt;
+
+}
+int32_t basicblock::get_stmt_count() {
+    if (type == Coend) {
+        std::cout << "here";
+    }
+    return statements.size();
+}
+
 
 std::string name = std::string{};
