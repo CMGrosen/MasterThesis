@@ -46,9 +46,60 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
 
 
     if (node->type == Coend) {
+        auto coend = dynamic_cast<endConcNode*>(node->statements.back().get());
+        int threads = coend->getConcNode()->nexts.size();
+        std::stack<z3::expr> expressions;
+        std::vector<std::vector<z3::expr>> phinodeAssignments;
+        phinodeAssignments.reserve(threads);
+
+        int index = 0;
+        for (const auto &st : node->statements) {
+            if (auto phi = dynamic_cast<phiNode*>(st.get())) {
+                phinodeAssignments.emplace_back();
+                auto vars = *phi->get_variables();
+                for (const auto &var : vars) {
+                    switch (phi->getType()) {
+                        case intType: {
+                            z3::expr name = c->int_const(phi->getName().c_str());
+                            phinodeAssignments[index].push_back(name == c->int_const(var.c_str()));
+                            break;
+                        }
+                        case boolType: {
+                            z3::expr name = c->bool_const(phi->getName().c_str());
+                            phinodeAssignments[index].push_back(name == c->bool_const(var.c_str()));
+                            break;
+                        }
+                        case arrayIntType: {
+                            break;
+                        }
+                        case arrayBoolType: {
+                            break;
+                        }
+                        default:
+                            break;
+                    }
+                }
+            }
+            ++index;
+        }
+
+
+        for (const auto &exprVec : phinodeAssignments) {
+            for (const auto &expr : exprVec) {
+                expressions.push(expr);
+            }
+            z3::expr conjunction = expressions.top();
+            expressions.pop();
+            while (!expressions.empty()) {
+                conjunction = conjunction || expressions.top();
+                expressions.pop();
+            }
+            constraints.push_back(conjunction);
+        }
+    } else if (node->type == Exit) {
         return c->bool_val(true);
     }
-
+    else {
     for (const auto &stmt : node->statements) {
         if (stmt->getNodeType() == Phi) {
             auto phi = dynamic_cast<phiNode*>(stmt.get());
@@ -128,62 +179,7 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
                 final = final && expressions.top();
                 expressions.pop();
             }
-
-            auto coend = dynamic_cast<endConcNode*>(endConc->statements.back().get());
-            int threads = coend->getConcNode()->nexts.size();
-            std::vector<std::vector<z3::expr>> phinodeAssignments;
-            phinodeAssignments.reserve(threads);
-
-            int index = 0;
-            for (const auto &st : endConc->statements) {
-                if (auto phi = dynamic_cast<phiNode*>(st.get())) {
-                    phinodeAssignments.emplace_back();
-                    auto vars = *phi->get_variables();
-                    for (const auto &var : vars) {
-                        switch (phi->getType()) {
-                            case intType: {
-                                z3::expr name = c->int_const(phi->getName().c_str());
-                                phinodeAssignments[index].push_back(name == c->int_const(var.c_str()));
-                                break;
-                            }
-                            case boolType: {
-                                z3::expr name = c->bool_const(phi->getName().c_str());
-                                phinodeAssignments[index].push_back(name == c->bool_const(var.c_str()));
-                                break;
-                            }
-                            case arrayIntType: {
-                                break;
-                            }
-                            case arrayBoolType: {
-                                break;
-                            }
-                            default:
-                                break;
-                        }
-                    }
-                }
-                ++index;
-            }
-
-
-            for (const auto &exprVec : phinodeAssignments) {
-                for (const auto &expr : exprVec) {
-                    expressions.push(expr);
-                }
-                z3::expr conjunction = expressions.top();
-                expressions.pop();
-                while (!expressions.empty()) {
-                    conjunction = conjunction || expressions.top();
-                    expressions.pop();
-                }
-                final = final && conjunction;
-            }
-
-            if (endConc->nexts.empty()) {
-                return final;
-            } else {
-                return final && get_run(c, endConc.get(), endConc->nexts[0], end);
-            }
+            constraints.push_back(final);
         } else if (stmt->getNodeType() == EndConcurrent || stmt->getNodeType() == EndFi) {
             constraints.push_back(c->bool_val(true));
         } else {
@@ -302,7 +298,7 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
                 break;
         }
         current = current->next;
-    }}}
+    }}}}
 
     z3::expr final = constraints.back();
     constraints.pop_back();
@@ -373,6 +369,7 @@ std::shared_ptr<basicblock> symEngine::get_end_of_concurrent_node(basicblock *no
             }
         }
     }
+    assert(false);
     return nullptr;
 }
 

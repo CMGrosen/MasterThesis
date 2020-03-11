@@ -31,9 +31,7 @@ struct CCFG {
 
         for (auto &n : nodes) {
             if (!n->statements.empty()) {
-                if (n == startNode) n->type = Entry;
-                else if (n == exitNode) n->type = Exit;
-                else switch (n->statements[0]->getNodeType()) {
+                switch (n->statements.back()->getNodeType()) {
                     case Assign:
                     case AssignArrField:
                     case Write:
@@ -123,8 +121,8 @@ private:
         auto oldMapsTo = std::map<basicblock*, std::shared_ptr<basicblock>>{};
         for (auto &n : a.nodes) {
             auto newNode = std::make_shared<basicblock>(basicblock(*n));
-            if (newNode->type == Entry) startNode = newNode;
-            else if (newNode->type == Exit) exitNode = newNode;
+            if (a.startNode == n) startNode = newNode;
+            else if (a.exitNode == n) exitNode = newNode;
             nodes.insert(newNode);
             oldMapsTo.insert({n.get(), newNode});
         }
