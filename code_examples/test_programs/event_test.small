@@ -1,0 +1,16 @@
+a = read(1);
+b = 2;
+c = false;
+fork{
+	when(a % 2 == 1);
+	b = 3;
+} and { 
+	if(b == 3) {
+		c = true;
+	} else {skip;};
+} and {
+	while(true){
+		a = read(1);
+	};	
+};
+

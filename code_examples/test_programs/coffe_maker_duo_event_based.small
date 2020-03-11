@@ -1,0 +1,56 @@
+// measure amount of beans
+beans = read(1);
+// measure amount of water
+water = read(2);
+
+fork {
+    while(true){
+        button_left = read(11);
+    };
+} and {
+    while(true){
+        button_right = read(21);
+    };
+} and {
+    while(true) {
+        when(button_left > 0);
+        beans = read(1);
+        water = read(2);
+        if(beans > 30 && water > 200) {
+            // take beans to the left brewing chamber
+            write(13, 300);
+            // pour water through beans
+            write(14, 200);
+        } else {
+            if(beans <= 30) {
+                // turn on missing beans indicator
+                write(3, 100);
+            } else { skip; };
+            if(water <= 200) {
+                // turn on missing water indicator
+                write(4, 100);
+            } else { skip; };
+        };
+    };
+} and {
+    while (true) {
+        when(button_right > 0);
+        beans = read(1);
+        water = read(2);
+        if(beans > 30 && water > 200) {
+            // take beans to the left brewing chamber
+            write(23, 300);
+            // pour water through beans
+            write(24, 200);
+        } else {
+            if(beans <= 30) {
+                // turn on missing beans indicator
+                write(3, 100);
+            } else { skip; };
+            if(water <= 200) {
+                // turn on missing water indicator
+                write(4, 100);
+            } else { skip; };
+        };
+    };
+};
