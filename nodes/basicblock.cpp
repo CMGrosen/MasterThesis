@@ -75,7 +75,7 @@ void basicblock::setConcurrentBlock(basicblock *blk, int threadNum, std::set<bas
         }
         auto nxt = nexts[0];
         while (nxt) {
-            if (auto endconc = dynamic_cast<endConcNode*>(nxt->statements.back().get())) {
+            if (auto endconc = dynamic_cast<endConcNode *>(nxt->statements.back().get())) {
                 if (endconc->getConcNode().get() == this) {
                     break;
                 }
@@ -294,28 +294,6 @@ std::pair<std::string, std::int32_t> basicblock::statements_as_string() {
     }
     //call children
     return std::pair<std::string, std::int32_t>{res, length};
-}
-
-void basicblock::setIfParents(const std::vector<std::shared_ptr<basicblock>>& blk) {
-    ifparents = std::vector<basicblock *>{};
-    for (const auto &par : blk) ifparents.push_back(par.get());
-}
-
-void basicblock::setIfParents(const std::vector<basicblock *> &blk) {
-    ifparents = std::vector<basicblock *>{};
-    for (const auto &par : blk) ifparents.push_back(par);
-}
-
-std::vector<basicblock*> basicblock::getIfParents() {
-    return ifparents;
-}
-
-void basicblock::addIfParent(basicblock *parent) {
-    ifparents.push_back(parent);
-}
-
-void basicblock::addIfParent(const std::shared_ptr<basicblock> &parent) {
-    addIfParent(parent.get());
 }
 
 std::string name = std::string{};

@@ -18,5 +18,6 @@
 #include "piNode.hpp"
 #include "endConcNode.hpp"
 #include "unpackedstmt.hpp"
+#include "fiNode.hpp"
 
 #endif //ANTLR_CPP_TUTORIAL_STATEMENTNODE_H

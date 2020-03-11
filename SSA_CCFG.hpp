@@ -27,7 +27,9 @@ struct SSA_CCFG {
 
         update_uses_and_defines();
 
-        splitblocks_with_phinodes();
+        update_coend_nodes();
+
+        //splitblocks_with_phinodes();
 
         std::cout << "hej";
 
@@ -287,48 +289,7 @@ private:
         return i;
     }
 
-    void splitblocks_with_phinodes() {
-        std::unordered_map<std::shared_ptr<basicblock>, std::shared_ptr<basicblock>> splitConcnodes;
-        for (const auto &phiN : Aphi) {
-            if (phiN.first->type != Coend) {
-                std::vector<std::shared_ptr<statementNode>> stmts;
-                if (phiN.second->size() != phiN.first->statements.size()) {
-                    for (auto i = phiN.second->size(); i < phiN.first->statements.size(); ++i) {
-                        stmts.push_back(phiN.first->statements[i]);
-                    }
-
-                    std::shared_ptr<basicblock> blk = std::make_shared<basicblock>(basicblock(*phiN.first));
-                    phiN.first->statements.resize(phiN.second->size());
-                    blk->statements = std::move(stmts);
-                    for (std::shared_ptr<basicblock> &nxt : phiN.first->nexts) {
-                        blk->nexts.push_back(nxt);
-                        ccfg->edges.erase({flow, phiN.first, nxt});
-                        ccfg->edges.insert({flow, blk, nxt});
-                        for (auto &parent : nxt->parents) {
-                            if (parent.lock() == phiN.first) {
-                                parent = blk;
-                                break;
-                            }
-                        }
-                    }
-                    blk->parents = std::vector<std::weak_ptr<basicblock>>{phiN.first};
-                    phiN.first->nexts = std::vector<std::shared_ptr<basicblock>>{blk};
-
-                    blk->updateUsedVariables();
-                    phiN.first->updateUsedVariables();
-
-                    blk->concurrentBlock = phiN.first->concurrentBlock;
-                    blk->setIfParents(phiN.first->getIfParents());
-
-                    if (phiN.first->type == Cobegin) {
-                        splitConcnodes.insert({phiN.first, blk});
-                    }
-                    phiN.first->type = joinNode;
-                    ccfg->edges.insert(edge(flow, phiN.first, blk));
-                    ccfg->nodes.insert(blk);
-                }
-            }
-        }
+    void update_coend_nodes() {
         ccfg->update_defs();
         for (const auto &phiN : Aphi) {
             if (phiN.first->type == Coend) {
@@ -352,36 +313,6 @@ private:
                 }
             }
         }
-        for (const auto &pair : splitConcnodes) {
-            for (const auto &blk : ccfg->nodes) {
-                if (blk->concurrentBlock.first == pair.first.get()) {
-                    blk->concurrentBlock.first = pair.second.get();
-                }
-                if (blk->type == Coend) {
-                    if (auto coend = dynamic_cast<endConcNode*>(blk->statements.back().get())) {
-                        if (coend->getConcNode() == pair.first) {
-                            coend->setConcNode(pair.second);
-                        }
-                    }
-                }
-            }
-        }
-                /*
-                for (const auto &stmt : phiN.first->statements) {
-                    if (auto phi = dynamic_cast<phiNode *>(stmt.get())) {
-                        auto vars = *phi->get_variables();
-                        std::vector<std::string> res;
-                        int current = 0;
-                        for (const auto &var : vars) {
-                            int num = get_num_from_string(var);
-                            if (current < get_num_from_string(var)) {
-                                res.push_back(var);
-                                current = num;
-                            }
-                        }
-                        phi->set_variables(res);
-                    }
-                }*/
     }
 
     void remove_duplicates() {

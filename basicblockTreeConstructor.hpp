@@ -130,15 +130,18 @@ private:
         }
         for (const auto &n : a.nodes) {
             oldMapsTo[n.get()]->concurrentBlock = std::make_pair(oldMapsTo[n->concurrentBlock.first].get(), n->concurrentBlock.second);
-            for (const auto &parent : n->getIfParents()) {
-                oldMapsTo[n.get()]->addIfParent(oldMapsTo[parent]);
-            }
             for (const auto &next : n->nexts) {
                 oldMapsTo[n.get()]->nexts.push_back(oldMapsTo[next.get()]);
                 oldMapsTo[next.get()]->parents.push_back(oldMapsTo[n.get()]);
             }
             if (n->type == Coend) {
-                dynamic_cast<endConcNode*>(oldMapsTo[n.get()]->statements.back().get())->setConcNode(oldMapsTo[dynamic_cast<endConcNode*>(n->statements.back().get())->getConcNode().get()]);
+                auto concnode = dynamic_cast<endConcNode*>(oldMapsTo[n.get()]->statements.back().get());
+                auto prev_parent = concnode->getConcNode();
+                concnode->setConcNode(oldMapsTo[concnode->getConcNode().get()]);
+            } else if (n->type == joinNode) {
+                auto finode = dynamic_cast<fiNode*>(oldMapsTo[n.get()]->statements.back().get());
+                auto prev_parent = finode->get_parent();
+                finode->set_parent(oldMapsTo[finode->get_parent()]);
             }
         }
         for (const auto &ed : a.edges) {
@@ -268,7 +271,6 @@ public:
                     edges.erase(edge(it, nxt));
                 it->nexts = std::vector<std::shared_ptr<basicblock>>{blk};
                 it->statements.resize(1);
-                it->setIfParents(std::vector<basicblock *>{});
             }
         }
 
@@ -298,21 +300,21 @@ public:
                 //auto concNode = std::make_shared<concurrentNode>(concurrentNode(okType, threads));
                 block = std::make_shared<basicblock>(basicblock(startTree));
                 block->type = Cobegin;
-                std::vector<std::shared_ptr<basicblock>> inters;
-                inters.reserve(conNode->threads.size());
+                //std::vector<std::shared_ptr<basicblock>> inters;
+                //inters.reserve(conNode->threads.size());
 
                 auto endConc = std::make_shared<basicblock>(
                         basicblock(std::make_shared<endConcNode>(endConcNode(conNode->threads.size(), block)), nxt));
                 endConc->type = Coend;
 
-                for (auto i = 0; i < inters.capacity(); ++i) {
-                    std::shared_ptr<statementNode> stmt = std::make_shared<skipNode>(skipNode());
-                    inters.push_back(std::make_shared<basicblock>(basicblock(stmt, endConc)));
-                }
+                //for (auto i = 0; i < inters.capacity(); ++i) {
+                //    std::shared_ptr<statementNode> stmt = std::make_shared<skipNode>(skipNode());
+                //    inters.push_back(std::make_shared<basicblock>(basicblock(stmt, endConc)));
+                //}
 
-                int i = 0;
+                //int i = 0;
                 for (const auto &t : conNode->threads) {
-                    threads.push_back(get_tree(t, inters[i++]));
+                    threads.push_back(get_tree(t, endConc));
                 }
 
                 //for (auto blk : threads) concNode->threads.push_back(blk);
@@ -359,12 +361,15 @@ public:
                 if (nxt->type == Loop) {
                     nxt = std::make_shared<basicblock>(basicblock(std::vector<std::shared_ptr<statementNode>>{}, nxt));
                 }
-                auto trueBranch = get_tree(ifNode->getTrueBranch(), nxt);
-                auto falseBranch = get_tree(ifNode->getFalseBranch(), nxt);
+                std::shared_ptr<statementNode> stmt = std::make_shared<fiNode>(fiNode(nullptr));
+                auto joinnode = std::make_shared<basicblock>(basicblock(stmt, nxt));
+                joinnode->type = joinNode;
+                auto trueBranch = get_tree(ifNode->getTrueBranch(), joinnode);
+                auto falseBranch = get_tree(ifNode->getFalseBranch(), joinnode);
                 auto nxts = std::vector<std::shared_ptr<basicblock>>{trueBranch, falseBranch};
                 block = std::make_shared<basicblock>(basicblock(std::vector<std::shared_ptr<statementNode>>{startTree}, nxts));
-                nxt->addIfParent(block);
                 block->type = Condition;
+                static_cast<fiNode*>(joinnode->statements.back().get())->set_parent(block);
                 break;
             }
             default:
@@ -408,7 +413,6 @@ private:
         if (blockAndstmts.second.size() == 1) {
             std::shared_ptr<basicblock> blk = std::make_shared<basicblock>(basicblock(blockAndstmts.second.front()));
             blk->nexts = it;
-            blk->setIfParents(blockAndstmts.first->getIfParents());
             for (auto ed : it) edgesToAdd->push_back(edge(blk, ed));
             blocksToAdd->push_back(blk);
             blk->setConcurrentBlock(conBlock.first, conBlock.second, whileloops);

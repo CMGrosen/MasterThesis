@@ -183,7 +183,7 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
             } else {
                 return final && get_run(c, endConc.get(), endConc->nexts[0], end);
             }
-        } else if (stmt->getNodeType() == EndConcurrent) {
+        } else if (stmt->getNodeType() == EndConcurrent || stmt->getNodeType() == EndFi) {
             constraints.push_back(c->bool_val(true));
         } else {
     auto current = dynamic_cast<unpackedstmt *>(stmt.get())->_this;
@@ -316,14 +316,10 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
     }
 }
 
-
 std::shared_ptr<basicblock> symEngine::find_common_child(basicblock *parent) {
-    std::set<std::shared_ptr<basicblock>> found;
-    found.insert(parent->nexts[0]);
-    basicblock *current = parent->nexts[0].get();
     for (const auto &blk : ccfg->nodes) {
-        for (const auto &ifparent : blk->getIfParents()) {
-            if (ifparent && ifparent == parent) {
+        if (auto fi = dynamic_cast<fiNode*>(blk->statements.back().get())) {
+            if (fi->get_parent() == parent) {
                 return blk;
             }
         }
