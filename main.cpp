@@ -40,6 +40,16 @@ static std::map< const char *, const char * > files = {
         {"loop_unroll_test", "../code_examples/while_unroll_test.small"},
         {"arrays", "../code_examples/array.small"}
 };
+static std::map< const char *, const char * > test_files = {
+        {"event_test", "../code_examples/test_programs/event_test.small"},
+        {"duo_maker_test", "../code_examples/test_programs/coffee_maker_duo.small"},
+        {"trio_maker_test", "../code_examples/test_programs/coffee_maker_trio.small"},
+        {"inner_while_test", "../code_examples/test_programs/coffee_maker_inner_while.small"},
+        {"outer_while_test", "../code_examples/test_programs/coffee_maker_outer_while.small"},
+        {"event_based_duo_test", "../code_examples/test_programs/coffee_maker_duo_event_based.small"},
+        {"event_based_trio_test", "../code_examples/test_programs/coffee_maker_trio_event_based.small"}
+};
+
 
 SSA_CCFG do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_ptr<statementNode>, const std::unordered_map<std::string, std::shared_ptr<expressionNode>>> *treeAndSymbolTable) {
     auto ccfg = std::make_shared<CCFG>(test.get_ccfg(treeAndSymbolTable->first));
@@ -100,9 +110,7 @@ SSA_CCFG do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_pt
 
 void run(const std::string& path) {
     std::ifstream stream;
-    //stream.open("../code.small");
     stream.open(path);
-    //stream.open("shortExpr.small");
 
     ANTLRInputStream input(stream);
     SmallLexer lexer(&input);
@@ -113,10 +121,9 @@ void run(const std::string& path) {
     if (parser.getNumberOfSyntaxErrors())
         return;
     DST visitor;
-    //int a = visitor.visitFile(tree);
+
     auto treeAndSymbolTable = visitor.getTree(tree);
 
-    //auto tmp = treeAndSymbolTable.first->debug_getAllNodes();
     if(visitor.getNumErrors() || treeAndSymbolTable.first->getType() == errorType)
         return;
 
@@ -128,7 +135,7 @@ void run(const std::string& path) {
 
 int main(int argc, const char* argv[]) {
 
-    run(files["if_test"]);
+    run(test_files["event_test"]);
 
     std::cout << "done: " << std::to_string(basicblock::get_number_of_blocks()) << "\n";
 
