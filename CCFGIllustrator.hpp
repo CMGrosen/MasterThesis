@@ -9,7 +9,7 @@
 class CCFGNode {
     static constexpr float horizontal_padding = 10;
     static constexpr float vertical_padding = 20;
-    static constexpr float symbol_width = 5;
+    static constexpr float symbol_width = 6;
 
 public:
     std::string name;
@@ -75,13 +75,14 @@ public:
         std::set<CCFGNode *> drawnBlocks;
         std::set<std::shared_ptr<CCFGNode>> resizedBlocks;
         std::set<std::shared_ptr<CCFGNode>> placeddBlocks;
-        std::string result = std::string("\\usetikzlibrary{automata,positioning}\n") +
+        std::string font_size = "{\\fontsize{" + std::to_string(symbol_width*2) + "pt}{0pt}\\selectfont\n";
+        std::string result = font_size + std::string("\\usetikzlibrary{automata,positioning}\n") +
                              std::string("\\begin{tikzpicture}[shorten >=1pt, node distance=2cm, on grid, auto]\n");
         resizeAll(&resizedBlocks, &placeddBlocks);
         result += draw_node(&drawnBlocks, ccfg);
         result += draw_edges(edges);
 
-        result += "\\end{tikzpicture}\n";
+        result += "\\end{tikzpicture}}\n";
         return result;
     }
 
