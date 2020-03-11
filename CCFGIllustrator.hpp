@@ -7,49 +7,44 @@
 #include <basicblockTreeConstructor.hpp>
 
 class CCFGNode {
-    static const int horizontal_padding = 10;
-    static const int vertical_padding = 30;
-    static constexpr float symbol_height = 6.667;
-    static const int symbol_width = 6;
+    static constexpr float horizontal_padding = 10;
+    static constexpr float vertical_padding = 20;
+    static constexpr float symbol_width = 5;
 
 public:
     std::string name;
     std::string content;
     float node_width;
-    float node_height;
     float right_width;
     float left_width;
     float distance;
-    float v_distance;
     std::vector<std::shared_ptr<CCFGNode>> children;
     std::shared_ptr<CCFGNode> parent;
     std::shared_ptr<basicblock> basicblockInfo;
 
-    CCFGNode(std::shared_ptr<CCFGNode> _parent, std::shared_ptr<basicblock> blk) : basicblockInfo{blk}, parent{std::move(_parent)}, name{blk->get_name()} {
+    CCFGNode(std::shared_ptr<CCFGNode> _parent, const std::shared_ptr<basicblock>& blk) : basicblockInfo{blk}, parent{std::move(_parent)}, name{blk->get_name()} {
         content = blk->to_string();
         node_width = blk->get_stmt_length() * symbol_width;
-        node_height = blk->get_stmt_count() * symbol_height*2;
         left_width = node_width/2;
         right_width = node_width/2;
         distance = 0;
-        v_distance = 0;
     }
 
-    void add_child(const std::shared_ptr<CCFGNode> child){
+    void add_child(const std::shared_ptr<CCFGNode>& child){
         children.emplace_back(child);
     }
 
-    void construct_graph(std::shared_ptr<CCFGNode> parent, std::set<basicblock *> *addedBlocks, std::unordered_map<std::shared_ptr<basicblock>,std::shared_ptr<CCFGNode>> *nodesCreated) {
-        for (auto child : basicblockInfo->nexts) {
+    void construct_graph(const std::shared_ptr<CCFGNode>& _parent, std::set<basicblock *> *addedBlocks, std::unordered_map<std::shared_ptr<basicblock>,std::shared_ptr<CCFGNode>> *nodesCreated) {
+        for (const auto& child : basicblockInfo->nexts) {
             if(nodesCreated->find(child) == nodesCreated->end()) {
-                auto _child = std::make_shared<CCFGNode>(CCFGNode(parent, child));
+                auto _child = std::make_shared<CCFGNode>(CCFGNode(_parent, child));
                 add_child(_child);
                 nodesCreated->insert({child, _child});
             } else {
                 add_child(nodesCreated->find(child)->second);
             }
         }
-        for (auto child : children) {
+        for (const auto& child : children) {
             //If child has already been visited (while loop), then don't add again, thus stopping recursion
             if (addedBlocks->insert(child->basicblockInfo.get()).second)
                 child->construct_graph(child,addedBlocks, nodesCreated);
@@ -97,13 +92,13 @@ public:
         result = "\\node[state] (" + name + ") [text width = " + std::to_string(node_width) + "pt, rectangle";
         if(parent){
             if(distance == 0){
-                result += ", below = " + std::to_string(v_distance) + "pt of ";
+                result += ", below = " + std::to_string(vertical_padding) + "pt of ";
             } else if(distance < 0){
-                result+= ", below left = " + std::to_string(v_distance) + "pt and " + std::to_string(distance*-1) + "pt of ";
+                result+= ", below left = " + std::to_string(vertical_padding) + "pt and " + std::to_string(distance*-1) + "pt of ";
             } else {
-                result+= ", below right = " + std::to_string(v_distance) + "pt and " + std::to_string(distance) + "pt of ";
+                result+= ", below right = " + std::to_string(vertical_padding) + "pt and " + std::to_string(distance) + "pt of ";
             }
-            result +=  parent->name;
+            result +=  parent->name + ".south";
         }
         result += "] { \\texttt{" + content +"}};\n";
 
@@ -112,7 +107,7 @@ public:
         }
         return result;
     }
-    std::string draw_edges(const std::unordered_set<edge> *edges){
+    static std::string draw_edges(const std::unordered_set<edge> *edges){
         std::string result;
         for(const auto& ed : *edges){
             if(ed.type == conflict){
@@ -140,7 +135,6 @@ private:
         if(count == 1){
             if(placedBlocks->insert(children.front()).second){
                 children.front()->distance = 0;
-                children.front()->v_distance =  node_height/2 + vertical_padding + children.front()->node_height/2;
                 _left_width = children.front()->left_width;
                 _right_width = children.front()->right_width;
             } else {
@@ -153,7 +147,6 @@ private:
                 right = count/2+1;
                 dist = (children[mid]->left_width + children[mid]->right_width) / 2;
                 children[mid]->distance = 0;
-                children[mid]->v_distance = node_height/2 + vertical_padding + children[mid]->node_height/2;
                 left_dist = dist + horizontal_padding;
                 right_dist = dist + horizontal_padding;
             } else {
@@ -167,8 +160,6 @@ private:
                 right_dist += children[right]->left_width;
                 children[left]->distance = (left_dist)*-1;
                 children[right]->distance = right_dist;
-                children[left]->v_distance =  node_height/2 + vertical_padding + children[left]->node_height/2;
-                children[right]->v_distance =  node_height/2 + vertical_padding + children[right]->node_height/2;
                 left_dist += horizontal_padding + children[left]->left_width;
                 right_dist += horizontal_padding + children[right]->right_width;
                 left--;
@@ -190,14 +181,14 @@ class CCFGTree {
     std::unordered_map<std::shared_ptr<basicblock>,std::shared_ptr<CCFGNode>> creatednodes;
 
 public:
-    CCFGTree(CCFG ccfg) : _ccfg{std::move(ccfg)} {
+    explicit CCFGTree(CCFG ccfg) : _ccfg{std::move(ccfg)} {
         root = std::make_shared<CCFGNode>(CCFGNode(nullptr, _ccfg.startNode));
         std::set<basicblock *> addedBlocks = std::set<basicblock *>{_ccfg.startNode.get()};
         root->construct_graph(root, &addedBlocks, &creatednodes);
     }
 
     ~CCFGTree() {
-        for (auto it : creatednodes) {
+        for (const auto& it : creatednodes) {
             it.second->children.clear();
             it.second->basicblockInfo = nullptr;
             it.second->parent = nullptr;
