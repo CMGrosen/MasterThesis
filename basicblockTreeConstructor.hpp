@@ -130,9 +130,13 @@ private:
         }
         for (const auto &n : a.nodes) {
             oldMapsTo[n.get()]->concurrentBlock = std::make_pair(oldMapsTo[n->concurrentBlock.first].get(), n->concurrentBlock.second);
+
+            for (auto i = 0; i < n->parents.size(); ++i) {
+                oldMapsTo[n.get()]->parents.push_back(oldMapsTo[n->parents[i].lock().get()]);
+            }
+
             for (const auto &next : n->nexts) {
                 oldMapsTo[n.get()]->nexts.push_back(oldMapsTo[next.get()]);
-                oldMapsTo[next.get()]->parents.push_back(oldMapsTo[n.get()]);
             }
             if (n->type == Coend) {
                 auto concnode = dynamic_cast<endConcNode*>(oldMapsTo[n.get()]->statements.back().get());
@@ -155,11 +159,25 @@ private:
     }
 
     void assign_parents() {
-        for (const auto it : nodes) {
-            if (!it->nexts.empty()) {
-                for (const auto child : it->nexts) {
-                    child->parents.push_back(it);
+        for (const auto &blk : nodes) {
+            blk->parents.clear();
+        }
+        std::set<std::shared_ptr<basicblock>> blks;
+        assign_parents_helper(nullptr,startNode, &blks);
+    }
+
+    static void assign_parents_helper(const std::shared_ptr<basicblock>& parent, const std::shared_ptr<basicblock>& current, std::set<std::shared_ptr<basicblock>> *visited) {
+        current->parents.push_back(parent);
+        if (!current->statements.empty()) {
+            if (auto t = dynamic_cast<phiNode *>(current->statements.front().get())) {
+                if (t->getName() == "result_3") {
+                    std::cout << "break";
                 }
+            }
+        }
+        if (visited->insert(current).second) {
+            for (const auto &nxt : current->nexts) {
+                assign_parents_helper(current, nxt, visited);
             }
         }
     }

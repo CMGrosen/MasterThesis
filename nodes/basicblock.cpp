@@ -344,5 +344,4 @@ int32_t basicblock::get_stmt_count() {
     return statements.size();
 }
 
-
 std::string name = std::string{};

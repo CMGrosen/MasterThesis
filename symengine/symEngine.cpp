@@ -23,7 +23,7 @@ std::vector<std::shared_ptr<trace>> symEngine::execute() {
     z3::solver s(c);
     std::cout << t.to_string() << "\n\n" << std::endl;
     s.add(t);
-    s.add(c.int_const("-T_b_2") == c.int_const("b_5"));
+    //s.add(c.int_const("-T_b_2") == c.int_const("b_5"));
 
     //s.add(c.int_const("a_4") == c.int_val(8));
     if (s.check() == z3::sat) {
@@ -53,6 +53,7 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
         if (stmt->getNodeType() == Phi) {
             auto phi = dynamic_cast<phiNode*>(stmt.get());
             auto parents = node->parents;
+
             switch (phi->getType()) {
                 case intType: {
                     z3::expr name = c->int_const(phi->getName().c_str());
