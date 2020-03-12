@@ -3,7 +3,7 @@ b = a + 2;
 
 fork {
 if (b < a) {
-  write(3, a);
+  a = a+1;
 } else {
   write(2, a);
 };
