@@ -24,6 +24,7 @@ std::vector<std::shared_ptr<trace>> symEngine::execute() {
     std::cout << t.to_string() << "\n\n" << std::endl;
     s.add(t);
 
+
     if (s.check() == z3::sat) {
         auto model = s.get_model();
         std::cout << "sat\n";
@@ -179,8 +180,15 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
                 final = final && expressions.top();
                 expressions.pop();
             }
+
+            if (changed_event) {
+                for (const auto &constraint : constraints) {
+                    final = final && constraint;
+                }
+                event_encountered = true;
+                return final;
+            }
             constraints.push_back(final);
-            if (changed_event) event_encountered = true;
         } else if (stmt->getNodeType() == EndConcurrent || stmt->getNodeType() == EndFi) {
             constraints.push_back(c->bool_val(true));
         } else {
@@ -256,8 +264,38 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
                 break;
             }
             case Event: {
+                bool changed_event = false;
+                if (event_encountered) {
+                    changed_event = true;
+                    event_encountered = false;
+                }
                 z3::expr truebranch = get_run(c, node, node->nexts[0], end);
+
+                if (changed_event) event_encountered = true;
                 if (end != ccfg->exitNode) {
+                    auto res = ccfg->concurrent_events.find(node);
+                    if (res != ccfg->concurrent_events.end()) {
+                        if (!event_encountered) {
+                            z3::expr condition = evaluated.top();
+                            for (const auto &event : res->second) {
+                                auto conditions = get_expr_from_single_statement(c, event->statements.back());
+                                for (int i = 1; i < conditions.size(); ++i) {
+                                    constraints.push_back(conditions[i]);
+                                }
+                                condition = condition && conditions[0];
+                            }
+                            z3::expr final = z3::ite(evaluated.top(), truebranch, c->bool_val(true));
+                            for (const auto &constraint : constraints) {
+                                final = final && constraint;
+                            }
+                            z3::expr finalConstraint = z3::ite(condition, final && get_run(c, end.get(), end->nexts[0], ccfg->exitNode),
+                                           c->bool_val(false));
+                            event_encountered = true;
+                            return finalConstraint;
+                        } else {
+                            return z3::ite(evaluated.top(), truebranch, c->bool_val(true));
+                        }
+                    }
                     for (const auto &nxt : end->nexts) {
                         truebranch = truebranch && get_run(c, end.get(), nxt, ccfg->exitNode);
                     }
@@ -388,6 +426,66 @@ std::shared_ptr<basicblock> symEngine::get_end_of_concurrent_node(basicblock *no
     }
     assert(false);
     return nullptr;
+}
+
+std::vector<z3::expr> symEngine::get_expr_from_single_statement(z3::context *c, std::shared_ptr<statementNode> input) {
+    auto stmt = dynamic_cast<unpackedstmt*>(input.get());
+    std::vector<z3::expr> result;
+    std::stack<z3::expr> evaluated;
+    auto current = stmt->_this;
+
+    while(current) {
+        switch (current->getNodeType()) {
+            case Assign:
+            case AssignArrField:
+            case Concurrent:
+            case EndConcurrent:
+            case Sequential:
+            case While:
+            case If:
+            case EndFi:
+            case Write:
+            case Skip:
+            case BasicBlock:
+            case Phi:
+            case Pi:
+            case Event:
+                break;
+            case Read:
+                result.push_back(c->int_const(current->value.c_str()) >= INT16_MIN);
+                result.push_back(c->int_const(current->value.c_str()) <= INT16_MAX);
+                evaluated.push(c->int_const(current->value.c_str()));
+                break;
+            case Literal:
+                if (current->getType() == intType) evaluated.push(c->int_val(std::stoi(current->value)));
+                else evaluated.push(c->bool_val(current->value == "true"));
+                break;
+            case ArrayAccess:
+                break;
+            case ArrayLiteral:
+                break;
+            case Variable:
+                if (current->getType() == intType) evaluated.push(c->int_const(current->value.c_str()));
+                else evaluated.push(c->bool_const(current->value.c_str()));
+                break;
+            case BinaryExpression: {
+                z3::expr right = evaluated.top();
+                evaluated.pop();
+                z3::expr left = evaluated.top();
+                evaluated.pop();
+                evaluated.push(evaluate_expression(left, right, current->_operator));
+                break;
+            } case UnaryExpression: {
+                z3::expr top = evaluated.top();
+                evaluated.pop();
+                evaluated.push(evaluate_expression(top, top, current->_operator));
+                break;
+            }
+        }
+        current = current->next;
+    }
+    result.push_back(evaluated.top());
+    return result;
 }
 
 std::vector<std::shared_ptr<trace>> symEngine::find_race_condition() {

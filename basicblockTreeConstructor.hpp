@@ -17,6 +17,7 @@ struct CCFG {
     std::shared_ptr<basicblock> startNode;
     std::shared_ptr<basicblock> exitNode;
     std::map<std::string, std::shared_ptr<basicblock>> defs;
+    std::map<basicblock*, std::set<basicblock*>> concurrent_events;
     void updateConflictEdges() {add_conflict_edges();};
     CCFG(std::set<std::shared_ptr<basicblock>> _nodes, std::unordered_set<edge> _edges, std::shared_ptr<basicblock> _start, std::shared_ptr<basicblock> _exit)
         : nodes{std::move(_nodes)}, edges{std::move(_edges)}, startNode{std::move(_start)}, exitNode{std::move(_exit)} {
@@ -136,6 +137,7 @@ private:
             for (const auto &next : n->nexts) {
                 oldMapsTo[n.get()]->nexts.push_back(oldMapsTo[next.get()]);
             }
+
             if (n->type == Coend) {
                 auto concnode = dynamic_cast<endConcNode*>(oldMapsTo[n.get()]->statements.back().get());
                 auto prev_parent = concnode->getConcNode();
@@ -152,6 +154,15 @@ private:
         if (!a.defs.empty()) {
             for (const auto &def : a.defs) {
                 defs.emplace(def.first, oldMapsTo[def.second.get()]);
+            }
+        }
+        if (!a.concurrent_events.empty()) {
+            for (const auto &concEvent : a.concurrent_events) {
+                auto event = oldMapsTo[concEvent.first];
+                concurrent_events.insert({event.get(), {}});
+                for (const auto &concwith : concEvent.second) {
+                    concurrent_events.find(event.get())->second.insert(oldMapsTo[concwith].get());
+                }
             }
         }
     }
@@ -191,6 +202,12 @@ private:
                             // thus there's a conflict
                             edges.insert(edge(conflict, blk, cmp));
                             break;
+                        }
+                    }
+                    if (blk->statements.back()->getNodeType() == Event && cmp->statements.back()->getNodeType() == Event) {
+                        auto res = concurrent_events.insert({blk.get(), {cmp.get()}});
+                        if (!res.second) {
+                            res.first->second.insert(cmp.get());
                         }
                     }
                 }

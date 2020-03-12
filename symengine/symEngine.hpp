@@ -23,6 +23,7 @@ class symEngine {
     static z3::expr evaluate_expression(const z3::expr&, const z3::expr&, op);
 
     std::shared_ptr<basicblock> get_end_of_concurrent_node(basicblock *);
+    std::vector<z3::expr> get_expr_from_single_statement(z3::context *, std::shared_ptr<statementNode>);
     bool event_encountered;
 public:
     symEngine(std::shared_ptr<CCFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table);
