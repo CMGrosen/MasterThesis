@@ -17,10 +17,15 @@ struct CCFG {
     std::shared_ptr<basicblock> startNode;
     std::shared_ptr<basicblock> exitNode;
     std::map<std::string, std::shared_ptr<basicblock>> defs;
-    std::map<basicblock*, std::set<basicblock*>> concurrent_events;
-    void updateConflictEdges() {add_conflict_edges();};
-    CCFG(std::set<std::shared_ptr<basicblock>> _nodes, std::unordered_set<edge> _edges, std::shared_ptr<basicblock> _start, std::shared_ptr<basicblock> _exit)
-        : nodes{std::move(_nodes)}, edges{std::move(_edges)}, startNode{std::move(_start)}, exitNode{std::move(_exit)} {
+    std::map<basicblock *, std::set<basicblock *>> concurrent_events;
+    std::vector<std::string> reads;
+
+    void updateConflictEdges() { add_conflict_edges(); };
+
+    CCFG(std::set<std::shared_ptr<basicblock>> _nodes, std::unordered_set<edge> _edges,
+         std::shared_ptr<basicblock> _start, std::shared_ptr<basicblock> _exit)
+            : nodes{std::move(_nodes)}, edges{std::move(_edges)}, startNode{std::move(_start)},
+              exitNode{std::move(_exit)} {
         assign_parents();
         if (exitNode->parents.size() == 1 && exitNode->parents[0].lock()->statements[0]->getNodeType() != While) {
             nodes.erase(exitNode);
@@ -59,6 +64,7 @@ struct CCFG {
                     default:
                         break;
                 }
+                findReadNodes(n);
             }
         }
     }
@@ -68,8 +74,10 @@ struct CCFG {
     }
 
     CCFG(CCFG&& o) noexcept
-            : nodes{std::move(o.nodes)}, edges{std::move(o.edges)}, startNode{std::move(o.startNode)}, exitNode{std::move(o.exitNode)} {
-    }
+            : nodes{std::move(o.nodes)}, edges{std::move(o.edges)},
+            startNode{std::move(o.startNode)}, exitNode{std::move(o.exitNode)},
+            defs{std::move(o.defs)}, concurrent_events{std::move(o.concurrent_events)}, reads{std::move(o.reads)}
+    {}
 
     CCFG& operator=(const CCFG& a) {
         copy_tree(a);
@@ -81,6 +89,9 @@ struct CCFG {
         edges = std::move(other.edges);
         startNode = std::move(other.startNode);
         exitNode = std::move(other.exitNode);
+        defs = std::move(other.defs);
+        concurrent_events = std::move(other.concurrent_events);
+        reads = std::move(other.reads);
         return *this;
     }
 
@@ -147,6 +158,7 @@ private:
                 auto prev_parent = finode->get_parent();
                 finode->set_parent(oldMapsTo[finode->get_parent()]);
             }
+            findReadNodes(n);
         }
         for (const auto &ed : a.edges) {
             edges.insert(edge(ed.type, oldMapsTo[ed.neighbours[0].get()], oldMapsTo[ed.neighbours[1].get()]));
@@ -263,6 +275,105 @@ private:
         }
         return false; //if we get here, no conditions were met, thus not concurrent
     }
+
+    void findReadNodes (const std::shared_ptr<basicblock> &blk) {
+        for (const auto &stmt : blk->statements) {
+            if (auto unp = dynamic_cast<unpackedstmt*>(stmt.get())) {
+                auto current = unp->_this;
+                while (current) {
+                    if (current->getNodeType() == Read) {
+                        reads.push_back(current->value);
+                    }
+                    current = current->next;
+                }
+            }
+            else {
+                switch (stmt->getNodeType()) {
+                    case Assign: {
+                        findReadNodes(dynamic_cast<assignNode *>(stmt.get())->getExpr());
+                        break;
+                    }
+                    case AssignArrField: {
+                        auto node = dynamic_cast<arrayFieldAssignNode *>(stmt.get());
+                        findReadNodes(node->getField());
+                        findReadNodes(node->getExpr());
+                        break;
+                    }
+                    case If: {
+                        findReadNodes(dynamic_cast<ifElseNode *>(stmt.get())->getCondition());
+                        break;
+                    }
+                    case Write: {
+                        findReadNodes(dynamic_cast<writeNode *>(stmt.get())->getExpr());
+                        break;
+                    }
+                    case Event: {
+                        findReadNodes(dynamic_cast<eventNode *>(stmt.get())->getCondition());
+                        break;
+                    }
+                    case Concurrent:
+                    case EndConcurrent:
+                    case Sequential:
+                    case While:
+                    case EndFi:
+                    case Read:
+                    case Literal:
+                    case Variable:
+                    case BinaryExpression:
+                    case UnaryExpression:
+                    case Skip:
+                    case BasicBlock:
+                    case Phi:
+                    case Pi:
+                    case ArrayAccess:
+                    case ArrayLiteral:
+                        break;
+                }
+            }
+        }
+    }
+    void findReadNodes (expressionNode *expr) {
+        switch (expr->getNodeType()) {
+            case ArrayAccess: {
+                findReadNodes(dynamic_cast<arrayAccessNode*>(expr)->getAccessor());
+                break;
+            } case ArrayLiteral: {
+                for (const auto &ele : dynamic_cast<arrayLiteralNode*>(expr)->getArrLit()) {
+                    findReadNodes(ele.get());
+                }
+                break;
+            } case BinaryExpression: {
+                auto node = dynamic_cast<binaryExpressionNode*>(expr);
+                findReadNodes(node->getLeft());
+                findReadNodes(node->getRight());
+                break;
+            } case UnaryExpression: {
+                findReadNodes(dynamic_cast<unaryExpressionNode*>(expr)->getExpr());
+                break;
+
+            } case Read: {
+                reads.push_back(dynamic_cast<readNode*>(expr)->getName());
+                break;
+            }
+            case Variable:
+            case Literal:
+            case Assign:
+            case AssignArrField:
+            case Concurrent:
+            case EndConcurrent:
+            case Sequential:
+            case While:
+            case If:
+            case EndFi:
+            case Write:
+            case Event:
+            case BasicBlock:
+            case Skip:
+            case Phi:
+            case Pi:
+                break;
+        }
+    }
 };
 
 class basicBlockTreeConstructor {
@@ -299,7 +410,7 @@ public:
                 }
                 stmts.pop_front();
                 auto blk = split_up_concurrent_basicblocks(&blocksToAdd, &edgesToAdd, it->nexts, {it, stmts}, it->concurrentBlock, &tmpSet);
-                edgesToAdd.push_back(edge(it, blk));
+                edgesToAdd.emplace_back(edge(it, blk));
                 for (auto nxt : it->nexts)
                     edges.erase(edge(it, nxt));
                 it->nexts = std::vector<std::shared_ptr<basicblock>>{blk};

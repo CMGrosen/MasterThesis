@@ -5,27 +5,26 @@
 #ifndef ANTLR_CPP_TUTORIAL_READNODE_HPP
 #define ANTLR_CPP_TUTORIAL_READNODE_HPP
 
+#include "expressionNode.hpp"
+
 class readNode : public expressionNode {
 public:
-    readNode(int16_t pin) : _pin{pin} {setNodeType(Read); setType(intType);}
+    readNode(int16_t);
+    int16_t getPin() const;
 
-    int16_t getPin() const {return _pin;};
+    std::string to_string() override;
 
-    std::string to_string() override {
-        return "read(" + std::to_string(_pin) + ")";
-    }
-    std::shared_ptr<expressionNode> copy_expression() const override {
-        std::shared_ptr<expressionNode> _this = std::make_shared<readNode>(readNode(_pin));
-        _this->setSSA(onSSA);
-        return _this;
-    }
+    std::shared_ptr<expressionNode> copy_expression() const override;
 
-    bool operator==(const expressionNode *expr) const override {
-        return (nodetype == expr->getNodeType() && _pin == dynamic_cast<const readNode *>(expr)->getPin());
-    }
+    std::string getName() const;
+
+    bool operator==(const expressionNode *expr) const override;
 
 private:
     int16_t _pin;
+    std::string read_name;
+    uint32_t num;
+    static int32_t count;
 };
 
 #endif //ANTLR_CPP_TUTORIAL_READNODE_HPP
