@@ -158,7 +158,7 @@ private:
                 auto prev_parent = finode->get_parent();
                 finode->set_parent(oldMapsTo[finode->get_parent()]);
             }
-            findReadNodes(n);
+            findReadNodes(oldMapsTo[n.get()]);
         }
         for (const auto &ed : a.edges) {
             edges.insert(edge(ed.type, oldMapsTo[ed.neighbours[0].get()], oldMapsTo[ed.neighbours[1].get()]));

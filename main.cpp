@@ -100,7 +100,7 @@ SSA_CCFG do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_pt
     auto fourth = CCFGTree(*newccfg);
     std::cout << "\nmade fourth: \n" << fourth.DrawCCFG() << "\n";
 
-    symEngine engine = symEngine(newccfg, treeAndSymbolTable->second);
+    symEngine engine = symEngine(cssaccfg, treeAndSymbolTable->second);
     //symEngine engine = symEngine(cssaccfg, treeAndSymbolTable->second);
 
     auto res = engine.execute();
