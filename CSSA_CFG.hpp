@@ -19,6 +19,45 @@ struct CSSA_CFG {
         ccfg->updateConflictEdges();
         //build_fud_chains();
         place_phi_functions();
+        std::cout << "here";
+
+        get_thread_and_depth_level(ccfg->startNode, 0);
+        std::sort(ccfg->pis_and_depth.begin(), ccfg->pis_and_depth.end(),
+                [&](const std::pair<std::shared_ptr<basicblock>, int32_t>& a, const std::pair<std::shared_ptr<basicblock>, int32_t>& b) {
+            return a.second < b.second;
+        });
+
+        /*
+        std::vector<std::string> names_to_remove;
+        for (const auto &blk : ccfg->nodes) {
+            if (blk->type != Coend)
+            for (const auto &stmt : blk->statements) {
+                if (auto phi = dynamic_cast<phiNode*>(stmt.get())) {
+                    for (const auto &name : *phi->get_variables()) {
+                        names_to_remove.push_back(name);
+                    }
+                }
+            }
+        }
+
+        for (auto n : pinodes) {
+            for (auto &str : *n->get_variables()) {
+                for (const auto &name : names_to_remove) {
+                    if (str == name) {
+                        str = "";
+                        break;
+                    }
+                }
+            }
+        }
+
+        for (auto n : pinodes) {
+            std::vector<std::string> newnames;
+            for (const auto &str : *n->get_variables()) {
+                if (str != "") newnames.push_back(str);
+            }
+            n->setVariables(newnames);
+        }*/
     }
 
 private:
@@ -28,6 +67,8 @@ private:
     std::map<std::string, std::shared_ptr<statementNode>> currdefs;
     std::map<std::shared_ptr<statementNode>, std::shared_ptr<statementNode>> saveChain;
     std::map<std::shared_ptr<statementNode>, std::shared_ptr<statementNode>> chain;
+    std::vector<std::shared_ptr<piNode>> pinodes;
+    std::vector<std::shared_ptr<basicblock>> pinodeblocks;
 
     void update_mapstoMap(std::shared_ptr<basicblock> oldNode, std::shared_ptr<basicblock> newNode) {
         if (oldMapsTo.insert({oldNode, newNode}).second) {
@@ -181,9 +222,11 @@ private:
                                 std::vector<std::shared_ptr<statementNode>> vec;
                                 vec.reserve(1+b->statements.size());
                                 Type t = symboltable->find(v.first)->second->getType();
-                                std::shared_ptr<statementNode> pi = std::make_shared<piNode>(piNode(t, v.first, counter,
-                                        std::vector<std::string>{*(b->uses.find(v.first)->second.begin())}));
-                                vec.push_back(pi);
+                                pinodes.emplace_back(std::make_shared<piNode>(piNode(t, v.first, counter,
+                                        std::vector<std::string>{*(b->uses.find(v.first)->second.begin())})));
+                                //std::shared_ptr<statementNode> pi = pinodes.back();
+                                vec.push_back(pinodes.back());
+                                pinodeblocks.push_back(b);
                                 for (const auto &stmt: b->statements) {
                                     rename(stmt, v.first, *(b->uses.find(v.first)->second.begin()), counter);
                                     vec.push_back(stmt);
@@ -192,6 +235,7 @@ private:
                                 b->statements = vec;
                             }
                             // if (n not in prec(s) incomplete, need prec(s) function
+                            //if (ccfg->prec.find(a)->second.find(b) != ccfg->prec.find(a)->second.end())
                             if (!b->statements.empty()) {
                                 for (const auto &stmt : b->statements) {
                                     if (auto pi = dynamic_cast<piNode *>(stmt.get())) {
@@ -278,6 +322,18 @@ private:
                 break;
         }
     }
+
+    void get_thread_and_depth_level(std::shared_ptr<basicblock> blk, int depth) {
+        blk->depth = depth;
+        if (blk->statements.front()->getNodeType() == Pi) {
+            ccfg->pis_and_depth.emplace_back(blk, depth);
+        }
+        for (const auto &nxt : blk->nexts) {
+            get_thread_and_depth_level(nxt, depth+1);
+        }
+    }
+
+
 };
 
 #endif //ANTLR_CPP_TUTORIAL_CSSA_CFG_HPP

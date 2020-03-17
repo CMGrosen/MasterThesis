@@ -42,7 +42,7 @@ public:
     }
 
     std::vector<std::string> *get_variables() {return &_possible_variables;}
-
+    void setVariables(std::vector<std::string> vars) {_possible_variables = std::move(vars);}
     bool contains(const std::string &var) {
         for (const auto &v : _possible_variables) {
             if (v == var) return true;

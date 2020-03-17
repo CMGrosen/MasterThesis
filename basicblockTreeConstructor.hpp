@@ -8,6 +8,7 @@
 #include <nodes/basicblock.hpp>
 #include <unordered_set>
 #include <list>
+#include <queue>
 #include <unordered_map>
 #include <iostream>
 
@@ -19,6 +20,8 @@ struct CCFG {
     std::map<std::string, std::shared_ptr<basicblock>> defs;
     std::map<basicblock *, std::set<basicblock *>> concurrent_events;
     std::vector<std::string> reads;
+    std::unordered_map<std::shared_ptr<basicblock>, std::unordered_set<std::shared_ptr<basicblock>>> prec;
+    std::vector<std::pair<std::shared_ptr<basicblock>, int32_t>> pis_and_depth;
 
     void updateConflictEdges() { add_conflict_edges(); };
 
@@ -67,6 +70,7 @@ struct CCFG {
                 findReadNodes(n);
             }
         }
+        build_partial_order_execution();
     }
 
     CCFG(const CCFG& a) {
@@ -76,7 +80,7 @@ struct CCFG {
     CCFG(CCFG&& o) noexcept
             : nodes{std::move(o.nodes)}, edges{std::move(o.edges)},
             startNode{std::move(o.startNode)}, exitNode{std::move(o.exitNode)},
-            defs{std::move(o.defs)}, concurrent_events{std::move(o.concurrent_events)}, reads{std::move(o.reads)}
+            defs{std::move(o.defs)}, concurrent_events{std::move(o.concurrent_events)}, reads{std::move(o.reads)}, prec{std::move(o.prec)}, pis_and_depth(std::move(o.pis_and_depth))
     {}
 
     CCFG& operator=(const CCFG& a) {
@@ -92,6 +96,8 @@ struct CCFG {
         defs = std::move(other.defs);
         concurrent_events = std::move(other.concurrent_events);
         reads = std::move(other.reads);
+        prec = std::move(other.prec);
+        pis_and_depth = std::move(other.pis_and_depth);
         return *this;
     }
 
@@ -176,6 +182,17 @@ private:
                     concurrent_events.find(event.get())->second.insert(oldMapsTo[concwith].get());
                 }
             }
+        }
+        for (const auto &p : a.prec) {
+            std::pair<std::shared_ptr<basicblock>, std::unordered_set<std::shared_ptr<basicblock>>> nPrec;
+            nPrec.first = oldMapsTo[p.first.get()];
+            for (const auto &o : p.second) {
+                nPrec.second.insert(oldMapsTo[o.get()]);
+            }
+            prec.insert(nPrec);
+        }
+        for (const auto &pair : a.pis_and_depth) {
+            pis_and_depth.emplace_back(oldMapsTo[pair.first.get()], pair.second);
         }
     }
 
@@ -374,6 +391,59 @@ private:
                 break;
         }
     }
+    void build_partial_order_execution() {
+        std::unordered_map<std::shared_ptr<basicblock>, std::unordered_set<edge>> E;
+        for (const auto &n : nodes) prec.insert({n, {}});
+
+        for (const auto &ed : edges) {
+            auto res = E.insert({ed.neighbours[0], {ed}});
+            if (!res.second) res.first->second.insert(ed);
+            res = E.insert({ed.neighbours[1], {ed}});
+            if (!res.second) res.first->second.insert(ed);
+        }
+
+        std::queue<std::shared_ptr<basicblock>> Q;
+        for (const auto &nxt : startNode->nexts) Q.push(nxt);
+
+        while (!Q.empty()) {
+            std::shared_ptr<basicblock> n = Q.front();
+            Q.pop();
+            auto prec_old = prec.find(n)->second;
+            std::unordered_set<std::shared_ptr<basicblock>> prec_f;
+
+            if (n->type == Coend) { // union(m,n) in E prec(m) union n
+                /*
+                for (const auto &ed : E.find(n)->second) {
+                    if (ed.neighbours[0] != n) {
+                        for (const auto &m : prec.find(ed.neighbours[0])->second) {
+                            prec_f.insert(m);
+                        }
+                    }
+                }*/
+                for (const auto &m : nodes) {
+                    if (m != n) prec_f.insert(m);
+                }
+                prec_f.insert(n);
+            } else { //disjunction(m,n) in E prec(m) union n
+                for (const auto &ed : E.find(n)->second) {
+                    //if (ed.type == flow) {
+                        auto set = ed.neighbours[0] == n ? prec.find(ed.neighbours[1])->second : prec.find(
+                                ed.neighbours[0])->second;
+                        for (const auto &res : set) prec_f.insert(res);
+                    //}
+                }
+                prec_f.insert(n);
+            }
+            prec.find(n)->second = prec_f;
+
+            if (prec_old != prec_f) {
+                for (const auto &nxt : n->nexts) {
+                    Q.push(nxt);
+                }
+            }
+        }
+    }
+
 };
 
 class basicBlockTreeConstructor {
@@ -470,13 +540,12 @@ public:
                 auto rest = get_tree(seqNode->getNext(), nxt);
                 block = get_tree(seqNode->getBody(), rest);
                 NodeType nType = seqNode->getBody()->getNodeType();
-                if (nType == Assign || nType == AssignArrField || nType == Write || nType == Event || nType == Skip) {
+                if (nType == Assign || nType == AssignArrField || nType == Write || nType == Skip) {
                     std::vector<std::shared_ptr<statementNode>> remainingStmts;
                     int stmtsRemoved = 0;
                     for (const auto stmt : rest->statements) {
                         nType = stmt->getNodeType();
-                        if (nType == Assign || nType == AssignArrField || nType == Write || nType == Event ||
-                            nType == Skip) {
+                        if (nType == Assign || nType == AssignArrField || nType == Write || nType == Skip) {
                             block->statements.push_back(stmt);
                             stmtsRemoved++;
                         } else {
