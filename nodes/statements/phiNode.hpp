@@ -18,6 +18,14 @@ public:
         onSSA = true;
     }
 
+    phiNode(Type t, std::string name, std::string origname, std::vector<std::string> variables) :
+            _name{std::move(name)}, _variables{std::move(variables)} {
+        setNodeType(Phi);
+        setType(t);
+        origName = origname;
+        onSSA = true;
+    }
+
     std::string to_string() override {
         std::string res = nameToTikzName(_name, true) + " = $\\phi($";
         if (!_variables.empty()) {
@@ -30,7 +38,7 @@ public:
     }
 
     std::shared_ptr<statementNode> copy_statement() const override {
-        std::shared_ptr<statementNode> _this = std::make_shared<phiNode>(phiNode(type, _name, _variables));
+        std::shared_ptr<statementNode> _this = std::make_shared<phiNode>(phiNode(type, _name, origName, _variables));
         _this->setSSA(onSSA);
         return _this;
     }
