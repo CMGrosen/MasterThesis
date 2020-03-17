@@ -649,6 +649,11 @@ z3::expr symEngine::encoded_pis(z3::context *c, const std::vector<std::pair<std:
         auto res = newconsts.insert({pin->getVar(), {possiblevars[0]}});
         if (!res.second) res.first->second.push_back(possiblevars[0]);
 
+        if (auto assn = dynamic_cast<assignNode*>(remaining.front().first->statements.back().get())) {
+            res = newconsts.insert({assn->getOriginalName(), {assn->getName()}});
+            if (!res.second) res.first->second.push_back(assn->getName());
+        }
+
         z3::expr final = (pin->getType() == intType
                          ? c->int_const(pin->getName().c_str()) == c->int_const(possiblevars[0].c_str())
                          : c->bool_const(pin->getName().c_str()) == c->bool_const(possiblevars[0].c_str()));
@@ -658,6 +663,12 @@ z3::expr symEngine::encoded_pis(z3::context *c, const std::vector<std::pair<std:
             newconsts = constraints;
             res = newconsts.insert({pin->getVar(), {possiblevars[i]}});
             if (!res.second) res.first->second.push_back(possiblevars[i]);
+
+            if (auto assn = dynamic_cast<assignNode*>(remaining.front().first->statements.back().get())) {
+                res = newconsts.insert({assn->getOriginalName(), {assn->getName()}});
+                if (!res.second) res.first->second.push_back(assn->getName());
+            }
+
             inter = (pin->getType() == intType
                               ? c->int_const(pin->getName().c_str()) == c->int_const(possiblevars[i].c_str())
                               : c->bool_const(pin->getName().c_str()) == c->bool_const(possiblevars[i].c_str()));
