@@ -31,6 +31,7 @@ basicblock::basicblock(const basicblock &o) {
     uses = o.uses;
     defines = o.defines;
     type = o.type;
+    depth = o.depth;
     /*
     for (auto nxt : o.nexts) {
         nexts.push_back(std::make_shared<basicblock>(basicblock(*nxt)));
@@ -46,12 +47,13 @@ basicblock& basicblock::operator=(const basicblock &o) {
     uses = o.uses;
     defines = o.defines;
     type = o.type;
+    depth = o.depth;
 
     counterblocks++;
     return *this;
 }
 
-basicblock::basicblock(basicblock &&o) noexcept : statements{std::move(o.statements)}, nexts{std::move(o.nexts)}, parents{std::move(o.parents)}, type{o.type}, uses{std::move(o.uses)}, defines{std::move(o.defines)} {
+basicblock::basicblock(basicblock &&o) noexcept : statements{std::move(o.statements)}, nexts{std::move(o.nexts)}, parents{std::move(o.parents)}, type{o.type}, uses{std::move(o.uses)}, defines{std::move(o.defines)}, depth{o.depth} {
     counterblocks++;
 }
 
@@ -61,6 +63,7 @@ basicblock& basicblock::operator=(basicblock &&o) noexcept  {
     parents = std::move(o.parents);
     defines = std::move(o.defines);
     uses = std::move(o.uses);
+    depth = o.depth;
     type = o.type;
     counterblocks++;
     return *this;

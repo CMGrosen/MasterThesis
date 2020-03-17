@@ -55,10 +55,10 @@ struct basicblock {
     std::string to_string();
     int32_t get_stmt_length();
     int32_t get_stmt_count();
+    int32_t depth;
 
     std::map<std::string, std::set<std::string>> uses;
     std::map<std::string, std::set<std::string>> defines;
-
 
     std::pair<basicblock*, int> concurrentBlock;
     std::string get_name();
