@@ -11,22 +11,29 @@ symEngine::symEngine(std::shared_ptr<SSA_CCFG> ccfg, std::unordered_map<std::str
 symEngine::symEngine(std::shared_ptr<CSSA_CFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table) : ccfg{std::move(ccfg->ccfg)}, symboltable(std::move(table)), event_encountered{false} {}
 std::vector<std::shared_ptr<trace>> symEngine::execute() {
     z3::context c;
+    z3::solver s(c);
+
+    for (const auto &read : ccfg->reads) {
+        z3::expr name = c.int_const(read.c_str());
+        z3::expr r = name >= INT16_MIN && name <= INT16_MAX;
+        std::cout << r.to_string() << "\n";
+        s.add(r);
+    }
+
+    z3::expr encoded = encoded_pis(&c, ccfg->pis_and_depth, {});
+
+    std::cout << "\n\n\n\n\nencoded:\n" << encoded.to_string() << std::endl;
 
     auto t = get_run(&c, nullptr, ccfg->startNode, ccfg->exitNode);
 
-    std::vector<z3::expr> vec;
-    for (const auto &read : ccfg->reads) {
-        z3::expr name = c.int_const(read.c_str());
-        vec.push_back(name >= INT16_MIN && name <= INT16_MAX);
-    }
+    //std::cout << "\n" << t.to_string() << "\n\n" << std::endl;
+    s.add(encoded && t);
 
-    z3::solver s(c);
+    z3::goal g(c);
+    g.add(get_run(&c, ccfg->exitNode->parents[0].lock().get(), ccfg->exitNode, ccfg->exitNode));
 
-    for (const auto &expr : vec) s.add(expr);
-
-    std::cout << t.to_string() << "\n\n" << std::endl;
-    s.add(t);
-
+    auto tt = z3::tactic(c, "simplify")(g)[0];
+    for (auto i = 0; i < tt.size(); ++i) s.add(tt[i]);
 
     if (s.check() == z3::sat) {
         auto model = s.get_model();
@@ -190,7 +197,7 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
                                 for (const auto &event : res->second) {
                                     finalCond = finalCond && evaluate_expression(c, dynamic_cast<eventNode*>(event->statements.back().get())->getCondition());
                                 }
-                                z3::expr final = z3::ite(condition, truebranch, c->bool_val(true));
+                                z3::expr final = z3::ite(condition, truebranch, c->bool_val(false));
                                 for (const auto &constraint : constraints) {
                                     final = final && constraint;
                                 }
@@ -202,7 +209,7 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
                                 event_encountered = true;
                                 return finalConstraint;
                             } else {
-                                return z3::ite(condition, truebranch, c->bool_val(true));
+                                return z3::ite(condition, truebranch, c->bool_val(false));
                             }
                         }
                         for (const auto &nxt : end->nexts) {
@@ -210,7 +217,7 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
                         }
                     }
                     event_encountered = true;
-                    z3::expr final = z3::ite(condition, truebranch, c->bool_val(true));
+                    z3::expr final = z3::ite(condition, truebranch, c->bool_val(false));
                     for (const auto &constraint : constraints) {
                         final = final && constraint;
                     }
@@ -271,6 +278,7 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
                 }
                 case Pi: {
                     auto pi = dynamic_cast<piNode *>(stmt.get());
+                    break;
                     auto vars = pi->get_variables();
                     std::stack<z3::expr> expressions;
                     switch (pi->getType()) {
@@ -435,4 +443,229 @@ std::shared_ptr<basicblock> symEngine::get_end_of_concurrent_node(basicblock *no
     }
     assert(false);
     return nullptr;
+}
+
+bool contains(const std::vector<std::string> &vars, const std::string &var) {
+    for (const auto &v : vars) if (v == var) return true;
+    return false;
+}
+
+bool variation (const std::string &variable, const std::string &other) {
+    for (int i = 0; i < variable.length(); ++i) {
+        if (variable[i] != other[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+std::vector<std::string> symEngine::includable_vars(std::shared_ptr<statementNode> stmt, std::unordered_map<std::string, std::vector<std::string>> constraints) {
+    std::vector<std::string> possiblevars;
+    if (auto pin = dynamic_cast<piNode*>(stmt.get())) {
+        std::string name = pin->getVar();
+        for (const auto &var : *pin->get_variables()) {
+            if (constraints.find(name) == constraints.end()) {
+                possiblevars.push_back(var);
+            } else {
+                auto blk = ccfg->defs.find(var)->second;
+                auto vec = constraints.find(name)->second;
+                if (vec.back() != var
+                    && contains(vec, var)) {
+                    //This variable was previously defined and has since been replaced. Cannot use it
+                } else {
+                    bool toinclude = true;
+                    for (const auto &o : vec) {
+                        std::shared_ptr<basicblock> otherdefsite = ccfg->defs.find(o)->second;
+                        if (blk->concurrentBlock == otherdefsite->concurrentBlock && blk->depth < otherdefsite->depth) {
+                            //Variable is defined in a thread that defines a new version of said variable.
+                            //Since the new variable has already been used, "var" cannot possibly be used again
+                            toinclude = false;
+                            break;
+                        }
+                    }
+                    if (toinclude) possiblevars.push_back(var);
+                }
+            }
+        }
+        std::vector<std::string> varsToRemove;
+        for (const auto &v : possiblevars) {
+            auto blk = ccfg->defs.find(v)->second;
+            for (const auto &stmt : blk->statements) {
+                if (stmt->getNodeType() == Phi) {
+                    auto phin = dynamic_cast<phiNode*>(stmt.get());
+                    if (phin->getName() == v) {
+                        bool possiblevarsContainsOptions = false;
+                        for (const auto &vv : possiblevars) {
+                            if (contains(*phin->get_variables(), vv)) {
+                                possiblevarsContainsOptions = true;
+                                break;
+                            }
+                        }
+                        if (!possiblevarsContainsOptions) varsToRemove.push_back(v);
+                    }
+                }
+            }
+        }
+        std::vector<std::string> final;
+
+        for (const auto &v : possiblevars) {
+            bool remove = false;
+            for (const auto &vv : varsToRemove) {
+                if (v == vv) {
+                    remove = true;
+                    break;
+                }
+            }
+            if (!remove) final.push_back(v);
+        }
+        return final;
+    } else if (auto phi = dynamic_cast<phiNode*>(stmt.get())) {
+        std::string name = phi->getOriginalName();
+        std::vector<std::string> vars = *phi->get_variables();
+        if (constraints.find(name) == constraints.end()) {
+            return *phi->get_variables();
+        } else {
+            std::vector<std::string> consts = constraints.find(name)->second;
+            if (contains(vars, consts.back())) {
+                return {consts.back()};
+            } else {
+                std::unordered_set<std::string> impossible_vars;
+                for (auto it = consts.rbegin(); it != consts.rend(); ++it) {
+                    if (contains(vars, *it)) {
+                        impossible_vars.insert(*it);
+                    }
+                }
+                std::vector<std::string> final;
+                for (const auto &v : vars) {
+                    if (impossible_vars.find(v) == impossible_vars.end()) {
+                        final.push_back(v);
+                    }
+                }
+                return final;
+            }
+            return {};
+        }
+    } else {
+        return {};
+    }
+}
+
+z3::expr symEngine::encoded_pis(z3::context *c, const std::vector<std::pair<std::shared_ptr<basicblock>, int32_t>> &remaining, const std::unordered_map<std::string, std::vector<std::string>> &constraints) {
+    int32_t current_depth = remaining.front().second;
+    auto pin = dynamic_cast<piNode*>(remaining.front().first->statements.front().get());
+
+    if (pin->getName() == "-T_a_2") {
+        std::cout << "test";
+    }
+    if (pin->getName() == "-T_a_3") {
+        std::cout << "test";
+    }
+    if (pin->getName() == "-T_a_1") {
+        std::cout << "test";
+    }
+    if (pin->getName() == "-T_a_0") {
+        std::cout << "test";
+    }
+
+    if (remaining.size() == 1) {
+        std::vector<std::string> possiblevars = includable_vars(remaining.front().first->statements.front(), constraints);
+        std::shared_ptr<basicblock> endconc;
+        for (const auto &blk : ccfg->nodes) {
+            if (blk->type == Coend && dynamic_cast<endConcNode*>(blk->statements.back().get())->getConcNode().get() == remaining.front().first->concurrentBlock.first) {
+                endconc = blk;
+                break;
+            }
+        }
+        if (possiblevars.empty()) return c->bool_val(false);
+        else {
+            std::vector<std::string> posvarsforendnode;
+            std::stack<z3::expr> end;
+            std::vector<z3::expr> finals;
+            for (const auto &stmt : endconc->statements) {
+                if (auto phi = dynamic_cast<phiNode*>(stmt.get())) {
+                    for (const auto &str : includable_vars(stmt, constraints)) {
+                        posvarsforendnode.push_back(str);
+                    }
+                    for (const auto &str : posvarsforendnode) {
+                        end.push(phi->getType() == intType
+                                 ? c->int_const(phi->getName().c_str()) == c->int_const(str.c_str())
+                                 : c->bool_const(phi->getName().c_str()) == c->bool_const(str.c_str()));
+                    }
+
+                    if (!end.empty()) {
+                        z3::expr final = end.top();
+                        end.pop();
+                        while (!end.empty()) {
+                            final = final || end.top();
+                            end.pop();
+                        }
+                        finals.push_back(final);
+                    }
+                    posvarsforendnode.clear();
+                }
+            }
+
+            for (const auto &f : finals) {
+                end.push(f);
+            }
+            z3::expr inter = end.top();
+            end.pop();
+            while(!end.empty()) {
+                inter = inter && end.top();
+                end.pop();
+            }
+
+            z3::expr final = pin->getType() == intType
+                ? c->int_const(pin->getName().c_str()) == c->int_const(possiblevars[0].c_str())
+                : c->bool_const(pin->getName().c_str()) == c->bool_const(possiblevars[0].c_str());
+
+
+
+            for (int i = 1; i < possiblevars.size(); ++i) {
+                final = final
+                        || pin->getType() == intType
+                        ? c->int_const(pin->getName().c_str()) == c->int_const(possiblevars[i].c_str())
+                        : c->bool_const(pin->getName().c_str()) == c->bool_const(possiblevars[i].c_str());
+            }
+
+            final = final && inter;
+            return final;
+        }
+    } else {//same depth. order probably matters
+        int i = 0;
+        /*for (i = 0; i < remaining.size()-1; ++i) {
+            if (remaining[i].second != remaining[i+1].second) {
+                break;
+            }
+        }*/
+//        if (i > 0){
+
+//        } else {
+        std::vector<std::string> possiblevars = includable_vars(remaining.front().first->statements.front(), constraints);
+        std::vector<std::pair<std::shared_ptr<basicblock>, int32_t>> newremains;
+        for (i = 1; i < remaining.size(); ++i) newremains.push_back(remaining[i]);
+        if (possiblevars.empty()) return c->bool_val(false);
+        std::unordered_map<std::string, std::vector<std::string>> newconsts = constraints;
+        auto res = newconsts.insert({pin->getVar(), {possiblevars[0]}});
+        if (!res.second) res.first->second.push_back(possiblevars[0]);
+
+        z3::expr final = (pin->getType() == intType
+                         ? c->int_const(pin->getName().c_str()) == c->int_const(possiblevars[0].c_str())
+                         : c->bool_const(pin->getName().c_str()) == c->bool_const(possiblevars[0].c_str()));
+        z3::expr inter = encoded_pis(c, newremains, newconsts);
+        final = final && inter;
+        for (int i = 1; i < possiblevars.size(); ++i) {
+            newconsts = constraints;
+            res = newconsts.insert({pin->getVar(), {possiblevars[i]}});
+            if (!res.second) res.first->second.push_back(possiblevars[i]);
+            inter = (pin->getType() == intType
+                              ? c->int_const(pin->getName().c_str()) == c->int_const(possiblevars[i].c_str())
+                              : c->bool_const(pin->getName().c_str()) == c->bool_const(possiblevars[i].c_str()));
+            inter = inter && encoded_pis(c, newremains, newconsts);
+            final = final || (inter);
+            //std::cout << "final: " << final.to_string() << std::endl;
+        }
+        return final;
+
+    }
 }

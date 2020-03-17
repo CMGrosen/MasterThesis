@@ -22,6 +22,8 @@ class symEngine {
     static z3::expr evaluate_expression(z3::context*, const expressionNode*);
 
     std::shared_ptr<basicblock> get_end_of_concurrent_node(basicblock *);
+    z3::expr encoded_pis(z3::context *, const std::vector<std::pair<std::shared_ptr<basicblock>, int32_t>>&, const std::unordered_map<std::string, std::vector<std::string>>&);
+    std::vector<std::string> includable_vars(std::shared_ptr<statementNode>, std::unordered_map<std::string, std::vector<std::string>>);
     bool event_encountered;
 public:
     symEngine(std::shared_ptr<CCFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table);
