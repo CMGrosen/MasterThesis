@@ -67,7 +67,6 @@ struct CCFG {
                     default:
                         break;
                 }
-                findReadNodes(n);
             }
         }
         build_partial_order_execution();
@@ -164,7 +163,6 @@ private:
                 auto prev_parent = finode->get_parent();
                 finode->set_parent(oldMapsTo[finode->get_parent()]);
             }
-            findReadNodes(oldMapsTo[n.get()]);
         }
         for (const auto &ed : a.edges) {
             edges.insert(edge(ed.type, oldMapsTo[ed.neighbours[0].get()], oldMapsTo[ed.neighbours[1].get()]));
@@ -293,104 +291,6 @@ private:
         return false; //if we get here, no conditions were met, thus not concurrent
     }
 
-    void findReadNodes (const std::shared_ptr<basicblock> &blk) {
-        for (const auto &stmt : blk->statements) {
-            if (auto unp = dynamic_cast<unpackedstmt*>(stmt.get())) {
-                auto current = unp->_this;
-                while (current) {
-                    if (current->getNodeType() == Read) {
-                        reads.push_back(current->value);
-                    }
-                    current = current->next;
-                }
-            }
-            else {
-                switch (stmt->getNodeType()) {
-                    case Assign: {
-                        findReadNodes(dynamic_cast<assignNode *>(stmt.get())->getExpr());
-                        break;
-                    }
-                    case AssignArrField: {
-                        auto node = dynamic_cast<arrayFieldAssignNode *>(stmt.get());
-                        findReadNodes(node->getField());
-                        findReadNodes(node->getExpr());
-                        break;
-                    }
-                    case If: {
-                        findReadNodes(dynamic_cast<ifElseNode *>(stmt.get())->getCondition());
-                        break;
-                    }
-                    case Write: {
-                        findReadNodes(dynamic_cast<writeNode *>(stmt.get())->getExpr());
-                        break;
-                    }
-                    case Event: {
-                        findReadNodes(dynamic_cast<eventNode *>(stmt.get())->getCondition());
-                        break;
-                    }
-                    case Concurrent:
-                    case EndConcurrent:
-                    case Sequential:
-                    case While:
-                    case EndFi:
-                    case Read:
-                    case Literal:
-                    case Variable:
-                    case BinaryExpression:
-                    case UnaryExpression:
-                    case Skip:
-                    case BasicBlock:
-                    case Phi:
-                    case Pi:
-                    case ArrayAccess:
-                    case ArrayLiteral:
-                        break;
-                }
-            }
-        }
-    }
-    void findReadNodes (expressionNode *expr) {
-        switch (expr->getNodeType()) {
-            case ArrayAccess: {
-                findReadNodes(dynamic_cast<arrayAccessNode*>(expr)->getAccessor());
-                break;
-            } case ArrayLiteral: {
-                for (const auto &ele : dynamic_cast<arrayLiteralNode*>(expr)->getArrLit()) {
-                    findReadNodes(ele.get());
-                }
-                break;
-            } case BinaryExpression: {
-                auto node = dynamic_cast<binaryExpressionNode*>(expr);
-                findReadNodes(node->getLeft());
-                findReadNodes(node->getRight());
-                break;
-            } case UnaryExpression: {
-                findReadNodes(dynamic_cast<unaryExpressionNode*>(expr)->getExpr());
-                break;
-
-            } case Read: {
-                reads.push_back(dynamic_cast<readNode*>(expr)->getName());
-                break;
-            }
-            case Variable:
-            case Literal:
-            case Assign:
-            case AssignArrField:
-            case Concurrent:
-            case EndConcurrent:
-            case Sequential:
-            case While:
-            case If:
-            case EndFi:
-            case Write:
-            case Event:
-            case BasicBlock:
-            case Skip:
-            case Phi:
-            case Pi:
-                break;
-        }
-    }
     void build_partial_order_execution() {
         std::unordered_map<std::shared_ptr<basicblock>, std::unordered_set<edge>> E;
         for (const auto &n : nodes) prec.insert({n, {}});

@@ -17,14 +17,14 @@ public:
     std::shared_ptr<expressionNode> copy_expression() const override;
 
     std::string getName() const;
+    void setName(std::string);
 
     bool operator==(const expressionNode *expr) const override;
 
 private:
+    readNode(int16_t, std::string);
     int16_t _pin;
     std::string read_name;
-    uint32_t num;
-    static int32_t count;
 };
 
 #endif //ANTLR_CPP_TUTORIAL_READNODE_HPP

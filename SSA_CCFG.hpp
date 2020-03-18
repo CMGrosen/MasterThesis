@@ -57,6 +57,7 @@ private:
             defsites.insert({it.first, std::list<std::shared_ptr<basicblock>>{}});
             Variables.emplace_back(it.first);
         }
+        Count.insert({"-readVal", 0});
 
         //initialise Aorig and Aphi maps
         for (const auto &blk : ccfg->nodes) {
@@ -191,6 +192,9 @@ private:
                 auto unExpr = dynamic_cast<unaryExpressionNode*>(expr);
                 update_uses_exprNode(blk, unExpr->getExpr());
                 break;
+            } case Read: {
+                auto readExpr = dynamic_cast<readNode*>(expr);
+                readExpr->setName("-readVal_" + std::to_string(++Count["-readVal"]));
             }
             default:
                 break;
