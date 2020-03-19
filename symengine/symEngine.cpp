@@ -20,14 +20,14 @@ std::vector<std::shared_ptr<trace>> symEngine::execute() {
         s.add(r);
     }
 
-    z3::expr encoded = encoded_pis(&c, ccfg->pis_and_depth, {});
+    //z3::expr encoded = encoded_pis(&c, ccfg->pis_and_depth, {});
 
-    std::cout << "\n\n\n\n\nencoded:\n" << encoded.to_string() << std::endl;
+    //std::cout << "\n\n\n\n\nencoded:\n" << encoded.to_string() << std::endl;
 
     auto t = get_run(&c, nullptr, ccfg->startNode, ccfg->exitNode);
 
     //std::cout << "\n" << t.to_string() << "\n\n" << std::endl;
-    s.add(encoded && t);
+    s.add(t);
 
     z3::goal g(c);
     g.add(get_run(&c, ccfg->exitNode->parents[0].lock().get(), ccfg->exitNode, ccfg->exitNode));
@@ -278,7 +278,6 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
                 }
                 case Pi: {
                     auto pi = dynamic_cast<piNode *>(stmt.get());
-                    break;
                     auto vars = pi->get_variables();
                     std::stack<z3::expr> expressions;
                     switch (pi->getType()) {
