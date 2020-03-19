@@ -4,8 +4,6 @@
 #ifndef ANTLR_CPP_TUTORIAL_CONCURRENTNODE_HPP
 #define ANTLR_CPP_TUTORIAL_CONCURRENTNODE_HPP
 
-#include <nodes/basicblock.hpp>
-
 class concurrentNode : virtual public statementNode {
 public:
     concurrentNode(Type type, std::vector<std::shared_ptr<statementNode>> _threads) :

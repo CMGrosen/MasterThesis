@@ -15,7 +15,6 @@ struct CSSA_CFG {
     CSSA_CFG(const CCFG &_ccfg, std::shared_ptr<DomTree> _domTree, std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<expressionNode>>> table)
     : ccfg{std::make_shared<CCFG>(CCFG(_ccfg))}, domTree{std::move(_domTree)}, symboltable{std::move(table)} {
         update_mapstoMap(_ccfg.startNode, ccfg->startNode);
-        std::cout << "here";
         ccfg->updateConflictEdges();
         //build_fud_chains();
         place_phi_functions();
@@ -70,9 +69,9 @@ private:
     std::vector<std::shared_ptr<piNode>> pinodes;
     std::vector<std::shared_ptr<basicblock>> pinodeblocks;
 
-    void update_mapstoMap(std::shared_ptr<basicblock> oldNode, std::shared_ptr<basicblock> newNode) {
+    void update_mapstoMap(const std::shared_ptr<basicblock> &oldNode, const std::shared_ptr<basicblock> &newNode) {
         if (oldMapsTo.insert({oldNode, newNode}).second) {
-            for (int i = 0; i < oldNode->nexts.size(); ++i) {
+            for (size_t i = 0; i < oldNode->nexts.size(); ++i) {
                 update_mapstoMap(oldNode->nexts[i], newNode->nexts[i]);
             }
         }
@@ -82,7 +81,7 @@ private:
         for (const auto &v : *symboltable) {
             currdefs.insert({v.first, nullptr});
         }
-        search(ccfg->startNode);
+        //search(ccfg->startNode);
     }
 
 
@@ -177,7 +176,7 @@ private:
     } //variableUsageInStmt;
 
 
-    void search(std::shared_ptr<basicblock> node) {
+    /*void search(std::shared_ptr<basicblock> node) {
         auto usages = findUsages(node);
 
         for (const auto &r : usages) {
@@ -190,8 +189,7 @@ private:
             }
         }
 
-        for (int index = 0; index < node->nexts.size(); ++index) {
-            auto successor = node->nexts[index];
+        for (auto successor : node->nexts) {
             auto newUsages = findUsages(successor);
 
             for (const auto &r : newUsages) {
@@ -202,7 +200,7 @@ private:
             }
         }
         return;
-    }
+    }*/
 
     void place_phi_functions() {
         for (const auto &b : ccfg->nodes) {                             //foreach b in N

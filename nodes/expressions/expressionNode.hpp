@@ -27,7 +27,6 @@ static std::map<op, std::string> operatorToString {
 
 class expressionNode : virtual public node {
 public:
-    virtual std::string to_string() const = 0;
     virtual bool operator==(const expressionNode *) const = 0;
     virtual std::shared_ptr<expressionNode> copy_expression() const = 0;
 };

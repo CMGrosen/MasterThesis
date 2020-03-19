@@ -5,9 +5,7 @@
 #ifndef ANTLR_CPP_TUTORIAL_ARRAYACCESSNODE_HPP
 #define ANTLR_CPP_TUTORIAL_ARRAYACCESSNODE_HPP
 
-#include <nodes/expressions/expressionNode.hpp>
 #include <nodes/expressions/variableNode.hpp>
-
 
 class arrayAccessNode : virtual public expressionNode {
 public:
@@ -15,7 +13,7 @@ public:
 
     expressionNode *getAccessor() const {return value.get();};
     std::string getName() const { return var->name;}
-    void setName(std::string _name) {var->name = _name;}
+    void setName(std::string _name) {var->name = std::move(_name);}
     variableNode *getVar() const {return var.get();}
 
     std::string to_string() const override {

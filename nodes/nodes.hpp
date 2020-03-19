@@ -5,8 +5,6 @@
 #ifndef ANTLR_CPP_TUTORIAL_NODES_HPP
 #define ANTLR_CPP_TUTORIAL_NODES_HPP
 
-
-
 #include <nodes/expressions/expressionNodes.hpp>
 #include <nodes/statements/statementNodes.hpp>
 

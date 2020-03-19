@@ -4,8 +4,7 @@
 #ifndef ANTLR_CPP_TUTORIAL_ASSIGNNODE_HPP
 #define ANTLR_CPP_TUTORIAL_ASSIGNNODE_HPP
 
-#include "statementNode.hpp"
-#include <nodes/expressions/expressionNodes.hpp>
+#include <nodes/statements/statementNode.hpp>
 #include <string>
 
 class assignNode : virtual public statementNode {

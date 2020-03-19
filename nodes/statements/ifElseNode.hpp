@@ -5,8 +5,6 @@
 #ifndef ANTLR_CPP_TUTORIAL_IFELSENODE_H
 #define ANTLR_CPP_TUTORIAL_IFELSENODE_H
 
-#include <nodes/expressions/expressionNode.hpp>
-
 class ifElseNode : virtual public statementNode {
 public:
     ifElseNode(Type t, std::shared_ptr<expressionNode> c, std::shared_ptr<statementNode> tb, std::shared_ptr<statementNode> fb)

@@ -5,7 +5,7 @@
 #ifndef ANTLR_CPP_TUTORIAL_ARRAYFIELDASSIGNNODE_HPP
 #define ANTLR_CPP_TUTORIAL_ARRAYFIELDASSIGNNODE_HPP
 
-#include "statementNode.hpp"
+#include <nodes/statements/statementNode.hpp>
 #include <nodes/expressions/expressionNodes.hpp>
 #include <string>
 

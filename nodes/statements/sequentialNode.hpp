@@ -5,10 +5,6 @@
 #ifndef ANTLR_CPP_TUTORIAL_SEQUENTIALNODE_HPP
 #define ANTLR_CPP_TUTORIAL_SEQUENTIALNODE_HPP
 
-#define SEQUENTIAL std::hash<std::string>{}("sequential")
-
-#include "statementNode.hpp"
-
 class sequentialNode : virtual public statementNode {
 public:
     sequentialNode(std::shared_ptr<statementNode> body, std::shared_ptr<statementNode> next) : _body{std::move(body)}, _next{std::move(next)} {

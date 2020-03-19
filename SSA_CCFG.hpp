@@ -14,7 +14,7 @@
 struct SSA_CCFG {
     std::shared_ptr<CCFG> ccfg;
     SSA_CCFG(std::shared_ptr<CCFG> _ccfg, std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<expressionNode>>> _symboltable, std::shared_ptr<DomTree> _domTree)
-    : ccfg{std::move(_ccfg)}, domTree{std::move(_domTree)}, table{std::move(_symboltable)} {
+    : ccfg{std::move(_ccfg)}, table{std::move(_symboltable)}, domTree{std::move(_domTree)} {
         Variables.reserve(table->size());
 
         initialise();
@@ -30,8 +30,6 @@ struct SSA_CCFG {
         update_coend_nodes();
 
         //splitblocks_with_phinodes();
-
-        std::cout << "hej";
 
         //remove duplicate variables. Possibly a dumb idea
         //remove_duplicates();
@@ -63,7 +61,7 @@ private:
         for (const auto &blk : ccfg->nodes) {
             std::unordered_set<std::string> variables;
             if (!blk->statements.empty()) {
-                for (const auto stmt : blk->statements) {
+                for (const auto &stmt : blk->statements) {
                     if (stmt->getNodeType() == Assign) {
                         variables.insert(dynamic_cast<const assignNode *>(stmt.get())->getName());
                     } else if (stmt->getNodeType() == AssignArrField) {
@@ -95,7 +93,7 @@ private:
                         // Y is not in Aphi[n], do this block and insert (lines 10->)
                         std::vector<std::shared_ptr<statementNode>> stmts;
                         std::vector<std::string> args;
-                        for (auto i = 0; i < Y->parents.size(); ++i) args.push_back(var);
+                        for (size_t i = 0; i < Y->parents.size(); ++i) args.push_back(var);
                         Type t = table->find(var)->second->getType();
                         std::shared_ptr<statementNode> stmt = std::make_shared<phiNode>(phiNode(t, var, args));
                         stmts.push_back(stmt);
@@ -125,7 +123,7 @@ private:
         }
     }
 
-    void update_def_stmtNode(std::shared_ptr<basicblock> &blk, std::shared_ptr<statementNode> stmt, std::map<std::string, uint32_t> *defcounts) {
+    void update_def_stmtNode(const std::shared_ptr<statementNode> &stmt, std::map<std::string, uint32_t> *defcounts) {
         std::string name;
         std::string oldName;
         if (stmt->getNodeType() == Assign) {
@@ -232,21 +230,21 @@ private:
         }
     }
 
-    void rename(std::shared_ptr<DOMNode> n) {
+    void rename(const std::shared_ptr<DOMNode> &n) {
         std::map<std::string, uint32_t> defcounts;
-        for (auto stmt : n->basic_block->statements) {
+        for (const auto &stmt : n->basic_block->statements) {
             if (stmt->getNodeType() != Phi) {
                 update_uses_stmtNode(n->basic_block, stmt);
             }
-            update_def_stmtNode(n->basic_block, stmt, &defcounts);
+            update_def_stmtNode(stmt, &defcounts);
         }
-        for (auto successor : n->basic_block->nexts) {
+        for (const auto &successor : n->basic_block->nexts) {
             // Suppose n is the j'th predecessor of successor
-            uint32_t j;
+            size_t j;
             for (j = 0; j < successor->parents.size(); ++j)
                 if (successor->parents[j].lock() == n->basic_block)
                     break;
-            for (auto stmt : successor->statements) {
+            for (const auto &stmt : successor->statements) {
                 if (stmt->getNodeType() == Phi) {
                     // Suppose the j'th operand of the phi-function is 'a'
                     auto phi = dynamic_cast<phiNode*>(stmt.get());
@@ -255,7 +253,7 @@ private:
                 }
             }
         }
-        for (auto child : n->children) {
+        for (const auto &child : n->children) {
             rename(child);
         }
         for (const auto &def : defcounts) {
@@ -264,9 +262,9 @@ private:
     }
 
     void setSSA() {
-        for (const auto blk : ccfg->nodes) {
+        for (const auto &blk : ccfg->nodes) {
             if (!blk->statements.empty()) {
-                for (const auto stmt : blk->statements) {
+                for (const auto &stmt : blk->statements) {
                     stmt->setSSA(true);
                 }
             }

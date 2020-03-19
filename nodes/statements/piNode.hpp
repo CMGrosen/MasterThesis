@@ -13,7 +13,7 @@ class piNode : virtual public statementNode {
 
 public:
     piNode(Type t, std::string variable, int _num, std::vector<std::string> possible_variables)
-        : _variable{std::move(variable)}, _possible_variables{std::move(possible_variables)}, num{_num} {
+        : _variable{std::move(variable)}, num{_num}, _possible_variables{std::move(possible_variables)} {
         name = "-T_" + _variable + "_" + std::to_string(num);
         setType(t);
         setNodeType(Pi);
@@ -24,7 +24,7 @@ public:
         std::string res = nameToTikzName(name, true) + " = $\\pi($";
         if (!_possible_variables.empty()) {
             res += nameToTikzName(_possible_variables[0], true);
-            for (auto i = 1; i < _possible_variables.size(); ++i)
+            for (size_t i = 1; i < _possible_variables.size(); ++i)
                 res += (", " + nameToTikzName(_possible_variables[i], true));
         }
         res += ")";

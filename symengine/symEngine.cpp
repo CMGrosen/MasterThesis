@@ -33,7 +33,7 @@ std::vector<std::shared_ptr<trace>> symEngine::execute() {
     g.add(get_run(&c, ccfg->exitNode->parents[0].lock().get(), ccfg->exitNode, ccfg->exitNode));
 
     auto tt = z3::tactic(c, "simplify")(g)[0];
-    for (auto i = 0; i < tt.size(); ++i) s.add(tt[i]);
+    for (size_t i = 0; i < tt.size(); ++i) s.add(tt[i]);
 
     if (s.check() == z3::sat) {
         auto model = s.get_model();
@@ -48,7 +48,7 @@ std::vector<std::shared_ptr<trace>> symEngine::execute() {
 
 }
 
-z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_ptr<basicblock> start, std::shared_ptr<basicblock> end) {
+z3::expr symEngine::get_run(z3::context *c, basicblock *previous, const std::shared_ptr<basicblock> &start, const std::shared_ptr<basicblock> &end) {
     auto node = start.get();
     std::vector<z3::expr> constraints;
 
@@ -103,7 +103,7 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
             constraints.push_back(conjunction);
         }
     } else {
-        for (auto stmt : node->statements) {
+        for (const auto &stmt : node->statements) {
             switch (stmt->getNodeType()) {
                 case Assign: {
                     auto assnode = dynamic_cast<assignNode *>(stmt.get());
@@ -247,7 +247,7 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
                     switch (phi->getType()) {
                         case intType: {
                             z3::expr name = c->int_const(phi->getName().c_str());
-                            for (auto i = 0; i < parents.size(); ++i) {
+                            for (size_t i = 0; i < parents.size(); ++i) {
                                 if (previous == parents[i].lock().get()) {
                                     constraints.push_back(name == c->int_const(phi->get_variables()->at(i).c_str()));
                                     break;
@@ -257,7 +257,7 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
                         }
                         case boolType: {
                             z3::expr name = c->bool_const(phi->getName().c_str());
-                            for (auto i = 0; i < parents.size(); ++i) {
+                            for (size_t i = 0; i < parents.size(); ++i) {
                                 if (previous == parents[i].lock().get()) {
                                     constraints.push_back(name == c->bool_const(phi->get_variables()->at(i).c_str()));
                                     break;
@@ -349,7 +349,7 @@ z3::expr symEngine::evaluate_expression(z3::context *c, const expressionNode *ex
         case Literal: {
             auto lit = dynamic_cast<const literalNode*>(expr);
             return lit->getType() == intType
-                ?  c->int_val(std::stoi(lit->value))
+                ? c->int_val(std::stoi(lit->value))
                 : c->bool_val(lit->value == "true")
                 ;
         }
@@ -390,9 +390,9 @@ z3::expr symEngine::evaluate_expression(z3::context *c, const expressionNode *ex
         case BasicBlock:
         case Phi:
         case Pi:
-            assert(false);
             break;
     }
+    assert(false);
 }
 
 z3::expr symEngine::evaluate_operator(const z3::expr& left, const z3::expr& right, op _operator) {
@@ -449,16 +449,7 @@ bool contains(const std::vector<std::string> &vars, const std::string &var) {
     return false;
 }
 
-bool variation (const std::string &variable, const std::string &other) {
-    for (int i = 0; i < variable.length(); ++i) {
-        if (variable[i] != other[i]) {
-            return false;
-        }
-    }
-    return true;
-}
-
-std::vector<std::string> symEngine::includable_vars(std::shared_ptr<statementNode> stmt, std::unordered_map<std::string, std::vector<std::string>> constraints) {
+std::vector<std::string> symEngine::includable_vars(const std::shared_ptr<statementNode> &stmt, std::unordered_map<std::string, std::vector<std::string>> constraints) {
     std::vector<std::string> possiblevars;
     if (auto pin = dynamic_cast<piNode*>(stmt.get())) {
         std::string name = pin->getVar();
@@ -489,9 +480,9 @@ std::vector<std::string> symEngine::includable_vars(std::shared_ptr<statementNod
         std::vector<std::string> varsToRemove;
         for (const auto &v : possiblevars) {
             auto blk = ccfg->defs.find(v)->second;
-            for (const auto &stmt : blk->statements) {
-                if (stmt->getNodeType() == Phi) {
-                    auto phin = dynamic_cast<phiNode*>(stmt.get());
+            for (const auto &s : blk->statements) {
+                if (s->getNodeType() == Phi) {
+                    auto phin = dynamic_cast<phiNode*>(s.get());
                     if (phin->getName() == v) {
                         bool possiblevarsContainsOptions = false;
                         for (const auto &vv : possiblevars) {
@@ -542,7 +533,6 @@ std::vector<std::string> symEngine::includable_vars(std::shared_ptr<statementNod
                 }
                 return final;
             }
-            return {};
         }
     } else {
         return {};
@@ -550,7 +540,6 @@ std::vector<std::string> symEngine::includable_vars(std::shared_ptr<statementNod
 }
 
 z3::expr symEngine::encoded_pis(z3::context *c, const std::vector<std::pair<std::shared_ptr<basicblock>, int32_t>> &remaining, const std::unordered_map<std::string, std::vector<std::string>> &constraints) {
-    int32_t current_depth = remaining.front().second;
     auto pin = dynamic_cast<piNode*>(remaining.front().first->statements.front().get());
 
     if (pin->getName() == "-T_a_2") {
@@ -620,7 +609,7 @@ z3::expr symEngine::encoded_pis(z3::context *c, const std::vector<std::pair<std:
 
 
 
-            for (int i = 1; i < possiblevars.size(); ++i) {
+            for (size_t i = 1; i < possiblevars.size(); ++i) {
                 final = final
                         || pin->getType() == intType
                         ? c->int_const(pin->getName().c_str()) == c->int_const(possiblevars[i].c_str())
@@ -631,7 +620,7 @@ z3::expr symEngine::encoded_pis(z3::context *c, const std::vector<std::pair<std:
             return final;
         }
     } else {//same depth. order probably matters
-        int i = 0;
+        size_t i = 0;
         /*for (i = 0; i < remaining.size()-1; ++i) {
             if (remaining[i].second != remaining[i+1].second) {
                 break;
@@ -658,7 +647,7 @@ z3::expr symEngine::encoded_pis(z3::context *c, const std::vector<std::pair<std:
                          : c->bool_const(pin->getName().c_str()) == c->bool_const(possiblevars[0].c_str()));
         z3::expr inter = encoded_pis(c, newremains, newconsts);
         final = final && inter;
-        for (int i = 1; i < possiblevars.size(); ++i) {
+        for (i = 1; i < possiblevars.size(); ++i) {
             newconsts = constraints;
             res = newconsts.insert({pin->getVar(), {possiblevars[i]}});
             if (!res.second) res.first->second.push_back(possiblevars[i]);

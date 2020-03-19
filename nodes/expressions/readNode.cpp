@@ -10,7 +10,7 @@ readNode::readNode(int16_t pin) : _pin{pin}, read_name{"-readVal"} {
     setType(intType);
 }
 
-int16_t readNode::getPin() const {return _pin;};
+int16_t readNode::getPin() const {return _pin;}
 
 std::string readNode::to_string() const {
     return "read(" + std::to_string(_pin) + ")";

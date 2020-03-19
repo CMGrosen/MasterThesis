@@ -5,7 +5,7 @@
 #ifndef ANTLR_CPP_TUTORIAL_READNODE_HPP
 #define ANTLR_CPP_TUTORIAL_READNODE_HPP
 
-#include "expressionNode.hpp"
+#include <nodes/expressions/expressionNode.hpp>
 
 class readNode : virtual public expressionNode {
 public:

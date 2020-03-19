@@ -1,10 +1,8 @@
 
 #ifndef DST_H
 #define DST_H
-#include "antlr4-runtime.h"
 #include "SmallVisitor.h"
 #include <nodes/nodes.hpp>
-//#include "symengine/Constraint.hpp"
 
 #define MAXITER 3
 
@@ -31,7 +29,7 @@ public:
         return std::pair<std::shared_ptr<statementNode>, std::unordered_map<std::string, std::shared_ptr<expressionNode>>>(std::move(a), symboltables);
     }
 
-    virtual antlrcpp::Any visitFile(SmallParser::FileContext *ctx) override {
+    antlrcpp::Any visitFile(SmallParser::FileContext *ctx) override {
         //antlrcpp::Any result = visitChildren(ctx);
         std::shared_ptr<statementNode> a = visitStmts(ctx->stmts());
 
@@ -44,7 +42,7 @@ public:
         return a;
     }
 
-    virtual antlrcpp::Any visitStmts(SmallParser::StmtsContext *ctx) override {
+    antlrcpp::Any visitStmts(SmallParser::StmtsContext *ctx) override {
         if(ctx->stmts()) {
             std::shared_ptr<statementNode> result;
             std::shared_ptr<statementNode> body = visitStmt(ctx->stmt());
@@ -65,7 +63,7 @@ public:
         }
     }
 
-    virtual antlrcpp::Any visitStmt(SmallParser::StmtContext *ctx) override {
+    antlrcpp::Any visitStmt(SmallParser::StmtContext *ctx) override {
         std::shared_ptr<statementNode> stmt;
         if (ctx->assign()) {
             stmt = visitAssign(ctx->assign());
@@ -85,7 +83,7 @@ public:
         return stmt;
     }
 
-    virtual antlrcpp::Any visitAssign(SmallParser::AssignContext *ctx) override {
+    antlrcpp::Any visitAssign(SmallParser::AssignContext *ctx) override {
         Type t;
         if (ctx->arrayAccess()) {
             std::string name = ctx->arrayAccess()->NAME()->getText();
@@ -119,7 +117,7 @@ public:
 
             if(!pair.second) { //variable already exists
                 auto length = dynamic_cast<literalNode*>(pair.first->second.get())->value;
-                if (arr.size() != std::stoi(length)) {
+                if (arr.size() != std::stoul(length)) {
                     std::cout << "[" << ctx->stop->getLine() << ":" << ctx->stop->getCharPositionInLine()
                               << "] Attempt to reassign an array to another literal that is not the same size\n";
                     pair.first->second->setType(errorType);
@@ -145,7 +143,7 @@ public:
         }
     }
     // returns a sequential node with a early exit setup as the stmt and a unrolled loop as the stmts
-    virtual antlrcpp::Any visitIter(SmallParser::IterContext *ctx) override {
+    antlrcpp::Any visitIter(SmallParser::IterContext *ctx) override {
         std::shared_ptr<expressionNode> _condition = visitExpr(ctx->expr());
         std::shared_ptr<statementNode> _body = visitStmts(ctx->scope()->stmts());
         std::shared_ptr<statementNode> falseBranch = std::make_shared<skipNode>(skipNode());
@@ -183,7 +181,7 @@ public:
         return res;
     }
 
-    virtual antlrcpp::Any visitIfs(SmallParser::IfsContext *ctx) override {
+    antlrcpp::Any visitIfs(SmallParser::IfsContext *ctx) override {
         std::shared_ptr<expressionNode> condition = visitExpr(ctx->expr());
         std::shared_ptr<statementNode> trueBranch = visitStmts(ctx->scope(0)->stmts());
         std::shared_ptr<statementNode> falseBranch = visitStmts(ctx->scope(1)->stmts());
@@ -193,7 +191,7 @@ public:
         return res;
     }
 
-    virtual antlrcpp::Any visitThread(SmallParser::ThreadContext *ctx) override {
+    antlrcpp::Any visitThread(SmallParser::ThreadContext *ctx) override {
         std::vector<std::shared_ptr<statementNode>> statements;
         for (auto scopeContext : ctx->threads) {
             statements.push_back(visitStmts(scopeContext->stmts()));
@@ -209,7 +207,7 @@ public:
         return res;
     }
 
-    virtual antlrcpp::Any visitEvent(SmallParser::EventContext *ctx) override {
+    antlrcpp::Any visitEvent(SmallParser::EventContext *ctx) override {
         std::shared_ptr<expressionNode> condition = visitExpr(ctx->expr());
         Type t = (condition->getType() == boolType) ? okType : errorType;
         std::shared_ptr<statementNode> res = std::make_shared<eventNode>(eventNode(t, condition));
@@ -217,28 +215,28 @@ public:
     }
 
 
-    virtual antlrcpp::Any visitSkipStmt(SmallParser::SkipStmtContext *context) override {
+    antlrcpp::Any visitSkipStmt(SmallParser::SkipStmtContext *ctx) override {
         std::shared_ptr<statementNode> res = std::make_shared<skipNode>(skipNode());
         return res;
     }
 
-    virtual antlrcpp::Any visitScope(SmallParser::ScopeContext *ctx) override {
+    antlrcpp::Any visitScope(SmallParser::ScopeContext *ctx) override {
         return nullptr; //not used
     }
 
-    virtual antlrcpp::Any visitRead(SmallParser::ReadContext *ctx) override {
+    antlrcpp::Any visitRead(SmallParser::ReadContext *ctx) override {
         readNode node = readNode(std::stoi(ctx->INT_LITERAL()->getText()));
         std::shared_ptr<expressionNode> res = std::make_shared<readNode>(node);
         return res;
     }
 
-    virtual antlrcpp::Any visitWrite(SmallParser::WriteContext *ctx) override {
+    antlrcpp::Any visitWrite(SmallParser::WriteContext *ctx) override {
         std::shared_ptr<expressionNode> expr = visitExpr(ctx->expr());
         std::shared_ptr<statementNode> res = std::make_shared<writeNode>(writeNode(std::stoi(ctx->INT_LITERAL()->getText()), expr));
         return res;
     }
 
-    virtual antlrcpp::Any visitExpr(SmallParser::ExprContext *ctx) override {
+    antlrcpp::Any visitExpr(SmallParser::ExprContext *ctx) override {
         if (ctx->LPAREN()) {
             return visitExpr(ctx->expr(0));
         } else if (ctx->OP_ADD()) {
@@ -309,7 +307,7 @@ public:
         } else return nullptr; //should never reach;
     }
 
-    virtual antlrcpp::Any visitArrayAccess(SmallParser::ArrayAccessContext *ctx) override {
+    antlrcpp::Any visitArrayAccess(SmallParser::ArrayAccessContext *ctx) override {
         std::shared_ptr<expressionNode> node = visitExpr(ctx->expr());
         std::string name = ctx->NAME()->getText();
         auto it = symboltables.find(ctx->NAME()->getText());
@@ -327,12 +325,12 @@ public:
         return res;
     }
 
-    virtual antlrcpp::Any visitLiteral(SmallParser::LiteralContext *ctx) override {
+    antlrcpp::Any visitLiteral(SmallParser::LiteralContext *ctx) override {
         literalNode* result = visitChildren(ctx);
         return result;
     }
 
-    virtual antlrcpp::Any visitArrayLiteral(SmallParser::ArrayLiteralContext *ctx) override {
+    antlrcpp::Any visitArrayLiteral(SmallParser::ArrayLiteralContext *ctx) override {
         std::vector<std::shared_ptr<expressionNode>> inter;
         auto a = ctx->expr();
         for (auto i : ctx->expr()) {
@@ -346,7 +344,7 @@ public:
         return val ? "true" : "false";
     }
 
-    static std::pair<bool, std::shared_ptr<expressionNode>> compute_new_literal (std::shared_ptr<expressionNode> l, std::shared_ptr<expressionNode> r, op expressionType, Type t) {
+    static std::pair<bool, std::shared_ptr<expressionNode>> compute_new_literal (const std::shared_ptr<expressionNode> &l, const std::shared_ptr<expressionNode> &r, op expressionType, Type t) {
         std::string lVal = dynamic_cast<literalNode*>(l.get())->value;
         std::string rVal = dynamic_cast<literalNode*>(r.get())->value;
         std::shared_ptr<expressionNode> n;

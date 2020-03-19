@@ -5,6 +5,8 @@
 #ifndef ANTLR_CPP_TUTORIAL_ENDCONCNODE_HPP
 #define ANTLR_CPP_TUTORIAL_ENDCONCNODE_HPP
 
+#include <nodes/basicblock.hpp>
+
 class endConcNode : virtual public statementNode {
     const int threadCount;
     std::shared_ptr<basicblock> concNode;

@@ -8,8 +8,8 @@ struct DOMNode {
     std::weak_ptr<DOMNode> parent;
     std::vector<std::shared_ptr<DOMNode>> children;
     std::shared_ptr<basicblock> basic_block;
-    DOMNode(std::shared_ptr<basicblock> _basic_block,std::shared_ptr<DOMNode> _parent) :
-            parent{std::move(_parent)},
+    DOMNode(std::shared_ptr<basicblock> _basic_block, const std::shared_ptr<DOMNode> &_parent) :
+            parent{_parent},
             basic_block{std::move(_basic_block)}
     {}
 
@@ -96,7 +96,7 @@ private:
             bucket.find(vertex[semi[w]])->second.insert(w);
             Link(parent[w], w);
             auto children = bucket.find(parent[w])->second;
-            if(children.size() != 0){
+            if(!children.empty()){
                 for(auto _v : children){
                     bucket.find(parent[w])->second.erase(_v);
                     int u = Eval(_v);
@@ -126,7 +126,7 @@ private:
         label[v] = v;
         ancestor[v] = 0;
         v++;
-        for(auto child : node->nexts){
+        for(const auto &child : node->nexts){
             if(numbers.find(child) == numbers.end()){
                 parent[v]  = numbers.find(node)->second;
                 CreateDFS(child);
@@ -166,7 +166,7 @@ private:
         std::shared_ptr<DOMNode> node = std::make_shared<DOMNode>(DOMNode(basic_block, nullptr));
         DOMTree.insert({basic_block, node});
         root = node;
-        for(unsigned long i = 1; i < n; i++){
+        for(int i = 1; i < n; i++){
             basic_block = nodes.find(i)->second;
             auto idom_block = nodes.find(idom[numbers.find(basic_block)->second])->second;
             node = std::make_shared<DOMNode>(DOMNode(basic_block, DOMTree.find(idom_block)->second));
@@ -176,19 +176,19 @@ private:
     }
 
     // Andrew Appel algorithm
-    void CreateDominanceFrontier(std::shared_ptr<basicblock> n){
+    void CreateDominanceFrontier(const std::shared_ptr<basicblock> &node){
         std::vector<std::shared_ptr<basicblock>> S = {};
-        for(const auto& child : n->nexts){
+        for(const auto& child : node->nexts){
             auto idom_block = nodes.find(idom[numbers.find(child)->second])->second;
-            if(idom_block != n){
+            if(idom_block != node){
                 S.emplace_back(child);
             }
         }
-        for(const auto& child : DOMTree.find(n)->second->children){
+        for(const auto& child : DOMTree.find(node)->second->children){
             CreateDominanceFrontier(child->basic_block);
             for(const auto& _w : DF.find(child->basic_block)->second){
                 std::shared_ptr<basicblock> w = _w;
-                if (nodes.find(idom[numbers.find(w)->second])->second != n) {
+                if (nodes.find(idom[numbers.find(w)->second])->second != node) {
                     S.emplace_back(w);
                 }
             /*
@@ -205,7 +205,7 @@ private:
                 }*/
             }
         }
-        DF.insert({n, S});
+        DF.insert({node, S});
     }
 
 /*

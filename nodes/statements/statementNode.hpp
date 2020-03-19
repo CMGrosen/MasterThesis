@@ -10,7 +10,6 @@
 class statementNode : virtual public node {
 public:
     //virtual std::vector<std::shared_ptr<statementNode>> debug_getAllNodes() {};
-    virtual std::string to_string() const = 0;
     virtual std::shared_ptr<statementNode> copy_statement() const = 0;
 };
 
