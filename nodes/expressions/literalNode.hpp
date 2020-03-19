@@ -7,7 +7,7 @@
 
 #include <nodes/expressions/expressionNode.hpp>
 
-class literalNode : public expressionNode {
+class literalNode : virtual public expressionNode {
 public:
     literalNode(std::string a) : value{std::move(a)} {
         if (value == "true" || value == "false") {
@@ -22,7 +22,7 @@ public:
         setNodeType(Literal);
     }
 
-    std::string to_string() override {
+    std::string to_string() const override {
         return value;
     }
 

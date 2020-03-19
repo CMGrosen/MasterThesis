@@ -5,7 +5,7 @@
 #ifndef ANTLR_CPP_TUTORIAL_PHINODE_HPP
 #define ANTLR_CPP_TUTORIAL_PHINODE_HPP
 
-class phiNode : public statementNode {
+class phiNode : virtual public statementNode {
     std::string _name;
     std::string origName;
     std::vector<std::string> _variables;
@@ -26,7 +26,7 @@ public:
         onSSA = true;
     }
 
-    std::string to_string() override {
+    std::string to_string() const override {
         std::string res = nameToTikzName(_name, true) + " = $\\phi($";
         if (!_variables.empty()) {
             res += nameToTikzName(_variables[0], true);

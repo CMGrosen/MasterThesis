@@ -12,7 +12,7 @@ readNode::readNode(int16_t pin) : _pin{pin}, read_name{"-readVal"} {
 
 int16_t readNode::getPin() const {return _pin;};
 
-std::string readNode::to_string() {
+std::string readNode::to_string() const {
     return "read(" + std::to_string(_pin) + ")";
 }
 std::shared_ptr<expressionNode> readNode::copy_expression() const {
@@ -21,6 +21,7 @@ std::shared_ptr<expressionNode> readNode::copy_expression() const {
     return _this;
 }
 std::string readNode::getName() const {return read_name;}
+
 
 bool readNode::operator==(const expressionNode *expr) const {
     return (nodetype == expr->getNodeType() && _pin == dynamic_cast<const readNode *>(expr)->getPin());
@@ -34,4 +35,6 @@ readNode::readNode(int16_t pin, std::string name) : _pin{pin}, read_name{std::mo
     setNodeType(Read);
     setType(intType);
 }
+
+
 

@@ -6,7 +6,7 @@
 #define ANTLR_CPP_TUTORIAL_ARRAYLITERALNODE_HPP
 #include <nodes/expressions/expressionNode.hpp>
 
-class arrayLiteralNode : public expressionNode {
+class arrayLiteralNode : virtual public expressionNode {
 public:
     arrayLiteralNode(Type t, std::vector<std::shared_ptr<expressionNode>> a) : value{std::move(a)} {
         setType(t);
@@ -30,7 +30,7 @@ public:
         setNodeType(ArrayLiteral);
     };
 
-    std::string to_string() override {
+    std::string to_string() const override {
         std::string res = "[";
         for (int i = 0; i < value.size(); ++i) {
             res += value[i]->to_string();

@@ -7,14 +7,14 @@
 
 #include <nodes/expressions/expressionNode.hpp>
 
-class eventNode : public statementNode {
+class eventNode : virtual public statementNode {
 public:
     eventNode(Type t, std::shared_ptr<expressionNode> condition) : _condition{std::move(condition)} {
         setType(t);
         setNodeType(Event);
     }
     expressionNode *getCondition() {return _condition.get();}
-    std::string to_string() override {
+    std::string to_string() const override {
         return "event(" + _condition->to_string() + ")";
     }
     std::shared_ptr<statementNode> copy_statement() const override {

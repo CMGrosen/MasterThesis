@@ -9,7 +9,7 @@
 #include <nodes/expressions/expressionNodes.hpp>
 #include <string>
 
-class arrayFieldAssignNode : public statementNode {
+class arrayFieldAssignNode : virtual public statementNode {
 public:
     arrayFieldAssignNode (Type t, std::string _name, std::shared_ptr<expressionNode> arrField, std::shared_ptr<expressionNode> n) : name{std::move(_name)}, field{std::move(arrField)}, expr{std::move(n)} {
         setType(t);
@@ -24,7 +24,7 @@ public:
     std::string getOriginalName() const {return origName;}
     void setName(std::string _name) {name = _name;}
 
-    std::string to_string() override {
+    std::string to_string() const override {
         std::string res = nameToTikzName(name, onSSA) + "[" + field->to_string() + "] = " + expr->to_string();
         return res;
     }

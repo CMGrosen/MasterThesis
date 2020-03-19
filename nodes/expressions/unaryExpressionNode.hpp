@@ -5,7 +5,7 @@
 #ifndef ANTLR_CPP_TUTORIAL_UNARYEXPRESSIONNODE_HPP
 #define ANTLR_CPP_TUTORIAL_UNARYEXPRESSIONNODE_HPP
 
-class unaryExpressionNode : public expressionNode {
+class unaryExpressionNode : virtual public expressionNode {
 public:
     unaryExpressionNode(Type _type, op _op, std::shared_ptr<expressionNode> _expr) : _operator{_op}, expr{std::move(_expr)} {
         type = _type;
@@ -13,7 +13,7 @@ public:
     }
     op getOperator() const {return _operator;};
 
-    std::string to_string() override {
+    std::string to_string() const override {
         return operatorToString[_operator] + expr->to_string();
     }
 

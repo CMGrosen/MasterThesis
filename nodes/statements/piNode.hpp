@@ -5,7 +5,7 @@
 #ifndef ANTLR_CPP_TUTORIAL_PINODE_HPP
 #define ANTLR_CPP_TUTORIAL_PINODE_HPP
 
-class piNode : public statementNode {
+class piNode : virtual public statementNode {
     std::string _variable;
     std::string name;
     int num;
@@ -20,7 +20,7 @@ public:
         setSSA(true);
     }
 
-    std::string to_string() override {
+    std::string to_string() const override {
         std::string res = nameToTikzName(name, true) + " = $\\pi($";
         if (!_possible_variables.empty()) {
             res += nameToTikzName(_possible_variables[0], true);

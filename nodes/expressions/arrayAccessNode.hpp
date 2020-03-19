@@ -9,7 +9,7 @@
 #include <nodes/expressions/variableNode.hpp>
 
 
-class arrayAccessNode : public expressionNode {
+class arrayAccessNode : virtual public expressionNode {
 public:
     arrayAccessNode(Type t, std::shared_ptr<expressionNode> a, std::shared_ptr<variableNode> n) : value{std::move(a)}, var{std::move(n)} {type = t; setNodeType(ArrayAccess);};
 
@@ -18,7 +18,7 @@ public:
     void setName(std::string _name) {var->name = _name;}
     variableNode *getVar() const {return var.get();}
 
-    std::string to_string() override {
+    std::string to_string() const override {
         return nameToTikzName(var->name, onSSA) + "[" + value->to_string() + "] ";
     }
 
