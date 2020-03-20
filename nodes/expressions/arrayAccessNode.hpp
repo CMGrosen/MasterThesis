@@ -13,6 +13,7 @@ public:
 
     expressionNode *getAccessor() const {return value.get();};
     std::string getName() const { return var->name;}
+    std::string *getNameAsRef() {return &var->name;}
     void setName(std::string _name) {var->name = std::move(_name);}
     variableNode *getVar() const {return var.get();}
 
