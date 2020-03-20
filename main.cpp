@@ -2,7 +2,7 @@
 
 #include "antlr4-runtime.h"
 #include "SmallLexer.h"
-#include "DST.h"
+#include "DST.hpp"
 #include "basicblockTreeConstructor.hpp"
 #include <CCFGIllustrator.hpp>
 #include <symengine/symEngine.hpp>
