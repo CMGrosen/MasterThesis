@@ -52,268 +52,216 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, const std::sha
     auto node = start.get();
     std::vector<z3::expr> constraints;
 
-    if (node->type == Coend) {
-        auto coend = dynamic_cast<endConcNode*>(node->statements.back().get());
-        int threads = coend->getConcNode()->nexts.size();
-        std::stack<z3::expr> expressions;
-        std::vector<std::vector<z3::expr>> phinodeAssignments;
-        phinodeAssignments.reserve(threads);
-
-        int index = 0;
-        for (const auto &st : node->statements) {
-            if (auto phi = dynamic_cast<phiNode*>(st.get())) {
-                phinodeAssignments.emplace_back();
-                auto vars = *phi->get_variables();
-                for (const auto &var : vars) {
-                    switch (phi->getType()) {
-                        case intType: {
-                            z3::expr name = c->int_const(phi->getName().c_str());
-                            phinodeAssignments[index].push_back(name == c->int_const(var.c_str()));
-                            break;
-                        }
-                        case boolType: {
-                            z3::expr name = c->bool_const(phi->getName().c_str());
-                            phinodeAssignments[index].push_back(name == c->bool_const(var.c_str()));
-                            break;
-                        }
-                        case arrayIntType: {
-                            break;
-                        }
-                        case arrayBoolType: {
-                            break;
-                        }
-                        default:
-                            break;
+    for (const auto &stmt : node->statements) {
+        switch (stmt->getNodeType()) {
+            case Assign: {
+                auto assnode = dynamic_cast<assignNode *>(stmt.get());
+                auto name = assnode->getExpr()->getType() == intType
+                            ? c->int_const(assnode->getName().c_str())
+                            : c->bool_const(assnode->getName().c_str());
+                constraints.push_back(name == evaluate_expression(c, assnode->getExpr()));
+                break;
+            }
+            case Concurrent: {
+                auto endConc = get_end_of_concurrent_node(node);
+                std::stack<z3::expr> expressions;
+                int i = 0;
+                bool changed_event = false;
+                for (const auto &nxt : node->nexts) {
+                    if (event_encountered) {
+                        event_encountered = false;
+                        changed_event = true;
                     }
+                    expressions.push(get_run(c, node, nxt, endConc->parents[i++].lock()));
                 }
-            }
-            ++index;
-        }
-
-        for (const auto &exprVec : phinodeAssignments) {
-            for (const auto &expr : exprVec) {
-                expressions.push(expr);
-            }
-            z3::expr conjunction = expressions.top();
-            expressions.pop();
-            while (!expressions.empty()) {
-                conjunction = conjunction || expressions.top();
+                z3::expr final = expressions.top();
                 expressions.pop();
-            }
-            constraints.push_back(conjunction);
-        }
-    } else {
-        for (const auto &stmt : node->statements) {
-            switch (stmt->getNodeType()) {
-                case Assign: {
-                    auto assnode = dynamic_cast<assignNode *>(stmt.get());
-                    auto name = assnode->getExpr()->getType() == intType
-                                ? c->int_const(assnode->getName().c_str())
-                                : c->bool_const(assnode->getName().c_str());
-                    constraints.push_back(name == evaluate_expression(c, assnode->getExpr()));
-                    break;
-                }
-                case Concurrent: {
-                    auto endConc = get_end_of_concurrent_node(node);
-                    std::stack<z3::expr> expressions;
-                    int i = 0;
-                    bool changed_event = false;
-                    for (const auto &nxt : node->nexts) {
-                        if (event_encountered) {
-                            event_encountered = false;
-                            changed_event = true;
-                        }
-                        expressions.push(get_run(c, node, nxt, endConc->parents[i++].lock()));
-                    }
-                    z3::expr final = expressions.top();
+                while (!expressions.empty()) {
+                    final = final && expressions.top();
                     expressions.pop();
-                    while (!expressions.empty()) {
-                        final = final && expressions.top();
-                        expressions.pop();
-                    }
-
-                    if (changed_event) {
-                        for (const auto &constraint : constraints) {
-                            final = final && constraint;
-                        }
-                        event_encountered = true;
-                        return final;
-                    }
-                    constraints.push_back(final);
-                    node = endConc->parents[0].lock().get();
-                    break;
                 }
-                case If: {
-                    std::shared_ptr<basicblock> firstCommonChild = find_common_child(node);
-                    bool changed_event = false;
-                    if (event_encountered) {
-                        event_encountered = false;
-                        changed_event = true;
-                    }
-                    z3::expr truebranch = get_run(c, node, node->nexts[0], firstCommonChild);
-                    if (event_encountered) {
-                        event_encountered = false;
-                        changed_event = true;
-                    }
-                    z3::expr falsebranch = get_run(c, node, node->nexts[1], firstCommonChild);
-                    if (event_encountered) {
-                        changed_event = true;
-                    }
-                    z3::expr final = z3::ite(
-                            evaluate_expression(c, dynamic_cast<ifElseNode *>(stmt.get())->getCondition()),
-                            truebranch, falsebranch);
 
+                if (changed_event) {
                     for (const auto &constraint : constraints) {
                         final = final && constraint;
-                    }
-                    if (changed_event) return final;
-
-                    while (firstCommonChild && firstCommonChild->type == Condition) {
-                        if (firstCommonChild->statements.back()->getNodeType() == If) {
-                            firstCommonChild = find_common_child(firstCommonChild.get());
-                        } else { //Event
-                            return final;
-                        }
-                    }
-                    if (firstCommonChild && !firstCommonChild->nexts.empty() && firstCommonChild != end)
-                        return final && get_run(c, firstCommonChild.get(), firstCommonChild->nexts[0], end);
-                    else return final;
-                }
-                case Event: {
-                    z3::expr condition = evaluate_expression(c, dynamic_cast<eventNode*>(stmt.get())->getCondition());
-                    bool changed_event = false;
-                    if (event_encountered) {
-                        changed_event = true;
-                        event_encountered = false;
-                    }
-                    z3::expr truebranch = get_run(c, node, node->nexts[0], end);
-
-                    if (changed_event) event_encountered = true;
-                    if (end != ccfg->exitNode) {
-                        auto res = ccfg->concurrent_events.find(node);
-                        if (res != ccfg->concurrent_events.end()) {
-                            if (!event_encountered) {
-                                z3::expr finalCond = condition;
-                                for (const auto &event : res->second) {
-                                    finalCond = finalCond && evaluate_expression(c, dynamic_cast<eventNode*>(event->statements.back().get())->getCondition());
-                                }
-                                z3::expr final = z3::ite(condition, truebranch, c->bool_val(false));
-                                for (const auto &constraint : constraints) {
-                                    final = final && constraint;
-                                }
-                                z3::expr finalConstraint =
-                                    z3::ite(finalCond
-                                           , final && get_run(c, end.get(), end->nexts[0], ccfg->exitNode)
-                                           , c->bool_val(true)
-                                           );
-                                event_encountered = true;
-                                return finalConstraint;
-                            } else {
-                                return z3::ite(condition, truebranch, c->bool_val(false));
-                            }
-                        }
-                        for (const auto &nxt : end->nexts) {
-                            truebranch = truebranch && get_run(c, end.get(), nxt, ccfg->exitNode);
-                        }
                     }
                     event_encountered = true;
-                    z3::expr final = z3::ite(condition, truebranch, c->bool_val(false));
-                    for (const auto &constraint : constraints) {
-                        final = final && constraint;
-                    }
                     return final;
                 }
-                case AssignArrField:
-                case EndConcurrent:
-                case Sequential:
-                case While:
-                case EndFi:
-                case Write:
-                case Read:
-                case Literal:
-                case ArrayAccess:
-                case ArrayLiteral:
-                case Variable:
-                case BinaryExpression:
-                case UnaryExpression:
-                case Skip:
-                case BasicBlock:
-                    constraints.push_back(c->bool_val(true));
-                    break;
-                case Phi: {
-                    auto phi = dynamic_cast<phiNode *>(stmt.get());
-                    auto parents = node->parents;
-
-                    switch (phi->getType()) {
-                        case intType: {
-                            z3::expr name = c->int_const(phi->getName().c_str());
-                            for (size_t i = 0; i < parents.size(); ++i) {
-                                if (previous == parents[i].lock().get()) {
-                                    constraints.push_back(name == c->int_const(phi->get_variables()->at(i).c_str()));
-                                    break;
-                                }
-                            }
-                            break;
-                        }
-                        case boolType: {
-                            z3::expr name = c->bool_const(phi->getName().c_str());
-                            for (size_t i = 0; i < parents.size(); ++i) {
-                                if (previous == parents[i].lock().get()) {
-                                    constraints.push_back(name == c->bool_const(phi->get_variables()->at(i).c_str()));
-                                    break;
-                                }
-                            }
-                            break;
-                        }
-                        case arrayIntType:
-                            break;
-                        case arrayBoolType:
-                            break;
-                        case okType:
-                            break;
-                        case errorType:
-                            break;
-                    }
-                    break;
+                constraints.push_back(final);
+                node = endConc->parents[0].lock().get();
+                break;
+            }
+            case If: {
+                std::shared_ptr<basicblock> firstCommonChild = find_common_child(node);
+                bool changed_event = false;
+                if (event_encountered) {
+                    event_encountered = false;
+                    changed_event = true;
                 }
-                case Pi: {
-                    auto pi = dynamic_cast<piNode *>(stmt.get());
-                    auto vars = pi->get_variables();
-                    std::stack<z3::expr> expressions;
-                    switch (pi->getType()) {
-                        case intType: {
-                            z3::expr name = c->int_const(pi->getName().c_str());
-                            for (const auto &conflict : *vars) {
-                                expressions.push(name == c->int_const(conflict.c_str()));
-                            }
-                            break;
-                        }
-                        case boolType: {
-                            z3::expr name = c->bool_const(pi->getName().c_str());
-                            for (const auto &conflict : *vars) {
-                                expressions.push(name == c->bool_const(conflict.c_str()));
-                            }
-                            break;
-                        }
-                        case arrayIntType: {
-                            break;
-                        }
-                        case arrayBoolType: {
-                            break;
-                        }
-                        default:
-                            break;
-                    }
+                z3::expr truebranch = get_run(c, node, node->nexts[0], firstCommonChild);
+                if (event_encountered) {
+                    event_encountered = false;
+                    changed_event = true;
+                }
+                z3::expr falsebranch = get_run(c, node, node->nexts[1], firstCommonChild);
+                if (event_encountered) {
+                    changed_event = true;
+                }
+                z3::expr final = z3::ite(
+                        evaluate_expression(c, dynamic_cast<ifElseNode *>(stmt.get())->getCondition()),
+                        truebranch, falsebranch);
 
-                    z3::expr final = expressions.top();
+                for (const auto &constraint : constraints) {
+                    final = final && constraint;
+                }
+                if (changed_event) return final;
+
+                while (firstCommonChild && firstCommonChild->type == Condition) {
+                    if (firstCommonChild->statements.back()->getNodeType() == If) {
+                        firstCommonChild = find_common_child(firstCommonChild.get());
+                    } else { //Event
+                        return final;
+                    }
+                }
+                if (firstCommonChild && !firstCommonChild->nexts.empty() && firstCommonChild != end)
+                    return final && get_run(c, firstCommonChild.get(), firstCommonChild->nexts[0], end);
+                else return final;
+            }
+            case Event: {
+                z3::expr condition = evaluate_expression(c, dynamic_cast<eventNode*>(stmt.get())->getCondition());
+                bool changed_event = false;
+                if (event_encountered) {
+                    changed_event = true;
+                    event_encountered = false;
+                }
+                z3::expr truebranch = get_run(c, node, node->nexts[0], end);
+
+                if (changed_event) event_encountered = true;
+                if (end != ccfg->exitNode) {
+                    auto res = ccfg->concurrent_events.find(node);
+                    if (res != ccfg->concurrent_events.end()) {
+                        if (!event_encountered) {
+                            z3::expr finalCond = condition;
+                            for (const auto &event : res->second) {
+                                finalCond = finalCond && evaluate_expression(c, dynamic_cast<eventNode*>(event->statements.back().get())->getCondition());
+                            }
+                            z3::expr final = z3::ite(condition, truebranch, c->bool_val(false));
+                            for (const auto &constraint : constraints) {
+                                final = final && constraint;
+                            }
+                            z3::expr finalConstraint =
+                                z3::ite(finalCond
+                                       , final && get_run(c, end.get(), end->nexts[0], ccfg->exitNode)
+                                       , c->bool_val(true)
+                                       );
+                            event_encountered = true;
+                            return finalConstraint;
+                        } else {
+                            return z3::ite(condition, truebranch, c->bool_val(false));
+                        }
+                    }
+                    for (const auto &nxt : end->nexts) {
+                        truebranch = truebranch && get_run(c, end.get(), nxt, ccfg->exitNode);
+                    }
+                }
+                event_encountered = true;
+                z3::expr final = z3::ite(condition, truebranch, c->bool_val(false));
+                for (const auto &constraint : constraints) {
+                    final = final && constraint;
+                }
+                return final;
+            }
+            case EndConcurrent:
+            case AssignArrField:
+            case Sequential:
+            case While:
+            case EndFi:
+            case Write:
+            case Read:
+            case Literal:
+            case ArrayAccess:
+            case ArrayLiteral:
+            case Variable:
+            case BinaryExpression:
+            case UnaryExpression:
+            case Skip:
+            case BasicBlock:
+                if (constraints.empty()) constraints.push_back(c->bool_val(true));
+                break;
+            case Phi: {
+                auto phi = dynamic_cast<phiNode *>(stmt.get());
+                auto parents = node->parents;
+
+                switch (phi->getType()) {
+                    case intType: {
+                        z3::expr name = c->int_const(phi->getName().c_str());
+                        for (size_t i = 0; i < parents.size(); ++i) {
+                            if (previous == parents[i].lock().get()) {
+                                constraints.push_back(name == c->int_const(phi->get_variables()->at(i).c_str()));
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                    case boolType: {
+                        z3::expr name = c->bool_const(phi->getName().c_str());
+                        for (size_t i = 0; i < parents.size(); ++i) {
+                            if (previous == parents[i].lock().get()) {
+                                constraints.push_back(name == c->bool_const(phi->get_variables()->at(i).c_str()));
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                    case arrayIntType:
+                        break;
+                    case arrayBoolType:
+                        break;
+                    case okType:
+                        break;
+                    case errorType:
+                        break;
+                }
+                break;
+            }
+            case Pi: {
+                auto pi = dynamic_cast<piNode *>(stmt.get());
+                auto vars = pi->get_variables();
+                std::stack<z3::expr> expressions;
+                switch (pi->getType()) {
+                    case intType: {
+                        z3::expr name = c->int_const(pi->getName().c_str());
+                        for (const auto &conflict : *vars) {
+                            expressions.push(name == c->int_const(conflict.c_str()));
+                        }
+                        break;
+                    }
+                    case boolType: {
+                        z3::expr name = c->bool_const(pi->getName().c_str());
+                        for (const auto &conflict : *vars) {
+                            expressions.push(name == c->bool_const(conflict.c_str()));
+                        }
+                        break;
+                    }
+                    case arrayIntType: {
+                        break;
+                    }
+                    case arrayBoolType: {
+                        break;
+                    }
+                    default:
+                        break;
+                }
+
+                z3::expr final = expressions.top();
+                expressions.pop();
+                while (!expressions.empty()) {
+                    final = final || expressions.top();
                     expressions.pop();
-                    while (!expressions.empty()) {
-                        final = final || expressions.top();
-                        expressions.pop();
-                    }
-                    constraints.push_back(final);
-                    break;
                 }
+                constraints.push_back(final);
+                break;
             }
         }
     }

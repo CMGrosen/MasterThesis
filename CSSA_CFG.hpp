@@ -23,6 +23,17 @@ struct CSSA_CFG {
         place_phi_functions();
         std::cout << "here";
 
+        for (const auto &blk : ccfg->nodes) {
+            if (blk->type == Coend) {
+                std::vector<std::shared_ptr<statementNode>> vec;
+                for (size_t i = 0; i < blk->statements.size()-1; ++i) {
+                    vec.push_back(std::make_shared<piNode>(piNode(dynamic_cast<phiNode*>(blk->statements[i].get()))));
+                }
+                vec.push_back(blk->statements.back());
+                blk->statements = std::move(vec);
+            }
+        }
+
         get_thread_and_depth_level(ccfg->startNode, 0);
         std::sort(ccfg->pis_and_depth.begin(), ccfg->pis_and_depth.end(),
                 [&](const std::pair<std::shared_ptr<basicblock>, int32_t>& a, const std::pair<std::shared_ptr<basicblock>, int32_t>& b) {

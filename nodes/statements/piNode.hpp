@@ -13,9 +13,19 @@ class piNode : virtual public statementNode {
 
 public:
     piNode(Type t, std::string variable, int _num, std::vector<std::string> possible_variables)
-        : _variable{std::move(variable)}, num{_num}, _possible_variables{std::move(possible_variables)} {
-        name = "-T_" + _variable + "_" + std::to_string(num);
+        : _variable{std::move(variable)}, _possible_variables{std::move(possible_variables)} {
+        name = "-T_" + _variable + "_" + std::to_string(_num);
+        num = _num;
         setType(t);
+        setNodeType(Pi);
+        setSSA(true);
+    }
+
+    piNode(phiNode *phi) : _variable{phi->getOriginalName()}, name{phi->getName()} {
+        std::string sub = name.substr(_variable.size()+1);
+        num = std::stoi(sub);
+        for (const auto &v : *phi->get_variables()) _possible_variables.push_back(v);
+        setType(phi->getType());
         setNodeType(Pi);
         setSSA(true);
     }
@@ -37,6 +47,7 @@ public:
             _pos_vars.push_back(v);
         }
         auto _this = std::make_shared<piNode>(piNode(type, _variable, num, std::move(_pos_vars)));
+        _this->name = name;
         _this->setSSA(onSSA);
         return _this;
     }
