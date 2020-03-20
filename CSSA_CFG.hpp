@@ -160,56 +160,53 @@ private:
     }
 
     void place_phi_functions() {
-        for (const auto &b : ccfg->nodes) {                             //foreach b in N
-            for (const auto &ed : ccfg->edges) {                        //foreach conflict edge
-                if (ed.type == conflict && (ed.neighbours[1] == b)) {   //(a, b) do
-                    std::shared_ptr<basicblock> a = ed.neighbours[0];
-                    for (const auto &v : a->defines) {                  //v variable defined in a
-                        if (b->uses.find(v.first) != b->uses.end()) {
-                            bool hasPiFunction = false;
+        for (const auto &pair : ccfg->conflict_edges) {
+            std::shared_ptr<basicblock> a = pair.first;
+            for (const std::shared_ptr<basicblock> &b : pair.second) { //Foreach conflict-edge (a, b) do
+                for (const auto &v : a->defines) { //v variable defined in a
+                    std::string varname = v.first;
+                    if (b->uses.find(varname) != b->uses.end()) {
+                        bool hasPiFunction = false;
+                        for (const auto &stmt : b->statements) {
+                            if (stmt->getNodeType() == Pi && dynamic_cast<piNode *>(stmt.get())->getVar() == varname) {
+                                hasPiFunction = true;
+                                break;
+                            }
+                        }
+                        if (!hasPiFunction) { //if b does not have a pi function
+                            std::pair<size_t, std::vector<std::string *>> usages = num_usages(b->statements.back(), varname);
+                            std::vector<std::shared_ptr<statementNode>> vec;
+                            vec.reserve(usages.first + b->statements.size());
+                            Type t = symboltable->find(varname)->second->getType();
+                            for (size_t i = 0; i < usages.first; ++i) {
+                                pinodes.emplace_back(std::make_shared<piNode>(piNode
+                                    ( t
+                                    , varname
+                                    , counter[varname]++
+                                    , std::vector<std::string>{*(b->uses.find(varname)->second.begin())}
+                                    )
+                                ));
+                                vec.push_back(pinodes.back());
+                                pinodeblocks.push_back(b);
+                            }
+                            size_t i = usages.first;
+                            for (auto item : usages.second) {
+                                *item = "-T_" + varname + "_" + std::to_string(counter[varname] - (i--));
+                            }
+
+                            for (const auto &stmt: b->statements) {
+                                vec.push_back(stmt);
+                            }
+                            b->statements = vec;
+                        }
+                        // if (n not in prec(s) incomplete, need prec(s) function
+                        //if (ccfg->prec.find(a)->second.find(b) != ccfg->prec.find(a)->second.end())
+                        if (!b->statements.empty()) {
                             for (const auto &stmt : b->statements) {
-                                if (stmt->getNodeType() == Pi && dynamic_cast<piNode*>(stmt.get())->getVar() == v.first) {
-                                    hasPiFunction = true;
-                                    break;
-                                }
-                            }
-                            if (!hasPiFunction) {                       //if b does not have a pi function
-                                std::pair<size_t, std::vector<std::string*>> usages = num_usages(b->statements.back(), v.first);
-                                std::vector<std::shared_ptr<statementNode>> vec;
-                                vec.reserve(usages.first+b->statements.size());
-                                Type t = symboltable->find(v.first)->second->getType();
-                                for (size_t i = 0; i < usages.first; ++i) {
-                                    pinodes.emplace_back(std::make_shared<piNode>(piNode
-                                        ( t
-                                        , v.first
-                                        , counter[v.first]++
-                                        , std::vector<std::string>{*(b->uses.find(v.first)->second.begin())}
-                                        )
-                                    ));
-                                    vec.push_back(pinodes.back());
-                                    pinodeblocks.push_back(b);
-                                }
-
-                                std::string varname = v.first;
-                                size_t i = usages.first;
-                                for (auto item : usages.second) {
-                                    *item = "-T_" + varname + "_" + std::to_string(counter[varname]-(i--));
-                                }
-
-                                for (const auto &stmt: b->statements) {
-                                    vec.push_back(stmt);
-                                }
-                                b->statements = vec;
-                            }
-                            // if (n not in prec(s) incomplete, need prec(s) function
-                            //if (ccfg->prec.find(a)->second.find(b) != ccfg->prec.find(a)->second.end())
-                            if (!b->statements.empty()) {
-                                for (const auto &stmt : b->statements) {
-                                    if (auto pi = dynamic_cast<piNode *>(stmt.get())) {
-                                        std::string var = *(a->defines.find(v.first)->second.begin());
-                                        if (pi->getVar() == v.first && !pi->contains(var)) {
-                                            pi->addVariable(var);
-                                        }
+                                if (auto pi = dynamic_cast<piNode *>(stmt.get())) {
+                                    std::string var = *(a->defines.find(varname)->second.begin());
+                                    if (pi->getVar() == varname && !pi->contains(var)) {
+                                        pi->addVariable(var);
                                     }
                                 }
                             }

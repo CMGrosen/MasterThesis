@@ -15,6 +15,7 @@
 struct CCFG {
     std::set<std::shared_ptr<basicblock>> nodes;
     std::unordered_set<edge> edges;
+    std::unordered_map<std::shared_ptr<basicblock>, std::vector<std::shared_ptr<basicblock>>> conflict_edges;
     std::shared_ptr<basicblock> startNode;
     std::shared_ptr<basicblock> exitNode;
     std::map<std::string, std::shared_ptr<basicblock>> defs;
@@ -77,7 +78,7 @@ struct CCFG {
     }
 
     CCFG(CCFG&& o) noexcept
-            : nodes{std::move(o.nodes)}, edges{std::move(o.edges)},
+            : nodes{std::move(o.nodes)}, edges{std::move(o.edges)}, conflict_edges{std::move(o.conflict_edges)},
             startNode{std::move(o.startNode)}, exitNode{std::move(o.exitNode)},
             defs{std::move(o.defs)}, concurrent_events{std::move(o.concurrent_events)}, reads{std::move(o.reads)}, prec{std::move(o.prec)}, pis_and_depth(std::move(o.pis_and_depth))
     {}
@@ -90,6 +91,7 @@ struct CCFG {
     CCFG& operator=(CCFG&& other) noexcept {
         nodes = std::move(other.nodes);
         edges = std::move(other.edges);
+        conflict_edges = std::move(other.conflict_edges);
         startNode = std::move(other.startNode);
         exitNode = std::move(other.exitNode);
         defs = std::move(other.defs);
@@ -165,6 +167,10 @@ private:
         }
         for (const auto &ed : a.edges) {
             edges.insert(edge(ed.type, oldMapsTo[ed.neighbours[0].get()], oldMapsTo[ed.neighbours[1].get()]));
+            if (ed.type == conflict) {
+                auto res = conflict_edges.insert({oldMapsTo[ed.neighbours[0].get()], {oldMapsTo[ed.neighbours[1].get()]}});
+                if (!res.second) res.first->second.push_back(oldMapsTo[ed.neighbours[1].get()]);
+            }
         }
         if (!a.defs.empty()) {
             for (const auto &def : a.defs) {
@@ -227,6 +233,8 @@ private:
                             // and have a variable in common,
                             // thus there's a conflict
                             edges.insert(edge(conflict, blk, cmp));
+                            auto res = conflict_edges.insert({blk, {cmp}});
+                            if (!res.second) res.first->second.push_back(cmp);
                             break;
                         }
                     }
