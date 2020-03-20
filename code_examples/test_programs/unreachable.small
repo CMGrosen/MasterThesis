@@ -1,0 +1,25 @@
+a = 0;
+reachable = false;
+fork {
+    a = 10;
+} and {
+    a = 20;
+    if(a < 20){
+        a = a+read(1);
+        //skip;
+    } else {
+        //a=read(1);
+        skip;
+    };
+} and {
+    if(a == 10){
+        if(a == 20) {
+            if(a == 50){
+                reachable = true;
+            } else {skip;};
+        } else {skip;};
+    } else {skip;};
+};
+
+when(reachable == true);
+hej = true;

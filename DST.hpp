@@ -64,25 +64,6 @@ public:
     //static antlrcpp::Any deepCopy(const node *);
 
     //std::shared_ptr<statementNode> sequentialAssignForArray(std::string, int, std::vector<std::shared_ptr<expressionNode>>);
-
-    /*std::shared_ptr<statementNode> sequentialAssignForArray(std::string name, int accessor, std::vector<std::shared_ptr<expressionNode>> n) {
-        Type t = n[0]->getType();
-        if(n.size() == 1) {
-            std::shared_ptr<expressionNode> access = std::make_shared<literalNode>(t, std::to_string(accessor));
-            std::shared_ptr<arrayAccessNode> arrAcc = std::make_shared<arrayAccessNode>(arrayAccessNode(t,access,name));
-            std::shared_ptr<statementNode> arrFieldAss = std::make_shared<arrayFieldAssignNode>(arrayFieldAssignNode(okType,arrAcc,n[0]));
-            return arrFieldAss;
-        } else {
-            std::shared_ptr<expressionNode> access = std::make_shared<literalNode>(t,std::to_string(accessor));
-            std::shared_ptr<arrayAccessNode> arrAcc = std::make_shared<arrayAccessNode>(arrayAccessNode(t,access,name));
-            std::shared_ptr<statementNode> arrFieldAss = std::make_shared<arrayFieldAssignNode>(arrayFieldAssignNode(okType,arrAcc,n[0]));
-            std::vector<std::shared_ptr<expressionNode>> ne;
-            for (auto i = 1; i < n.size(); i++) {
-                ne.push_back(n[i]);
-            }
-            return std::make_shared<sequentialNode>(sequentialNode(okType,arrFieldAss,sequentialAssignForArray(name,accessor+1,ne)));
-        }
-    }*/
 };
 
 #endif //DST_HPP

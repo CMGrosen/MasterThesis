@@ -1,0 +1,19 @@
+a = read(1);
+d = false;
+
+fork {
+  when(a > 10);
+  b = 5;
+} and {
+  when (a > 20);
+  b = 6;
+} and {
+  when (a < 0);
+  a = read(1);
+} and {
+  a = read(1);
+};
+a = 2;
+b = 10;
+c = b;
+d = true;
