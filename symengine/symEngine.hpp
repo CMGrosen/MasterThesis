@@ -13,8 +13,6 @@
 #include "trace.hpp"
 
 class symEngine {
-    std::shared_ptr<CCFG> ccfg;
-    std::unordered_map<std::string, std::shared_ptr<expressionNode>> symboltable;
     z3::context c;
     z3::solver s;
 
@@ -40,9 +38,11 @@ public:
     symEngine(symEngine&&) noexcept;
     symEngine& operator=(symEngine&&) noexcept;
 
+    std::shared_ptr<CCFG> ccfg;
+    std::unordered_map<std::string, std::shared_ptr<expressionNode>> symboltable;
+    std::map<std::string, std::pair<std::string, Type>> getModel();
 
-
-    std::vector<std::shared_ptr<trace>> execute();
+    bool execute();
 
 };
 

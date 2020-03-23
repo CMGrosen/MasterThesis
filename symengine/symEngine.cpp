@@ -6,30 +6,33 @@
 #include <limits>
 #include <string>
 
-symEngine::symEngine(std::shared_ptr<CCFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table) : ccfg{std::move(ccfg)}, symboltable{std::move(table)}, c{}, s{z3::solver(c)}, event_encountered{false} {}
+symEngine::symEngine(std::shared_ptr<CCFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table) :
+    c{}, s{z3::solver(c)}, event_encountered{false}, ccfg{std::move(ccfg)}, symboltable{std::move(table)} {}
 
 symEngine::symEngine(const symEngine &a) :
-    ccfg{a.ccfg}, symboltable{a.symboltable}, c{}, s{z3::solver(c)}, event_encountered{false} {}
+    c{}, s{z3::solver(c)}, event_encountered{false}, ccfg{a.ccfg}, symboltable{a.symboltable} {}
 
 symEngine &symEngine::operator=(const symEngine &a) {
     s = z3::solver(c);
+    event_encountered = false;
     ccfg = a.ccfg;
     symboltable = a.symboltable;
     return *this;
 }
 
 symEngine::symEngine(symEngine &&a) noexcept :
-    ccfg{std::move(a.ccfg)}, symboltable{std::move(a.symboltable)}, c{}, s{z3::solver(c)}, event_encountered{false} {}
+    c{}, s{z3::solver(c)}, event_encountered{false}, ccfg{std::move(a.ccfg)}, symboltable{std::move(a.symboltable)} {}
 
 symEngine &symEngine::operator=(symEngine &&a) noexcept {
     s = z3::solver(c);
+    event_encountered = false;
     ccfg = std::move(a.ccfg);
     symboltable = std::move(a.symboltable);
     return *this;
 }
 
-symEngine::symEngine(std::shared_ptr<SSA_CCFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table) : ccfg{std::move(ccfg->ccfg)}, symboltable(std::move(table)), c{}, s{z3::solver(c)}, event_encountered{false} {}
-symEngine::symEngine(std::shared_ptr<CSSA_CFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table) : ccfg{std::move(ccfg->ccfg)}, symboltable(std::move(table)), c{}, s{z3::solver(c)}, event_encountered{false} {}
+symEngine::symEngine(std::shared_ptr<SSA_CCFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table) : c{}, s{z3::solver(c)}, event_encountered{false}, ccfg{std::move(ccfg->ccfg)}, symboltable(std::move(table)) {}
+symEngine::symEngine(std::shared_ptr<CSSA_CFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table) : c{}, s{z3::solver(c)}, event_encountered{false}, ccfg{std::move(ccfg->ccfg)}, symboltable(std::move(table)) {}
 
 void symEngine::add_reads() {
     for (const auto &read : ccfg->reads) {
@@ -40,7 +43,7 @@ void symEngine::add_reads() {
     }
 }
 
-std::vector<std::shared_ptr<trace>> symEngine::execute() {
+bool symEngine::execute() {
     add_reads();
     //z3::expr encoded = encoded_pis(&c, ccfg->pis_and_depth, {});
 
@@ -87,6 +90,7 @@ std::vector<std::shared_ptr<trace>> symEngine::execute() {
         auto model = s.get_model();
         std::cout << "sat\n";
         std::cout << model << "\n" << std::endl;
+        return true;
     } else {
         std::cout << "unsat\nProbably no race-conditions" << std::endl;
         std::stack<z3::expr> early_exits;
@@ -106,8 +110,9 @@ std::vector<std::shared_ptr<trace>> symEngine::execute() {
             }
         }
 
-        if (early_exits.empty()) std::cout << "no early exit variables. Program has been fully explored" << std::endl;
-        else {
+        if (early_exits.empty()) {
+            std::cout << "no early exit variables. Program has been fully explored" << std::endl;
+        } else {
             z3::expr final = early_exits.top();
             early_exits.pop();
             while (!early_exits.empty()) {
@@ -121,6 +126,7 @@ std::vector<std::shared_ptr<trace>> symEngine::execute() {
                 for (const auto &pair : names) {
                     std::cout << pair.second << " = " << m.eval(c.bool_const(pair.first.c_str())).to_string() << std::endl;
                 }
+                return true;
             } else {
                 std::cout << "not satisfiable even when removing additional constraints\n";
             }
@@ -129,7 +135,7 @@ std::vector<std::shared_ptr<trace>> symEngine::execute() {
         std::cout <<  s.unsat_core() << std::endl;
     }
 
-    return std::vector<std::shared_ptr<trace>>{nullptr};
+    return false;
 
 }
 
@@ -696,4 +702,22 @@ z3::expr symEngine::encoded_pis(const std::vector<std::pair<std::shared_ptr<basi
         return final;
 
     }
+}
+
+std::map<std::string, std::pair<std::string, Type>> symEngine::getModel() {
+    std::map<std::string, std::pair<std::string, Type>> values;
+
+    z3::model m = s.get_model();
+
+    for (unsigned i = 0; i < m.size(); i++) {
+        z3::func_decl v = m[i];
+        // this problem contains only constants
+        assert(v.arity() == 0);
+        std::string value = m.get_const_interp(v).to_string();
+        Type t;
+        if (value == "true" || value == "false") t = boolType; else t = intType;
+        values.insert({v.name().str(), {value, t}});
+        std::cout << v.name() << " = " << m.get_const_interp(v) << "\n";
+    }
+    return values;
 }

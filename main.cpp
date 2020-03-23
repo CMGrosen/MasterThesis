@@ -10,6 +10,7 @@
 #include <SSA_CCFG.hpp>
 #include <statementsTransformer.hpp>
 #include <lengauerTarjan.hpp>
+#include <symengine/interpreter.hpp>
 
 using namespace std;
 using namespace antlr4;
@@ -102,7 +103,9 @@ SSA_CCFG do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_pt
     symEngine engine = symEngine(cssaccfg, treeAndSymbolTable->second);
     //symEngine engine = symEngine(cssaccfg, treeAndSymbolTable->second);
 
-    auto res = engine.execute();
+    interpreter checker = interpreter(engine);
+
+
 
     //auto res = engine.execute();
 
