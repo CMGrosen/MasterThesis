@@ -23,6 +23,9 @@ struct CCFG {
     std::vector<std::string> reads;
     std::unordered_map<std::shared_ptr<basicblock>, std::unordered_set<std::shared_ptr<basicblock>>> prec;
     std::vector<std::pair<std::shared_ptr<basicblock>, int32_t>> pis_and_depth;
+    std::vector<std::shared_ptr<basicblock>> fiNodes;
+    std::vector<std::shared_ptr<basicblock>> endconcNodes;
+
 
     void updateConflictEdges() { add_conflict_edges(); };
 
@@ -69,6 +72,8 @@ struct CCFG {
                         break;
                 }
             }
+            if (n->type == Coend) endconcNodes.push_back(n);
+            else if (n->type == joinNode) fiNodes.push_back(n);
         }
         build_partial_order_execution();
     }
@@ -80,7 +85,9 @@ struct CCFG {
     CCFG(CCFG&& o) noexcept
             : nodes{std::move(o.nodes)}, edges{std::move(o.edges)}, conflict_edges{std::move(o.conflict_edges)},
             startNode{std::move(o.startNode)}, exitNode{std::move(o.exitNode)},
-            defs{std::move(o.defs)}, concurrent_events{std::move(o.concurrent_events)}, reads{std::move(o.reads)}, prec{std::move(o.prec)}, pis_and_depth(std::move(o.pis_and_depth))
+            defs{std::move(o.defs)}, concurrent_events{std::move(o.concurrent_events)}, reads{std::move(o.reads)},
+            prec{std::move(o.prec)}, pis_and_depth(std::move(o.pis_and_depth)),
+            fiNodes{std::move(o.fiNodes)}, endconcNodes{std::move(o.endconcNodes)}
     {}
 
     CCFG& operator=(const CCFG& a) {
@@ -99,6 +106,8 @@ struct CCFG {
         reads = std::move(other.reads);
         prec = std::move(other.prec);
         pis_and_depth = std::move(other.pis_and_depth);
+        fiNodes = std::move(other.fiNodes);
+        endconcNodes = std::move(other.endconcNodes);
         return *this;
     }
 
@@ -160,11 +169,13 @@ private:
                 auto concnode = dynamic_cast<endConcNode*>(oldMapsTo[n.get()]->statements.back().get());
                 auto prev_parent = concnode->getConcNode();
                 concnode->setConcNode(oldMapsTo[concnode->getConcNode().get()]);
+                endconcNodes.push_back(oldMapsTo[n.get()]);
             } else if (n->type == joinNode) {
                 auto finode = dynamic_cast<fiNode*>(oldMapsTo[n.get()]->statements.back().get());
                 std::set<std::shared_ptr<basicblock>> parents;
                 for (const auto &p : *finode->get_parents()) parents.insert(oldMapsTo[p.get()]);
                 finode->set_parents(std::move(parents));
+                fiNodes.push_back(oldMapsTo[n.get()]);
             }
         }
         for (const auto &ed : a.edges) {

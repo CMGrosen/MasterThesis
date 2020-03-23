@@ -6,26 +6,48 @@
 #include <limits>
 #include <string>
 
-symEngine::symEngine(std::shared_ptr<CCFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table) : ccfg{std::move(ccfg)}, symboltable{std::move(table)}, event_encountered{false} {}
-symEngine::symEngine(std::shared_ptr<SSA_CCFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table) : ccfg{std::move(ccfg->ccfg)}, symboltable(std::move(table)), event_encountered{false} {}
-symEngine::symEngine(std::shared_ptr<CSSA_CFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table) : ccfg{std::move(ccfg->ccfg)}, symboltable(std::move(table)), event_encountered{false} {}
-std::vector<std::shared_ptr<trace>> symEngine::execute() {
-    z3::context c;
-    z3::solver s(c);
+symEngine::symEngine(std::shared_ptr<CCFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table) : ccfg{std::move(ccfg)}, symboltable{std::move(table)}, c{}, s{z3::solver(c)}, event_encountered{false} {}
 
+symEngine::symEngine(const symEngine &a) :
+    ccfg{a.ccfg}, symboltable{a.symboltable}, c{}, s{z3::solver(c)}, event_encountered{false} {}
+
+symEngine &symEngine::operator=(const symEngine &a) {
+    s = z3::solver(c);
+    ccfg = a.ccfg;
+    symboltable = a.symboltable;
+    return *this;
+}
+
+symEngine::symEngine(symEngine &&a) noexcept :
+    ccfg{std::move(a.ccfg)}, symboltable{std::move(a.symboltable)}, c{}, s{z3::solver(c)}, event_encountered{false} {}
+
+symEngine &symEngine::operator=(symEngine &&a) noexcept {
+    s = z3::solver(c);
+    ccfg = std::move(a.ccfg);
+    symboltable = std::move(a.symboltable);
+    return *this;
+}
+
+symEngine::symEngine(std::shared_ptr<SSA_CCFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table) : ccfg{std::move(ccfg->ccfg)}, symboltable(std::move(table)), c{}, s{z3::solver(c)}, event_encountered{false} {}
+symEngine::symEngine(std::shared_ptr<CSSA_CFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table) : ccfg{std::move(ccfg->ccfg)}, symboltable(std::move(table)), c{}, s{z3::solver(c)}, event_encountered{false} {}
+
+void symEngine::add_reads() {
     for (const auto &read : ccfg->reads) {
         z3::expr name = c.int_const(read.c_str());
         z3::expr r = name >= INT16_MIN && name <= INT16_MAX;
         std::cout << r.to_string() << "\n";
         s.add(r);
     }
+}
 
+std::vector<std::shared_ptr<trace>> symEngine::execute() {
+    add_reads();
     //z3::expr encoded = encoded_pis(&c, ccfg->pis_and_depth, {});
 
     //std::cout << "\n\n\n\n\nencoded:\n" << encoded.to_string() << std::endl;
 
-    auto run1 = get_run(&c, nullptr, ccfg->startNode, ccfg->exitNode, "run1");
-    auto run2 = get_run(&c, nullptr, ccfg->startNode, ccfg->exitNode, "run2");
+    auto run1 = get_run(nullptr, ccfg->startNode, ccfg->exitNode, "run1");
+    auto run2 = get_run(nullptr, ccfg->startNode, ccfg->exitNode, "run2");
 
     //std::cout << "\n" << t.to_string() << "\n\n" << std::endl;
     s.add(run1 && run2);
@@ -66,7 +88,44 @@ std::vector<std::shared_ptr<trace>> symEngine::execute() {
         std::cout << "sat\n";
         std::cout << model << "\n" << std::endl;
     } else {
-        std::cout << "unsat" << std::endl;
+        std::cout << "unsat\nProbably no race-conditions" << std::endl;
+        std::stack<z3::expr> early_exits;
+        std::vector<std::pair<std::string, std::string>> names;
+        s.reset();
+        add_reads();
+        s.add(get_run(nullptr, ccfg->startNode, ccfg->exitNode, "run1"));
+        for (const auto &blk : ccfg->fiNodes) {
+            for (const auto &stmt : blk->statements) {
+                if (auto phi = dynamic_cast<phiNode*>(stmt.get())) {
+                    if (phi->getOriginalName().find("early") != std::string::npos) {
+                        //std::cout << phi->getName() << " = " << s.re
+                        early_exits.push(c.bool_const(phi->getName().c_str()) == true);
+                        names.emplace_back(phi->getName(), phi->getOriginalName());
+                    }
+                }
+            }
+        }
+
+        if (early_exits.empty()) std::cout << "no early exit variables. Program has been fully explored" << std::endl;
+        else {
+            z3::expr final = early_exits.top();
+            early_exits.pop();
+            while (!early_exits.empty()) {
+                final = final || early_exits.top();
+                early_exits.pop();
+            }
+            s.add(final);
+
+            if (s.check() == z3::sat) {
+                z3::model m = s.get_model();
+                for (const auto &pair : names) {
+                    std::cout << pair.second << " = " << m.eval(c.bool_const(pair.first.c_str())).to_string() << std::endl;
+                }
+            } else {
+                std::cout << "not satisfiable even when removing additional constraints\n";
+            }
+        }
+
         std::cout <<  s.unsat_core() << std::endl;
     }
 
@@ -74,7 +133,7 @@ std::vector<std::shared_ptr<trace>> symEngine::execute() {
 
 }
 
-z3::expr symEngine::get_run(z3::context *c, std::shared_ptr<basicblock> previous, const std::shared_ptr<basicblock> &start, const std::shared_ptr<basicblock> &end, const std::string &run) {
+z3::expr symEngine::get_run(const std::shared_ptr<basicblock>& previous, const std::shared_ptr<basicblock> &start, const std::shared_ptr<basicblock> &end, const std::string &run) {
     auto node = start;
     std::vector<z3::expr> constraints;
 
@@ -83,9 +142,9 @@ z3::expr symEngine::get_run(z3::context *c, std::shared_ptr<basicblock> previous
             case Assign: {
                 auto assnode = dynamic_cast<assignNode *>(stmt.get());
                 auto name = assnode->getExpr()->getType() == intType
-                            ? c->int_const((assnode->getName() + run).c_str())
-                            : c->bool_const((assnode->getName() + run).c_str());
-                constraints.push_back(name == evaluate_expression(c, assnode->getExpr(), run));
+                            ? c.int_const((assnode->getName() + run).c_str())
+                            : c.bool_const((assnode->getName() + run).c_str());
+                constraints.push_back(name == evaluate_expression(&c, assnode->getExpr(), run));
                 break;
             }
             case Concurrent: {
@@ -98,7 +157,7 @@ z3::expr symEngine::get_run(z3::context *c, std::shared_ptr<basicblock> previous
                         event_encountered = false;
                         changed_event = true;
                     }
-                    expressions.push(get_run(c, node, nxt, endConc->parents[i++].lock(), run));
+                    expressions.push(get_run(node, nxt, endConc->parents[i++].lock(), run));
                 }
                 z3::expr final = expressions.top();
                 expressions.pop();
@@ -125,17 +184,17 @@ z3::expr symEngine::get_run(z3::context *c, std::shared_ptr<basicblock> previous
                     event_encountered = false;
                     changed_event = true;
                 }
-                z3::expr truebranch = get_run(c, node, node->nexts[0], firstCommonChild, run);
+                z3::expr truebranch = get_run(node, node->nexts[0], firstCommonChild, run);
                 if (event_encountered) {
                     event_encountered = false;
                     changed_event = true;
                 }
-                z3::expr falsebranch = get_run(c, node, node->nexts[1], firstCommonChild, run);
+                z3::expr falsebranch = get_run(node, node->nexts[1], firstCommonChild, run);
                 if (event_encountered) {
                     changed_event = true;
                 }
                 z3::expr final = z3::ite(
-                        evaluate_expression(c, dynamic_cast<ifElseNode *>(stmt.get())->getCondition(), run),
+                        evaluate_expression(&c, dynamic_cast<ifElseNode *>(stmt.get())->getCondition(), run),
                         truebranch, falsebranch);
 
                 for (const auto &constraint : constraints) {
@@ -151,17 +210,17 @@ z3::expr symEngine::get_run(z3::context *c, std::shared_ptr<basicblock> previous
                     }
                 }
                 if (firstCommonChild && !firstCommonChild->nexts.empty() && firstCommonChild != end)
-                    return final && get_run(c, firstCommonChild, firstCommonChild->nexts[0], end, run);
+                    return final && get_run(firstCommonChild, firstCommonChild->nexts[0], end, run);
                 else return final;
             }
             case Event: {
-                z3::expr condition = evaluate_expression(c, dynamic_cast<eventNode*>(stmt.get())->getCondition(), run);
+                z3::expr condition = evaluate_expression(&c, dynamic_cast<eventNode*>(stmt.get())->getCondition(), run);
                 bool changed_event = false;
                 if (event_encountered) {
                     changed_event = true;
                     event_encountered = false;
                 }
-                z3::expr truebranch = get_run(c, node, node->nexts[0], end, run);
+                z3::expr truebranch = get_run( node, node->nexts[0], end, run);
 
                 if (changed_event) event_encountered = true;
                 if (end != ccfg->exitNode) {
@@ -170,29 +229,29 @@ z3::expr symEngine::get_run(z3::context *c, std::shared_ptr<basicblock> previous
                         if (!event_encountered) {
                             z3::expr finalCond = condition;
                             for (const auto &event : res->second) {
-                                finalCond = finalCond && evaluate_expression(c, dynamic_cast<eventNode*>(event->statements.back().get())->getCondition(), run);
+                                finalCond = finalCond && evaluate_expression(&c, dynamic_cast<eventNode*>(event->statements.back().get())->getCondition(), run);
                             }
-                            z3::expr final = z3::ite(condition, truebranch, c->bool_val(false));
+                            z3::expr final = z3::ite(condition, truebranch, c.bool_val(false));
                             for (const auto &constraint : constraints) {
                                 final = final && constraint;
                             }
                             z3::expr finalConstraint =
                                 z3::ite(finalCond
-                                       , final && get_run(c, end, end->nexts[0], ccfg->exitNode, run)
-                                       , c->bool_val(true)
+                                       , final && get_run(end, end->nexts[0], ccfg->exitNode, run)
+                                       , c.bool_val(true)
                                        );
                             event_encountered = true;
                             return finalConstraint;
                         } else {
-                            return z3::ite(condition, truebranch, c->bool_val(false));
+                            return z3::ite(condition, truebranch, c.bool_val(false));
                         }
                     }
                     for (const auto &nxt : end->nexts) {
-                        truebranch = truebranch && get_run(c, end, nxt, ccfg->exitNode, run);
+                        truebranch = truebranch && get_run(end, nxt, ccfg->exitNode, run);
                     }
                 }
                 event_encountered = true;
-                z3::expr final = z3::ite(condition, truebranch, c->bool_val(false));
+                z3::expr final = z3::ite(condition, truebranch, c.bool_val(false));
                 for (const auto &constraint : constraints) {
                     final = final && constraint;
                 }
@@ -213,7 +272,7 @@ z3::expr symEngine::get_run(z3::context *c, std::shared_ptr<basicblock> previous
             case UnaryExpression:
             case Skip:
             case BasicBlock:
-                if (constraints.empty()) constraints.push_back(c->bool_val(true));
+                if (constraints.empty()) constraints.push_back(c.bool_val(true));
                 break;
             case Phi: {
                 auto phi = dynamic_cast<phiNode *>(stmt.get());
@@ -221,20 +280,20 @@ z3::expr symEngine::get_run(z3::context *c, std::shared_ptr<basicblock> previous
 
                 switch (phi->getType()) {
                     case intType: {
-                        z3::expr name = c->int_const((phi->getName() + run).c_str());
+                        z3::expr name = c.int_const((phi->getName() + run).c_str());
                         for (size_t i = 0; i < parents.size(); ++i) {
                             if (previous == parents[i].lock()) {
-                                constraints.push_back(name == c->int_const((phi->get_variables()->at(i) + run).c_str()));
+                                constraints.push_back(name == c.int_const((phi->get_variables()->at(i) + run).c_str()));
                                 break;
                             }
                         }
                         break;
                     }
                     case boolType: {
-                        z3::expr name = c->bool_const((phi->getName() + run).c_str());
+                        z3::expr name = c.bool_const((phi->getName() + run).c_str());
                         for (size_t i = 0; i < parents.size(); ++i) {
                             if (previous == parents[i].lock()) {
-                                constraints.push_back(name == c->bool_const((phi->get_variables()->at(i) + run).c_str()));
+                                constraints.push_back(name == c.bool_const((phi->get_variables()->at(i) + run).c_str()));
                                 break;
                             }
                         }
@@ -257,16 +316,16 @@ z3::expr symEngine::get_run(z3::context *c, std::shared_ptr<basicblock> previous
                 std::stack<z3::expr> expressions;
                 switch (pi->getType()) {
                     case intType: {
-                        z3::expr name = c->int_const((pi->getName() + run).c_str());
+                        z3::expr name = c.int_const((pi->getName() + run).c_str());
                         for (const auto &conflict : *vars) {
-                            expressions.push(name == c->int_const((conflict + run).c_str()));
+                            expressions.push(name == c.int_const((conflict + run).c_str()));
                         }
                         break;
                     }
                     case boolType: {
-                        z3::expr name = c->bool_const((pi->getName() + run).c_str());
+                        z3::expr name = c.bool_const((pi->getName() + run).c_str());
                         for (const auto &conflict : *vars) {
-                            expressions.push(name == c->bool_const((conflict + run).c_str()));
+                            expressions.push(name == c.bool_const((conflict + run).c_str()));
                         }
                         break;
                     }
@@ -300,12 +359,12 @@ z3::expr symEngine::get_run(z3::context *c, std::shared_ptr<basicblock> previous
     if (node == end || node->nexts.empty() || event_encountered) {
         return final;
     } else {
-        return final && get_run(c, node, node->nexts[0], end, run);
+        return final && get_run(node, node->nexts[0], end, run);
     }
 }
 
 std::shared_ptr<basicblock> symEngine::find_common_child(const std::shared_ptr<basicblock>& parent) {
-    for (const auto &blk : ccfg->nodes) {
+    for (const auto &blk : ccfg->fiNodes) {
         if (auto fi = dynamic_cast<fiNode*>(blk->statements.back().get())) {
             if (fi->get_parents()->find(parent) != fi->get_parents()->end()) {
                 return blk;
@@ -405,13 +464,9 @@ z3::expr symEngine::evaluate_operator(const z3::expr& left, const z3::expr& righ
 }
 
 std::shared_ptr<basicblock> symEngine::get_end_of_concurrent_node(const std::shared_ptr<basicblock>& node) {
-    for (const auto &blk : ccfg->nodes) {
-        if (blk->type == Coend) {
-            if (auto coend = dynamic_cast<endConcNode*>(blk->statements.back().get())) {
-                if (coend->getConcNode() == node) {
-                    return blk;
-                }
-            }
+    for (const auto &blk : ccfg->endconcNodes) {
+        if (dynamic_cast<endConcNode*>(blk->statements.back().get())->getConcNode() == node) {
+            return blk;
         }
     }
     assert(false);
@@ -513,7 +568,7 @@ std::vector<std::string> symEngine::includable_vars(const std::shared_ptr<statem
     }
 }
 
-z3::expr symEngine::encoded_pis(z3::context *c, const std::vector<std::pair<std::shared_ptr<basicblock>, int32_t>> &remaining, const std::unordered_map<std::string, std::vector<std::string>> &constraints) {
+z3::expr symEngine::encoded_pis(const std::vector<std::pair<std::shared_ptr<basicblock>, int32_t>> &remaining, const std::unordered_map<std::string, std::vector<std::string>> &constraints) {
     auto pin = dynamic_cast<piNode*>(remaining.front().first->statements.front().get());
 
     if (pin->getName() == "-T_a_2") {
@@ -538,7 +593,7 @@ z3::expr symEngine::encoded_pis(z3::context *c, const std::vector<std::pair<std:
                 break;
             }
         }
-        if (possiblevars.empty()) return c->bool_val(false);
+        if (possiblevars.empty()) return c.bool_val(false);
         else {
             std::vector<std::string> posvarsforendnode;
             std::stack<z3::expr> end;
@@ -550,8 +605,8 @@ z3::expr symEngine::encoded_pis(z3::context *c, const std::vector<std::pair<std:
                     }
                     for (const auto &str : posvarsforendnode) {
                         end.push(phi->getType() == intType
-                                 ? c->int_const(phi->getName().c_str()) == c->int_const(str.c_str())
-                                 : c->bool_const(phi->getName().c_str()) == c->bool_const(str.c_str()));
+                                 ? c.int_const(phi->getName().c_str()) == c.int_const(str.c_str())
+                                 : c.bool_const(phi->getName().c_str()) == c.bool_const(str.c_str()));
                     }
 
                     if (!end.empty()) {
@@ -578,16 +633,16 @@ z3::expr symEngine::encoded_pis(z3::context *c, const std::vector<std::pair<std:
             }
 
             z3::expr final = pin->getType() == intType
-                ? c->int_const(pin->getName().c_str()) == c->int_const(possiblevars[0].c_str())
-                : c->bool_const(pin->getName().c_str()) == c->bool_const(possiblevars[0].c_str());
+                ? c.int_const(pin->getName().c_str()) == c.int_const(possiblevars[0].c_str())
+                : c.bool_const(pin->getName().c_str()) == c.bool_const(possiblevars[0].c_str());
 
 
 
             for (size_t i = 1; i < possiblevars.size(); ++i) {
                 final = final
                         || pin->getType() == intType
-                        ? c->int_const(pin->getName().c_str()) == c->int_const(possiblevars[i].c_str())
-                        : c->bool_const(pin->getName().c_str()) == c->bool_const(possiblevars[i].c_str());
+                        ? c.int_const(pin->getName().c_str()) == c.int_const(possiblevars[i].c_str())
+                        : c.bool_const(pin->getName().c_str()) == c.bool_const(possiblevars[i].c_str());
             }
 
             final = final && inter;
@@ -606,7 +661,7 @@ z3::expr symEngine::encoded_pis(z3::context *c, const std::vector<std::pair<std:
         std::vector<std::string> possiblevars = includable_vars(remaining.front().first->statements.front(), constraints);
         std::vector<std::pair<std::shared_ptr<basicblock>, int32_t>> newremains;
         for (i = 1; i < remaining.size(); ++i) newremains.push_back(remaining[i]);
-        if (possiblevars.empty()) return c->bool_val(false);
+        if (possiblevars.empty()) return c.bool_val(false);
         std::unordered_map<std::string, std::vector<std::string>> newconsts = constraints;
         auto res = newconsts.insert({pin->getVar(), {possiblevars[0]}});
         if (!res.second) res.first->second.push_back(possiblevars[0]);
@@ -617,9 +672,9 @@ z3::expr symEngine::encoded_pis(z3::context *c, const std::vector<std::pair<std:
         }
 
         z3::expr final = (pin->getType() == intType
-                         ? c->int_const(pin->getName().c_str()) == c->int_const(possiblevars[0].c_str())
-                         : c->bool_const(pin->getName().c_str()) == c->bool_const(possiblevars[0].c_str()));
-        z3::expr inter = encoded_pis(c, newremains, newconsts);
+                         ? c.int_const(pin->getName().c_str()) == c.int_const(possiblevars[0].c_str())
+                         : c.bool_const(pin->getName().c_str()) == c.bool_const(possiblevars[0].c_str()));
+        z3::expr inter = encoded_pis(newremains, newconsts);
         final = final && inter;
         for (i = 1; i < possiblevars.size(); ++i) {
             newconsts = constraints;
@@ -632,9 +687,9 @@ z3::expr symEngine::encoded_pis(z3::context *c, const std::vector<std::pair<std:
             }
 
             inter = (pin->getType() == intType
-                              ? c->int_const(pin->getName().c_str()) == c->int_const(possiblevars[i].c_str())
-                              : c->bool_const(pin->getName().c_str()) == c->bool_const(possiblevars[i].c_str()));
-            inter = inter && encoded_pis(c, newremains, newconsts);
+                              ? c.int_const(pin->getName().c_str()) == c.int_const(possiblevars[i].c_str())
+                              : c.bool_const(pin->getName().c_str()) == c.bool_const(possiblevars[i].c_str()));
+            inter = inter && encoded_pis(newremains, newconsts);
             final = final || (inter);
             //std::cout << "final: " << final.to_string() << std::endl;
         }
