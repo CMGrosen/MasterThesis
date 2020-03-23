@@ -22,7 +22,7 @@ struct CCFG {
     std::map<basicblock *, std::set<basicblock *>> concurrent_events;
     std::vector<std::string> reads;
     std::unordered_map<std::shared_ptr<basicblock>, std::unordered_set<std::shared_ptr<basicblock>>> prec;
-    std::vector<std::pair<std::shared_ptr<basicblock>, int32_t>> pis_and_depth;
+    std::vector<std::pair<std::shared_ptr<basicblock>, size_t>> pis_and_depth;
     std::vector<std::shared_ptr<basicblock>> fiNodes;
     std::vector<std::shared_ptr<basicblock>> endconcNodes;
 

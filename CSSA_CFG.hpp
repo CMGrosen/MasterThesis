@@ -33,8 +33,12 @@ struct CSSA_CFG {
                 blk->statements = std::move(vec);
             }
         }
+        std::set<std::shared_ptr<basicblock>> visited;
+        get_thread_and_depth_level(&visited, ccfg->startNode, 0);
+        for (const auto &blk : visited) {
+            ccfg->pis_and_depth.emplace_back(blk, blk->depth);
+        }
 
-        get_thread_and_depth_level(ccfg->startNode, 0);
         std::sort(ccfg->pis_and_depth.begin(), ccfg->pis_and_depth.end(),
                 [&](const std::pair<std::shared_ptr<basicblock>, int32_t>& a, const std::pair<std::shared_ptr<basicblock>, int32_t>& b) {
             return a.second < b.second;
@@ -198,6 +202,7 @@ private:
                                     )
                                 ));
                                 vec.push_back(pinodes.back());
+                                ccfg->defs.insert({pinodes.back()->getName(), b});
                                 pinodeblocks.push_back(b);
                             }
                             size_t i = usages.first;
@@ -228,13 +233,14 @@ private:
         }
     }
 
-    void get_thread_and_depth_level(std::shared_ptr<basicblock> blk, int depth) {
-        blk->depth = depth;
+    static void get_thread_and_depth_level(std::set<std::shared_ptr<basicblock>> *visited, const std::shared_ptr<basicblock>& blk, size_t depth) {
+        if (blk->depth < depth) blk->depth = depth;
+
         if (blk->statements.front()->getNodeType() == Pi) {
-            ccfg->pis_and_depth.emplace_back(blk, depth);
+            visited->insert(blk);
         }
         for (const auto &nxt : blk->nexts) {
-            get_thread_and_depth_level(nxt, depth+1);
+            get_thread_and_depth_level(visited, nxt, depth+1);
         }
     }
 
