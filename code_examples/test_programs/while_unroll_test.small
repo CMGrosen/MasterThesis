@@ -1,0 +1,9 @@
+a = read(1);
+fork {
+    a = a + 2;
+} and {
+    while(true) {
+        a = read(1);
+        write(2, a);
+    };
+};

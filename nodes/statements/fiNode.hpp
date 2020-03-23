@@ -7,19 +7,27 @@
 
 
 class fiNode : virtual public statementNode {
-    std::shared_ptr<basicblock> parent;
-public:
-    fiNode(std::shared_ptr<basicblock> parent) : parent{std::move(parent)} {
+    std::set<std::shared_ptr<basicblock>> parents;
+
+    fiNode(std::set<std::shared_ptr<basicblock>> blks) : parents{std::move(blks)} {
         nodetype = EndFi;
         type = okType;
     }
 
-    basicblock *get_parent() {return parent.get();}
-    void set_parent(std::shared_ptr<basicblock> blk) {parent = std::move(blk);}
+public:
+    fiNode(const std::shared_ptr<basicblock>& parent) {
+        if (parent) parents = {parent};
+        nodetype = EndFi;
+        type = okType;
+    }
+
+    std::set<std::shared_ptr<basicblock>> *get_parents() {return &parents;}
+    void set_parents(std::set<std::shared_ptr<basicblock>> blks) {parents = std::move(blks);}
+    void add_parent(std::shared_ptr<basicblock> blk) {parents.insert(std::move(blk));}
 
     std::string to_string() const override  {return "endfi";};
     std::shared_ptr<statementNode> copy_statement() const override {
-        std::shared_ptr<statementNode> stmt = std::make_shared<fiNode>(fiNode(parent));
+        std::shared_ptr<statementNode> stmt = std::make_shared<fiNode>(fiNode(parents));
         return stmt;
     }
 };

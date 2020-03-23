@@ -162,7 +162,9 @@ private:
                 concnode->setConcNode(oldMapsTo[concnode->getConcNode().get()]);
             } else if (n->type == joinNode) {
                 auto finode = dynamic_cast<fiNode*>(oldMapsTo[n.get()]->statements.back().get());
-                finode->set_parent(oldMapsTo[finode->get_parent()]);
+                std::set<std::shared_ptr<basicblock>> parents;
+                for (const auto &p : *finode->get_parents()) parents.insert(oldMapsTo[p.get()]);
+                finode->set_parents(std::move(parents));
             }
         }
         for (const auto &ed : a.edges) {
@@ -358,7 +360,7 @@ public:
 
     static CCFG get_ccfg(const std::shared_ptr<statementNode> &startTree) {
         std::shared_ptr<basicblock> exitNode = std::make_shared<basicblock>(basicblock());
-        const std::shared_ptr<basicblock> startNode = get_tree(startTree, exitNode);
+        const std::shared_ptr<basicblock> startNode = get_tree(startTree, exitNode, false);
 
         auto tmpSet = std::set<basicblock *>();
         auto res = get_all_blocks_and_edges(startNode, exitNode, &tmpSet);
@@ -403,7 +405,7 @@ public:
         return CCFG(std::move(res.first), std::move(edges), startNode, exitNode);
     }
 
-    static std::shared_ptr<basicblock> get_tree(const std::shared_ptr<statementNode> &startTree, std::shared_ptr<basicblock> nxt) {
+    static std::shared_ptr<basicblock> get_tree(const std::shared_ptr<statementNode> &startTree, std::shared_ptr<basicblock> nxt, bool in_if) {
         std::shared_ptr<basicblock> block;
         switch (startTree->getNodeType()) {
             case Assign:
@@ -434,7 +436,7 @@ public:
 
                 //int i = 0;
                 for (const auto &t : conNode->threads) {
-                    threads.push_back(get_tree(t, endConc));
+                    threads.push_back(get_tree(t, endConc, in_if));
                 }
 
                 //for (auto blk : threads) concNode->threads.push_back(blk);
@@ -443,8 +445,8 @@ public:
             }
             case Sequential: {
                 auto seqNode = dynamic_cast<sequentialNode*>(startTree.get());
-                auto rest = get_tree(seqNode->getNext(), nxt);
-                block = get_tree(seqNode->getBody(), rest);
+                auto rest = get_tree(seqNode->getNext(), nxt, in_if);
+                block = get_tree(seqNode->getBody(), rest, in_if);
                 NodeType nType = seqNode->getBody()->getNodeType();
                 if (nType == Assign || nType == AssignArrField || nType == Write || nType == Skip) {
                     std::vector<std::shared_ptr<statementNode>> remainingStmts;
@@ -472,7 +474,7 @@ public:
                 auto wNode = dynamic_cast<whileNode*>(startTree.get());
                 block = std::make_shared<basicblock>(basicblock(std::vector<std::shared_ptr<statementNode>>{startTree}, std::vector<std::shared_ptr<basicblock>>{nullptr, nxt}));
                 block->type = Loop;
-                block->nexts[0] = get_tree(wNode->getBody(), block);
+                block->nexts[0] = get_tree(wNode->getBody(), block, in_if);
                 break;
             }
             case If: {
@@ -480,15 +482,25 @@ public:
                 if (nxt->type == Loop) {
                     nxt = std::make_shared<basicblock>(basicblock(std::vector<std::shared_ptr<statementNode>>{}, nxt));
                 }
-                std::shared_ptr<statementNode> stmt = std::make_shared<fiNode>(fiNode(nullptr));
-                auto joinnode = std::make_shared<basicblock>(basicblock(stmt, nxt));
-                joinnode->type = joinNode;
-                auto trueBranch = get_tree(ifNode->getTrueBranch(), joinnode);
-                auto falseBranch = get_tree(ifNode->getFalseBranch(), joinnode);
+                std::shared_ptr<basicblock> joinnode;
+                std::shared_ptr<basicblock> trueBranch;
+                std::shared_ptr<basicblock> falseBranch;
+
+                if (in_if && nxt->type == joinNode) {
+                    joinnode = nxt;
+                } else {
+                    in_if = true;
+                    std::shared_ptr<statementNode> stmt = std::make_shared<fiNode>(fiNode(nullptr));
+                    joinnode = std::make_shared<basicblock>(basicblock(stmt, nxt));
+                    joinnode->type = joinNode;
+                }
+                trueBranch = get_tree(ifNode->getTrueBranch(), joinnode, in_if);
+                falseBranch = get_tree(ifNode->getFalseBranch(), joinnode, in_if);
                 auto nxts = std::vector<std::shared_ptr<basicblock>>{trueBranch, falseBranch};
                 block = std::make_shared<basicblock>(basicblock(std::vector<std::shared_ptr<statementNode>>{startTree}, nxts));
                 block->type = Condition;
-                dynamic_cast<fiNode*>(joinnode->statements.back().get())->set_parent(block);
+                dynamic_cast<fiNode*>(joinnode->statements.back().get())->add_parent(block);
+
                 break;
             }
             default:

@@ -74,8 +74,8 @@ std::vector<std::shared_ptr<trace>> symEngine::execute() {
 
 }
 
-z3::expr symEngine::get_run(z3::context *c, basicblock *previous, const std::shared_ptr<basicblock> &start, const std::shared_ptr<basicblock> &end, const std::string &run) {
-    auto node = start.get();
+z3::expr symEngine::get_run(z3::context *c, std::shared_ptr<basicblock> previous, const std::shared_ptr<basicblock> &start, const std::shared_ptr<basicblock> &end, const std::string &run) {
+    auto node = start;
     std::vector<z3::expr> constraints;
 
     for (const auto &stmt : node->statements) {
@@ -115,7 +115,7 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, const std::sha
                     return final;
                 }
                 constraints.push_back(final);
-                node = endConc->parents[0].lock().get();
+                node = endConc->parents[0].lock();
                 break;
             }
             case If: {
@@ -145,13 +145,13 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, const std::sha
 
                 while (firstCommonChild && firstCommonChild->type == Condition) {
                     if (firstCommonChild->statements.back()->getNodeType() == If) {
-                        firstCommonChild = find_common_child(firstCommonChild.get());
+                        firstCommonChild = find_common_child(firstCommonChild);
                     } else { //Event
                         return final;
                     }
                 }
                 if (firstCommonChild && !firstCommonChild->nexts.empty() && firstCommonChild != end)
-                    return final && get_run(c, firstCommonChild.get(), firstCommonChild->nexts[0], end, run);
+                    return final && get_run(c, firstCommonChild, firstCommonChild->nexts[0], end, run);
                 else return final;
             }
             case Event: {
@@ -165,7 +165,7 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, const std::sha
 
                 if (changed_event) event_encountered = true;
                 if (end != ccfg->exitNode) {
-                    auto res = ccfg->concurrent_events.find(node);
+                    auto res = ccfg->concurrent_events.find(node.get());
                     if (res != ccfg->concurrent_events.end()) {
                         if (!event_encountered) {
                             z3::expr finalCond = condition;
@@ -178,7 +178,7 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, const std::sha
                             }
                             z3::expr finalConstraint =
                                 z3::ite(finalCond
-                                       , final && get_run(c, end.get(), end->nexts[0], ccfg->exitNode, run)
+                                       , final && get_run(c, end, end->nexts[0], ccfg->exitNode, run)
                                        , c->bool_val(true)
                                        );
                             event_encountered = true;
@@ -188,7 +188,7 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, const std::sha
                         }
                     }
                     for (const auto &nxt : end->nexts) {
-                        truebranch = truebranch && get_run(c, end.get(), nxt, ccfg->exitNode, run);
+                        truebranch = truebranch && get_run(c, end, nxt, ccfg->exitNode, run);
                     }
                 }
                 event_encountered = true;
@@ -223,7 +223,7 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, const std::sha
                     case intType: {
                         z3::expr name = c->int_const((phi->getName() + run).c_str());
                         for (size_t i = 0; i < parents.size(); ++i) {
-                            if (previous == parents[i].lock().get()) {
+                            if (previous == parents[i].lock()) {
                                 constraints.push_back(name == c->int_const((phi->get_variables()->at(i) + run).c_str()));
                                 break;
                             }
@@ -233,7 +233,7 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, const std::sha
                     case boolType: {
                         z3::expr name = c->bool_const((phi->getName() + run).c_str());
                         for (size_t i = 0; i < parents.size(); ++i) {
-                            if (previous == parents[i].lock().get()) {
+                            if (previous == parents[i].lock()) {
                                 constraints.push_back(name == c->bool_const((phi->get_variables()->at(i) + run).c_str()));
                                 break;
                             }
@@ -297,17 +297,17 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, const std::sha
         final = final && constraint;
     }
 
-    if (node == end.get() || node->nexts.empty() || event_encountered) {
+    if (node == end || node->nexts.empty() || event_encountered) {
         return final;
     } else {
         return final && get_run(c, node, node->nexts[0], end, run);
     }
 }
 
-std::shared_ptr<basicblock> symEngine::find_common_child(basicblock *parent) {
+std::shared_ptr<basicblock> symEngine::find_common_child(const std::shared_ptr<basicblock>& parent) {
     for (const auto &blk : ccfg->nodes) {
         if (auto fi = dynamic_cast<fiNode*>(blk->statements.back().get())) {
-            if (fi->get_parent() == parent) {
+            if (fi->get_parents()->find(parent) != fi->get_parents()->end()) {
                 return blk;
             }
         }
@@ -404,11 +404,11 @@ z3::expr symEngine::evaluate_operator(const z3::expr& left, const z3::expr& righ
     }
 }
 
-std::shared_ptr<basicblock> symEngine::get_end_of_concurrent_node(basicblock *node) {
+std::shared_ptr<basicblock> symEngine::get_end_of_concurrent_node(const std::shared_ptr<basicblock>& node) {
     for (const auto &blk : ccfg->nodes) {
         if (blk->type == Coend) {
             if (auto coend = dynamic_cast<endConcNode*>(blk->statements.back().get())) {
-                if (coend->getConcNode().get() == node) {
+                if (coend->getConcNode() == node) {
                     return blk;
                 }
             }
