@@ -53,6 +53,7 @@ struct basicblock {
 
     std::map<std::string, std::set<std::string>> uses;
     std::map<std::string, std::set<std::string>> defines;
+    std::map<std::string, std::string> defmapping;
 
     std::pair<basicblock*, int> concurrentBlock;
     std::string get_name();

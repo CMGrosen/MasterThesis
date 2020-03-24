@@ -61,8 +61,8 @@ bool symEngine::execute() {
 
     //std::cout << "\n\n\n\n\nencoded:\n" << encoded.to_string() << std::endl;
 
-    auto run1 = get_run(nullptr, ccfg->startNode, ccfg->exitNode, "run1");
-    auto run2 = get_run(nullptr, ccfg->startNode, ccfg->exitNode, "run2");
+    auto run1 = get_run(nullptr, ccfg->startNode, ccfg->exitNode, _run1);
+    auto run2 = get_run(nullptr, ccfg->startNode, ccfg->exitNode, _run2);
 
     //std::cout << "\n" << t.to_string() << "\n\n" << std::endl;
 
@@ -81,8 +81,8 @@ bool symEngine::execute() {
         for (const auto &stmt : p.first->statements) {
             if (auto pi = dynamic_cast<piNode*>(stmt.get())) {
                 pi->getType() == intType
-                ? vec.push_back(c.int_const((pi->getName() + "run1").c_str()) != c.int_const((pi->getName() + "run2").c_str()))
-                : vec.push_back(c.bool_const((pi->getName() + "run1").c_str()) != c.bool_const((pi->getName() + "run2").c_str()))
+                ? vec.push_back(c.int_const((pi->getName() + _run1).c_str()) != c.int_const((pi->getName() + _run2).c_str()))
+                : vec.push_back(c.bool_const((pi->getName() + _run1).c_str()) != c.bool_const((pi->getName() + _run2).c_str()))
                 ;
             }
         }
@@ -100,7 +100,7 @@ bool symEngine::execute() {
         std::vector<std::pair<std::string, std::string>> names;
         s.reset();
         add_reads();
-        s.add(conjunction(get_run(nullptr, ccfg->startNode, ccfg->exitNode, "run1")));
+        s.add(conjunction(get_run(nullptr, ccfg->startNode, ccfg->exitNode, _run1)));
         for (const auto &blk : ccfg->fiNodes) {
             for (const auto &stmt : blk->statements) {
                 if (auto phi = dynamic_cast<phiNode*>(stmt.get())) {
@@ -702,8 +702,10 @@ std::map<std::string, std::pair<std::string, Type>> symEngine::getModel() {
         std::string value = m.get_const_interp(v).to_string();
         Type t;
         if (value == "true" || value == "false") t = boolType; else t = intType;
+        if (value.front() == '(')
+            value = "-" + value.substr(3, value.size()-4);
         values.insert({v.name().str(), {value, t}});
-        std::cout << v.name() << " = " << m.get_const_interp(v) << "\n";
+        std::cout << v.name() << " = " << value << "\n";
     }
     return values;
 }

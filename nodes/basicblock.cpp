@@ -104,6 +104,7 @@ void basicblock::setConcurrentBlock(basicblock *blk, int threadNum, std::set<bas
 }
 
 void basicblock::updateUsedVariables() {
+    defmapping.clear();
     defines.clear();
     uses.clear();
     for (const auto &stmt : statements) {
@@ -111,6 +112,7 @@ void basicblock::updateUsedVariables() {
             case Assign: {
                 auto assStmt = dynamic_cast<assignNode*>(stmt.get());
                 auto pair = defines.insert({assStmt->getOriginalName(), std::set<std::string>{assStmt->getName()}});
+                defmapping.insert({assStmt->getName(), assStmt->getOriginalName()});
                 if(!pair.second) {
                     pair.first->second.insert(assStmt->getName());
                 }
@@ -128,6 +130,7 @@ void basicblock::updateUsedVariables() {
             case AssignArrField: {
                 auto assArrStmt = dynamic_cast<arrayFieldAssignNode*>(stmt.get());
                 auto pair = defines.insert({assArrStmt->getOriginalName(), std::set<std::string>{assArrStmt->getName()}});
+                defmapping.insert({assArrStmt->getName(), assArrStmt->getOriginalName()});
 
                 if(!pair.second) {
                     pair.first->second.insert(assArrStmt->getName());
@@ -197,12 +200,14 @@ void basicblock::updateUsedVariables() {
             case Phi: {
                 auto phi = dynamic_cast<phiNode*>(stmt.get());
                 auto res = defines.insert({phi->getOriginalName(), std::set<std::string>{phi->getName()}});
+                defmapping.insert({phi->getName(), phi->getOriginalName()});
                 if (!res.second) res.first->second.insert(phi->getName());
                 break;
             }
             case Pi: {
                 auto pi = dynamic_cast<piNode*>(stmt.get());
                 auto res = defines.insert({pi->getVar(), std::set<std::string>{pi->getName()}});
+                defmapping.insert({pi->getName(), pi->getVar()});
                 if (!res.second) res.first->second.insert(pi->getName());
                 break;
             }

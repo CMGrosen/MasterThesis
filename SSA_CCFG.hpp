@@ -192,7 +192,9 @@ private:
                 break;
             } case Read: {
                 auto readExpr = dynamic_cast<readNode*>(expr);
-                readExpr->setName("-readVal_" + std::to_string(++Count["-readVal"]));
+                std::string name = "-readVal_" + std::to_string(++Count["-readVal"]);
+                readExpr->setName(name);
+                ccfg->defs.insert({name, blk});
             }
             default:
                 break;

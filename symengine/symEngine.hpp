@@ -5,6 +5,8 @@
 #ifndef ANTLR_CPP_TUTORIAL_SYMENGINE_HPP
 #define ANTLR_CPP_TUTORIAL_SYMENGINE_HPP
 
+#define _run1 "run1-"
+#define _run2 "run2-"
 
 #include <SSA_CCFG.hpp>
 #include <CSSA_CFG.hpp>
