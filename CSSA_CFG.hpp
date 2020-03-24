@@ -43,6 +43,8 @@ struct CSSA_CFG {
                 [&](const std::pair<std::shared_ptr<basicblock>, int32_t>& a, const std::pair<std::shared_ptr<basicblock>, int32_t>& b) {
             return a.second < b.second;
         });
+
+        for (const auto &blk : ccfg->nodes) blk->updateUsedVariables();
     }
 
 private:

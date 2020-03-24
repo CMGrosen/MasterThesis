@@ -17,7 +17,7 @@ class symEngine {
     z3::solver s;
 
     void add_reads();
-    z3::expr get_run(const std::shared_ptr<basicblock>&, const std::shared_ptr<basicblock>&, const std::shared_ptr<basicblock>&, const std::string&);
+    z3::expr_vector get_run(const std::shared_ptr<basicblock>&, const std::shared_ptr<basicblock>&, const std::shared_ptr<basicblock>&, const std::string&);
     std::shared_ptr<basicblock> find_common_child(const std::shared_ptr<basicblock>&);
     static z3::expr evaluate_operator(const z3::expr&, const z3::expr&, op);
     static z3::expr evaluate_expression(z3::context *, const expressionNode*, const std::string&);

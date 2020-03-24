@@ -196,7 +196,15 @@ void basicblock::updateUsedVariables() {
             }
             case Phi: {
                 auto phi = dynamic_cast<phiNode*>(stmt.get());
-                defines.insert({phi->getOriginalName(), std::set<std::string>{phi->getName()}});
+                auto res = defines.insert({phi->getOriginalName(), std::set<std::string>{phi->getName()}});
+                if (!res.second) res.first->second.insert(phi->getName());
+                break;
+            }
+            case Pi: {
+                auto pi = dynamic_cast<piNode*>(stmt.get());
+                auto res = defines.insert({pi->getVar(), std::set<std::string>{pi->getName()}});
+                if (!res.second) res.first->second.insert(pi->getName());
+                break;
             }
             default: {
 
