@@ -2,6 +2,7 @@
 // Created by hu on 23/03/2020.
 //
 
+#include <DST.hpp>
 #include "interpreter.hpp"
 
 interpreter::interpreter(symEngine e) : engine{std::move(e)} {
@@ -50,12 +51,17 @@ void interpreter::update() {
             }
         }
     }
+
+    for (const auto &var : engine.symboltable) {
+        current_values.insert({var.first, {"undef", var.second->getType()}});
+    }
 }
 
 void interpreter::refresh() {
     variableValues.clear();
     valuesFromModel.clear();
     differences.clear();
+    current_values.clear();
     update();
 }
 
@@ -93,14 +99,200 @@ std::pair<bool, std::vector<edge>> edges_to_take(std::shared_ptr<basicblock> cur
     }
     if (edges.empty()) return {false, {}};
     else return {true, edges};
-    /*while (blk) {
-        edges.push_back(edge)
-    }*/
 }
+
+std::string interpreter::compute_operator(const std::string &left, const std::string &right, op _operator) {
+    std::string val;
+    switch (_operator) {
+        case PLUS:
+            val = std::to_string(std::stoi(left) + std::stoi(right));
+            break;
+        case MINUS:
+            val = std::to_string(std::stoi(left) - std::stoi(right));
+            break;
+        case MULT:
+            val = std::to_string(std::stoi(left) * std::stoi(right));
+            break;
+        case DIV:
+            val = std::to_string(std::stoi(left) / std::stoi(right));
+            break;
+        case MOD:
+            val = std::to_string(std::stoi(left) % std::stoi(right));
+            break;
+        case NOT:
+            val = std::to_string(left == "false");
+            break;
+        case AND:
+            val = std::to_string(left == "true" && right == "true");
+            break;
+        case OR:
+            val = std::to_string(left == "true" && right == "true");
+            break;
+        case LE:
+            val = std::to_string(std::stoi(left) < std::stoi(right));
+            break;
+        case LEQ:
+            val = std::to_string(std::stoi(left) <= std::stoi(right));
+            break;
+        case GE:
+            val = std::to_string(std::stoi(left) > std::stoi(right));
+            break;
+        case GEQ:
+            val = std::to_string(std::stoi(left) >= std::stoi(right));
+            break;
+        case EQ:
+            val = std::to_string(left == right);
+            break;
+        case NEQ:
+            val = std::to_string(left != right);
+            break;
+        case NEG:
+            val = std::to_string(-std::stoi(left));
+            break;
+        case NOTUSED:
+            break;
+    }
+    return val;
+}
+
+std::string interpreter::exec_expr(expressionNode* expr) {
+    std::string val;
+    switch (expr->getNodeType()) {
+        case Assign:
+        case AssignArrField:
+        case Concurrent:
+        case EndConcurrent:
+        case Sequential:
+        case While:
+        case If:
+        case EndFi:
+        case Write:
+        case Event:
+        case Skip:
+        case BasicBlock:
+        case Phi:
+        case Pi:
+            std::cout << "expression is apparently a statement. error\n";
+            assert(false);
+            break;
+
+        case Read:
+            val = valuesFromModel[dynamic_cast<readNode*>(expr)->getName()].first;
+            break;
+        case Literal:
+            val = dynamic_cast<literalNode*>(expr)->value;
+            break;
+        case ArrayAccess: {
+            auto arracc = dynamic_cast<arrayAccessNode*>(expr);
+            val = current_values[arracc->getVar()->origName + "[" + exec_expr(arracc->getAccessor()) + "]"].first;
+            break;
+        } case ArrayLiteral:
+            //don't handle array, this is good enough for now
+            break;
+        case Variable:
+            val = current_values[dynamic_cast<variableNode*>(expr)->origName].first;
+            break;
+        case BinaryExpression: {
+            auto binexpr = dynamic_cast<binaryExpressionNode*>(expr);
+            val = compute_operator(exec_expr(binexpr->getLeft()), exec_expr(binexpr->getRight()), binexpr->getOperator());
+            break;
+        } case UnaryExpression:
+            auto unexpr = dynamic_cast<unaryExpressionNode*>(expr);
+            std::string inter = exec_expr(unexpr->getExpr());
+            val = compute_operator(inter, inter, unexpr->getOperator());
+            break;
+    }
+    return val;
+}
+
+bool interpreter::exec_stmt(const std::shared_ptr<statementNode> &stmt) {
+    switch (stmt->getNodeType()) {
+        case Assign: {
+            auto assNode = dynamic_cast<assignNode *>(stmt.get());
+            std::string value = exec_expr(assNode->getExpr());
+            current_values[assNode->getOriginalName()].first = value;
+            break;
+        }
+        case AssignArrField: {
+            auto assArrF = dynamic_cast<arrayFieldAssignNode *>(stmt.get());
+            std::string name = exec_expr(assArrF->getField());
+            std::string value = exec_expr(assArrF->getExpr());
+            current_values[assArrF->getOriginalName() + "[" + name + "]"].first = value;
+            break;
+        } case Concurrent: {
+            break;
+        } case EndConcurrent: {
+            break;
+        } case Sequential: {
+            break;
+        } case While: {
+            break;
+        } case If: {
+            auto ifnode = dynamic_cast<ifElseNode*>(stmt.get());
+            if (exec_expr(ifnode->getCondition()) == "false") return false;
+            break;
+        } case EndFi: {
+            break;
+        } case Write: {
+            break;
+        } case Event: {
+            auto event = dynamic_cast<eventNode *>(stmt.get());
+            if (exec_expr(event->getCondition()) == "false") return false;
+            break;
+        } case Skip: {
+            break;
+        } case Phi: {
+            //value already assigned, since the value that should be assigned, is the one already stored
+            break;
+        } case Pi: {
+            //value already assigned, since the value that should be assigned, is the one already stored
+            //maybe check to see if model value is the one already stored
+            auto pi = dynamic_cast<piNode *>(stmt.get());
+            if (current_values.insert({pi->getName(), current_values[pi->getVar()]}).second) {
+                std::cout << "error occured. This pi-node has been visited once already. Shouldn't be possible!\n";
+            }
+            break;
+        }
+
+        case Read:
+        case Literal:
+        case ArrayAccess:
+        case ArrayLiteral:
+        case Variable:
+        case BinaryExpression:
+        case UnaryExpression:
+        case BasicBlock:
+            std::cout << "statement is apparently an expression. Error occured\n";
+            assert(false);
+            break;
+    }
+    return true;
+}
+
+void interpreter::execute(edge ed) {
+    std::shared_ptr<basicblock> blk = ed.neighbours[0];
+    for (const auto &stmt : blk->statements) {
+        bool res = exec_stmt(stmt);
+        if (stmt->getNodeType() == Event && !res) {
+            std::cout << "event is false, cannot continue to next block\n";
+            return;
+        }
+        else if (stmt->getNodeType() == If) {
+            if (res && ed.neighbours[1] != blk->nexts[0]) {
+                std::cout << "error occured. If statement should have been false\n";
+            } else if (!res && ed.neighbours[1] != blk->nexts[1]) {
+                std::cout << "error occured. If statement should have been true\n";
+            }
+        }
+    }
+}
+
 
 bool interpreter::reachable(const std::pair<std::shared_ptr<basicblock>, std::string> &blk, const std::string& origname) {
     std::set<std::shared_ptr<basicblock>> conflictsForRun1;
     std::set<std::shared_ptr<basicblock>> conflictsForRun2;
+    bool conflict1 = false, conflict2 = false;
+    bool onconflictnode = false;
     std::string valForRun1 = std::get<0>(differences.find(blk.second)->second);
     std::string valForRun2 = std::get<1>(differences.find(blk.second)->second);
 
@@ -114,11 +306,25 @@ bool interpreter::reachable(const std::pair<std::shared_ptr<basicblock>, std::st
     std::shared_ptr<basicblock> current = engine.ccfg->startNode;
 
     while (current) {
-        if (conflictsForRun1.find(current) != conflictsForRun1.end()) {
-
-        } else if (conflictsForRun2.find(current) != conflictsForRun2.end()) {
-            auto path = edges_to_take(current, blk.first, origname);
-            std::cout << "here";
+        if (!onconflictnode) {
+            std::pair<bool, std::vector<edge>> path;
+            if (conflictsForRun1.find(current) != conflictsForRun1.end()) {
+                path = edges_to_take(current, blk.first, origname);
+                conflict1 = true;
+                onconflictnode = true;
+            } else if (conflictsForRun2.find(current) != conflictsForRun2.end()) {
+                path = edges_to_take(current, blk.first, origname);
+                conflict2 = true;
+                onconflictnode = true;
+            }
+            if (onconflictnode) {
+                if (!path.first) {
+                    std::cout << "an error occured. Cannot reach conflict\n";
+                }
+                for (const auto &ed : path.second) {
+                    execute(ed);
+                }
+            }
         } else {
 
         }

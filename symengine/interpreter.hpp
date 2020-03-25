@@ -10,11 +10,16 @@
 
 class interpreter {
     symEngine engine;
+    std::map<std::string, std::pair<std::string, Type>> current_values;
     std::map<std::string, std::pair<std::set<std::string>, Type>> variableValues;
     std::map<std::string, std::pair<std::string, Type>> valuesFromModel;
     std::map<std::string, std::tuple<std::string, std::string, Type>> differences;
     void update();
     void refresh();
+    static std::string compute_operator(const std::string&, const std::string&, op);
+    std::string exec_expr(expressionNode*);
+    bool exec_stmt(const std::shared_ptr<statementNode>&);
+    void execute(edge);
     bool reachable(const std::pair<std::shared_ptr<basicblock>, std::string>&, const std::string&);
     bool reach_potential_raceConditions(const std::vector<std::pair<std::shared_ptr<basicblock>, std::string>>&);
 public:
