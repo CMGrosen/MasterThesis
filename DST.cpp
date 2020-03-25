@@ -198,6 +198,13 @@ antlrcpp::Any DST::visitSkipStmt(SmallParser::SkipStmtContext *ctx) {
     return res;
 }
 
+antlrcpp::Any DST::visitAssertStmt(SmallParser::AssertStmtContext *ctx) {
+    std::shared_ptr<expressionNode> condition = visitExpr(ctx->expr());
+    Type t = (condition->getType() == boolType) ? okType : errorType;
+    std::shared_ptr<statementNode> res = std::make_shared<assertNode>(assertNode(t, condition));
+    return res;
+}
+
 antlrcpp::Any DST::visitScope(SmallParser::ScopeContext *ctx) {
     return nullptr; //not used
 }

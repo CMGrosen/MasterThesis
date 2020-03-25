@@ -19,5 +19,6 @@
 #include <nodes/statements/endConcNode.hpp>
 #include <nodes/statements/unpackedstmt.hpp>
 #include <nodes/statements/fiNode.hpp>
+#include <nodes/statements/assertNode.hpp>
 
 #endif //ANTLR_CPP_TUTORIAL_STATEMENTNODE_H

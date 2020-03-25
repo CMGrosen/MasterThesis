@@ -17,12 +17,17 @@ stmt :
     | FORK thread
     | event
     | skipStmt
+    | assertStmt
     ;
     
 assign :
     NAME ASSIGN expr
     | NAME ASSIGN arrayLiteral
     | arrayAccess ASSIGN expr
+    ;
+
+write :
+    WRITE LPAREN INT_LITERAL COMMA expr RPAREN
     ;
     
 iter :
@@ -40,17 +45,22 @@ thread :
 event :
     WHEN LPAREN expr RPAREN;
 
-skipStmt : SKIPPING;
-
-scope : BEGIN stmts END;
-
-read :
-    READ LPAREN INT_LITERAL RPAREN
+skipStmt :
+    SKIPPING
     ;
 
-write :
-    WRITE LPAREN INT_LITERAL COMMA expr RPAREN
+assertStmt :
+    ASSERT LPAREN expr RPAREN
     ;
+
+scope :
+    BEGIN stmts END
+    ;
+
+arrayLiteral:
+    (SQUARE_BRACKET_BEGIN (expr (COMMA expr)*)? SQUARE_BRACKET_END)
+    ;
+
 
 expr :
     LPAREN expr RPAREN
@@ -66,14 +76,15 @@ expr :
     | NAME
     ;
 
-arrayAccess
-    : NAME SQUARE_BRACKET_BEGIN expr SQUARE_BRACKET_END
-    ;
-
 literal:
     BOOL_LITERAL
     | INT_LITERAL
     ;
 
-arrayLiteral:
-    (SQUARE_BRACKET_BEGIN (expr (COMMA expr)*)? SQUARE_BRACKET_END);
+read :
+    READ LPAREN INT_LITERAL RPAREN
+    ;
+
+arrayAccess :
+    NAME SQUARE_BRACKET_BEGIN expr SQUARE_BRACKET_END
+    ;

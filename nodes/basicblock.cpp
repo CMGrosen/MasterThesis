@@ -212,7 +212,7 @@ void basicblock::updateUsedVariables() {
                 break;
             }
             default: {
-
+                // should there be code here?
             }
         }
     }

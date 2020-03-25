@@ -41,6 +41,8 @@ public:
 
     antlrcpp::Any visitSkipStmt(SmallParser::SkipStmtContext *context) override;
 
+    antlrcpp::Any visitAssertStmt(SmallParser::AssertStmtContext *ctx) override;
+
     antlrcpp::Any visitScope(SmallParser::ScopeContext *context) override;
 
     antlrcpp::Any visitRead(SmallParser::ReadContext *context) override;

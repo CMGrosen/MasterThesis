@@ -13,4 +13,6 @@ fork{
 		a = read(1);
 	};	
 };
+a = a;
+assert(c == true);
 
