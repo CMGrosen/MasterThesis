@@ -5,7 +5,9 @@
 #ifndef ANTLR_CPP_TUTORIAL_ENDCONCNODE_HPP
 #define ANTLR_CPP_TUTORIAL_ENDCONCNODE_HPP
 
-class endConcNode : public statementNode {
+#include <nodes/basicblock.hpp>
+
+class endConcNode : virtual public statementNode {
     const int threadCount;
     std::shared_ptr<basicblock> concNode;
 
@@ -24,7 +26,7 @@ public:
 
     std::shared_ptr<basicblock> getConcNode() const {return concNode;}
     void setConcNode(std::shared_ptr<basicblock> blk) {concNode = std::move(blk);}
-    std::string to_string() override {
+    std::string to_string() const override {
         return "end conc-node of " + std::to_string(threadCount) + " threads";
     }
     std::shared_ptr<statementNode> copy_statement() const override {

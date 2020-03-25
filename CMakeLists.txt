@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 2.8)
 
 project("Antlr-cpp-tutorial")
 
+set(CMAKE_EXE_LINKER_FLAGS "-isystem include")
+
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CIMG_CFLAGS}")
 
 # CMake commands for this specific project start here
@@ -9,11 +11,11 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CIMG_CFLAGS}")
 # to disable some warnings for CImg
 set(CMAKE_CXX_FLAGS  "-std=c++14")
 if (NOT WIN32)
-    set(CMAKE_CXX_FLAGS "-Wdeprecated -Wno-attributes -std=c++14" )
+    set(CMAKE_CXX_FLAGS "-Wdeprecated -Wno-attributes -Wall -Wextra -std=c++14" )
 endif()
 
 if (APPLE)
-    set(CMAKE_CXX_FLAGS "-Wdeprecated -std=c++14" )
+    set(CMAKE_CXX_FLAGS "-Wdeprecated -Wall -Wextra -std=c++14" )
 endif()
 
 if (MSVC)
@@ -128,3 +130,6 @@ if (WIN32)
             "${PROJECT_SOURCE_DIR}/code.small"
             $<TARGET_FILE_DIR:visitor>/../)
 endif()
+
+set(CMAKE_CXX_FLAGS_DEBUG "-g")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")

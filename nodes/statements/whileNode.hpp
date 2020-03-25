@@ -5,9 +5,7 @@
 #ifndef ANTLR_CPP_TUTORIAL_WHILENODE_H
 #define ANTLR_CPP_TUTORIAL_WHILENODE_H
 
-#include <nodes/expressions/expressionNode.hpp>
-
-class whileNode : public statementNode {
+class whileNode : virtual public statementNode {
 public:
     whileNode(Type t, std::shared_ptr<expressionNode> c, std::shared_ptr<statementNode> b) : condition{std::move(c)}, body{std::move(b)} {
         setType(t);
@@ -16,7 +14,7 @@ public:
     expressionNode *getCondition() {return condition.get();}
     const std::shared_ptr<statementNode> getBody() const {return body;}
 
-    std::string to_string() override {
+    std::string to_string() const override {
         return "while(" + condition->to_string() + ")";
     }
 

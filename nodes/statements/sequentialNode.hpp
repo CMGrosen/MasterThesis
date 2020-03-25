@@ -5,11 +5,7 @@
 #ifndef ANTLR_CPP_TUTORIAL_SEQUENTIALNODE_HPP
 #define ANTLR_CPP_TUTORIAL_SEQUENTIALNODE_HPP
 
-#define SEQUENTIAL std::hash<std::string>{}("sequential")
-
-#include "statementNode.hpp"
-
-class sequentialNode : public statementNode {
+class sequentialNode : virtual public statementNode {
 public:
     sequentialNode(std::shared_ptr<statementNode> body, std::shared_ptr<statementNode> next) : _body{std::move(body)}, _next{std::move(next)} {
         if (_body->getType() == okType && _next->getType() == okType) setType(okType);
@@ -35,7 +31,7 @@ public:
         }
         return nexts;
     }*/
-    std::string to_string() override {
+    std::string to_string() const override {
         return "";
     }
     std::shared_ptr<statementNode> copy_statement() const override {

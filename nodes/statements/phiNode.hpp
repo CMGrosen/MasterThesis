@@ -5,32 +5,30 @@
 #ifndef ANTLR_CPP_TUTORIAL_PHINODE_HPP
 #define ANTLR_CPP_TUTORIAL_PHINODE_HPP
 
-class phiNode : public statementNode {
+class phiNode : virtual public statementNode {
     std::string _name;
     std::string origName;
     std::vector<std::string> _variables;
 public:
     phiNode(Type t, std::string name, std::vector<std::string> variables) :
-    _name{std::move(name)}, _variables{std::move(variables)} {
+    _name{name}, origName{std::move(name)}, _variables{std::move(variables)} {
         setNodeType(Phi);
         setType(t);
-        origName = _name;
         onSSA = true;
     }
 
     phiNode(Type t, std::string name, std::string origname, std::vector<std::string> variables) :
-            _name{std::move(name)}, _variables{std::move(variables)} {
+            _name{std::move(name)}, origName{std::move(origname)}, _variables{std::move(variables)} {
         setNodeType(Phi);
         setType(t);
-        origName = origname;
         onSSA = true;
     }
 
-    std::string to_string() override {
+    std::string to_string() const override {
         std::string res = nameToTikzName(_name, true) + " = $\\phi($";
         if (!_variables.empty()) {
             res += nameToTikzName(_variables[0], true);
-            for (auto i = 1; i < _variables.size(); ++i)
+            for (size_t i = 1; i < _variables.size(); ++i)
                 res += (", " + nameToTikzName(_variables[i], true));
         }
         res += ")";
@@ -48,7 +46,7 @@ public:
     }
     std::string getOriginalName() const {return origName;}
     void setName(std::string name) {
-        _name = name;
+        _name = std::move(name);
     }
     void setSSA(bool t) override {
         onSSA = t;

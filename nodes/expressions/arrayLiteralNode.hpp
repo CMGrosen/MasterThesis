@@ -4,9 +4,8 @@
 
 #ifndef ANTLR_CPP_TUTORIAL_ARRAYLITERALNODE_HPP
 #define ANTLR_CPP_TUTORIAL_ARRAYLITERALNODE_HPP
-#include <nodes/expressions/expressionNode.hpp>
 
-class arrayLiteralNode : public expressionNode {
+class arrayLiteralNode : virtual public expressionNode {
 public:
     arrayLiteralNode(Type t, std::vector<std::shared_ptr<expressionNode>> a) : value{std::move(a)} {
         setType(t);
@@ -30,20 +29,19 @@ public:
         setNodeType(ArrayLiteral);
     };
 
-    std::string to_string() override {
+    std::string to_string() const override {
         std::string res = "[";
-        for (int i = 0; i < value.size(); ++i) {
-            res += value[i]->to_string();
-            if (i != value.size()-1) res += ", ";
+        for (const auto &v : value) {
+            res += v->to_string() + ", ";
         }
-        res += "]";
+        *(res.rbegin()+2) = ']';
         return res;
     }
 
     std::shared_ptr<expressionNode> copy_expression() const override {
         std::vector<std::shared_ptr<expressionNode>> _values;
         _values.reserve(value.size());
-        for(const auto val : value) {
+        for(const auto &val : value) {
             _values.push_back(val->copy_expression());
         }
         std::shared_ptr<expressionNode> _this = std::make_shared<arrayLiteralNode>(arrayLiteralNode(getType(), std::move(_values)));
@@ -56,9 +54,8 @@ public:
         if (nodetype == expr->getNodeType()) {
             const std::vector<std::shared_ptr<expressionNode>> arrlit = dynamic_cast<const arrayLiteralNode*>(expr)->getArrLit();
             if (value.size() != arrlit.size()) {
-                for (auto i = 0; i < value.size(); ++i) {
-                    return true; // doesn't work
-                    //if (!(*value[i] == (*(arrlit[i])))) return false;
+                for (size_t i = 0; i < value.size(); ++i) {
+                    if (value[i] != arrlit[i]) return false;
                 }
                 return true;
             } else return false;
@@ -67,7 +64,7 @@ public:
 
     void setSSA(bool t) override {
         onSSA = t;
-        for (const auto ele : value) ele->setSSA(t);
+        for (const auto &ele : value) ele->setSSA(t);
     }
 
     std::vector<std::shared_ptr<expressionNode>> getArrLit() const {return value;};

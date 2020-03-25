@@ -37,7 +37,7 @@ struct unpacked : public node {
         _this->next = next ? next->copy() : nullptr;
         return _this;
     }
-    std::string to_string() {
+    std::string to_string() const override {
         std::string res;
         switch (nodetype) {
             case Assign:

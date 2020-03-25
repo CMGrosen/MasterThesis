@@ -7,7 +7,7 @@
 
 #include <nodes/expressions/expressionNode.hpp>
 
-class binaryExpressionNode : public expressionNode {
+class binaryExpressionNode : virtual public expressionNode {
 public:
     binaryExpressionNode(Type _type, op _op, std::shared_ptr<expressionNode> _left, std::shared_ptr<expressionNode> _right)
     : _operator{_op}, left{std::move(_left)}, right{std::move(_right)} {
@@ -15,7 +15,7 @@ public:
         setNodeType(BinaryExpression);
     }
 
-    std::string to_string() override {
+    std::string to_string() const override {
         return left->to_string() + " " + operatorToString[_operator] + " " + right->to_string();
     }
 

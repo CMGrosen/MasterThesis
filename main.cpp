@@ -1,18 +1,14 @@
 #include <iostream>
 
-//#include "antlr4-runtime/antlr4-runtime.h"
-#include "antlr4-runtime/SmallLexer.h"
-#include "antlr4-runtime/SmallParser.h"
-#include "DST.h"
+#include "antlr4-runtime.h"
+#include "SmallLexer.h"
+#include "DST.hpp"
 #include "basicblockTreeConstructor.hpp"
-#include <antlr4-runtime.h>
 #include <CCFGIllustrator.hpp>
 #include <symengine/symEngine.hpp>
 #include <CSSA_CFG.hpp>
-//#include <dominatorTreeConstructor.hpp>
 #include <SSA_CCFG.hpp>
 #include <statementsTransformer.hpp>
-#include <z3++.h>
 #include <lengauerTarjan.hpp>
 
 using namespace std;
@@ -49,7 +45,8 @@ static std::map< const char *, const char * > test_files = {
         {"event_based_duo_test", "../code_examples/test_programs/coffee_maker_duo_event_based.small"},
         {"event_based_trio_test", "../code_examples/test_programs/coffee_maker_trio_event_based.small"},
         {"statements_after_event_test", "../code_examples/test_programs/statements_after_event.small"},
-        {"small_concurrent_events_test", "../code_examples/test_programs/small_concurrent_events.small"}
+        {"small_concurrent_events_test", "../code_examples/test_programs/small_concurrent_events.small"},
+        {"multiple_uses", "../code_examples/test_programs/multiple_uses_in_concnode.small"}
 };
 
 
@@ -107,7 +104,7 @@ SSA_CCFG do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_pt
 
     //auto res = engine.execute();
 
-    return std::move(ssa_ccfg);
+    return ssa_ccfg;
 }
 
 void run(const std::string& path) {
@@ -137,7 +134,7 @@ void run(const std::string& path) {
 
 int main(int argc, const char* argv[]) {
 
-    run(test_files["statements_after_event_test"]);
+    run(test_files["multiple_uses"]);
     //run(files["reportExample"]);
 
     std::cout << "done: " << std::to_string(basicblock::get_number_of_blocks()) << "\n";

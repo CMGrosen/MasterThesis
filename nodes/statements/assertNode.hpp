@@ -10,7 +10,7 @@ public:
         setNodeType(Assert);
     }
     expressionNode *getCondition() {return _condition.get();}
-    std::string to_string() override {
+    std::string to_string() const override {
         return "assert(" + _condition->to_string() + ")";
     }
     std::shared_ptr<statementNode> copy_statement() const override {

@@ -12,7 +12,6 @@ struct statementsTransformer {
     statementsTransformer() = default;
 
     static std::shared_ptr<CCFG> get_transformedCCFG(const std::shared_ptr<CSSA_CFG> &cssacfg){
-        int counter = 0;
         std::shared_ptr<CCFG> ccfg = std::make_shared<CCFG>(*cssacfg->ccfg);
         ccfg->reads.clear();
         for (auto &blk : ccfg->nodes) {
@@ -23,7 +22,7 @@ struct statementsTransformer {
     }
 
 private:
-    static void unpackBlock(std::shared_ptr<basicblock> blk, CCFG *ccfg) {
+    static void unpackBlock(const std::shared_ptr<basicblock> &blk, CCFG *ccfg) {
         for (auto &stmt : blk->statements) {
             stmt = unpackStatement(stmt, ccfg);
         }
@@ -106,8 +105,8 @@ private:
             } case ArrayLiteral: {
                 auto arrLit = dynamic_cast<arrayLiteralNode*>(expr);
                 auto arrayLiteral = arrLit->getArrLit();
-                unpack = unpackExpr(arrLit->getArrLit()[0].get(), ccfg);
-                for (auto i = 1; i < arrayLiteral.size(); ++i) {
+                unpack = unpackExpr(arrayLiteral[0].get(), ccfg);
+                for (size_t i = 1; i < arrayLiteral.size(); ++i) {
                     unpack->get_last()->next = unpackExpr(arrayLiteral[i].get(), ccfg);
                 }
                 unpack->get_last()->next = std::make_shared<unpacked>(unpacked(arrLit->getType(), ArrayLiteral, std::to_string(arrayLiteral.size())));

@@ -1,0 +1,14 @@
+a = read(1);
+b = read(1);
+
+fork {
+  a = a + a + b;
+  b = a;
+} and {
+  b = b + a;
+} and {
+  a = read(1) + b + a - a;
+  while (a > 10) {
+    a = a + a + 1;
+  };
+};

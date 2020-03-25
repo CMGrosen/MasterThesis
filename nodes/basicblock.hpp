@@ -45,17 +45,11 @@ struct basicblock {
 
     void updateUsedVariables();
 
-    std::string draw_picture(std::unordered_set<edge> *edges);
-
-    std::pair<std::string, int> draw_block(basicblock *parent, int current, int total, int distanceToNeighbour, std::set<basicblock *> *drawnBlocks);
-
-    std::string draw_children(basicblock *parent, std::set<basicblock *> *drawnBlocks);
-
     static int get_number_of_blocks();
     std::string to_string();
-    int32_t get_stmt_length();
-    int32_t get_stmt_count();
-    int32_t depth;
+    size_t get_stmt_length();
+    size_t get_stmt_count();
+    size_t depth;
 
     std::map<std::string, std::set<std::string>> uses;
     std::map<std::string, std::set<std::string>> defines;
@@ -68,8 +62,6 @@ private:
     static int counterblocks;
 
     std::string get_address();
-
-    std::pair<std::string, std::int32_t> statements_as_string();
 
     std::string name;
 

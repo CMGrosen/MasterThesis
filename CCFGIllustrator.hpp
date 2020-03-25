@@ -22,7 +22,7 @@ public:
     std::shared_ptr<CCFGNode> parent;
     std::shared_ptr<basicblock> basicblockInfo;
 
-    CCFGNode(std::shared_ptr<CCFGNode> _parent, const std::shared_ptr<basicblock>& blk) : basicblockInfo{blk}, parent{std::move(_parent)}, name{blk->get_name()} {
+    CCFGNode(std::shared_ptr<CCFGNode> _parent, const std::shared_ptr<basicblock>& blk) : name{blk->get_name()}, parent{std::move(_parent)}, basicblockInfo{blk} {
         content = blk->to_string();
         node_width = blk->get_stmt_length() * symbol_width;
         left_width = node_width/2;
@@ -199,7 +199,7 @@ public:
 
     std::string DrawCCFG() {
         if (printed_tree.empty()) {
-            printed_tree = std::move(root->to_string(&_ccfg.edges, &_ccfg));
+            printed_tree = root->to_string(&_ccfg.edges, &_ccfg);
         }
         return printed_tree;
     }

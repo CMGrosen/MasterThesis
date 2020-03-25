@@ -6,7 +6,7 @@
 
 #include <string>
 
-class variableNode : public expressionNode {
+class variableNode : virtual public expressionNode {
 public:
     variableNode(Type _type, std::string n) : name{n}, origName{std::move(n)} {
         type = _type;
@@ -30,7 +30,7 @@ public:
         return name < s.name;
     }
 
-    std::string to_string() override {
+    std::string to_string() const override {
         std::string res = nameToTikzName(name, onSSA);
         return res;
     }

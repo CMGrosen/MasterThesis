@@ -5,20 +5,19 @@
 #ifndef ANTLR_CPP_TUTORIAL_ARRAYACCESSNODE_HPP
 #define ANTLR_CPP_TUTORIAL_ARRAYACCESSNODE_HPP
 
-#include <nodes/expressions/expressionNode.hpp>
 #include <nodes/expressions/variableNode.hpp>
 
-
-class arrayAccessNode : public expressionNode {
+class arrayAccessNode : virtual public expressionNode {
 public:
     arrayAccessNode(Type t, std::shared_ptr<expressionNode> a, std::shared_ptr<variableNode> n) : value{std::move(a)}, var{std::move(n)} {type = t; setNodeType(ArrayAccess);};
 
     expressionNode *getAccessor() const {return value.get();};
     std::string getName() const { return var->name;}
-    void setName(std::string _name) {var->name = _name;}
+    std::string *getNameAsRef() {return &var->name;}
+    void setName(std::string _name) {var->name = std::move(_name);}
     variableNode *getVar() const {return var.get();}
 
-    std::string to_string() override {
+    std::string to_string() const override {
         return nameToTikzName(var->name, onSSA) + "[" + value->to_string() + "] ";
     }
 

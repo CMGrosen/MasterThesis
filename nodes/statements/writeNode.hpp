@@ -5,10 +5,7 @@
 #ifndef ANTLR_CPP_TUTORIAL_WRITENODE_HPP
 #define ANTLR_CPP_TUTORIAL_WRITENODE_HPP
 
-#include <nodes/expressions/expressionNode.hpp>
-#include "statementNode.hpp"
-
-class writeNode : public statementNode {
+class writeNode : virtual public statementNode {
 public:
     writeNode(int16_t pin, std::shared_ptr<expressionNode> e) : _e{std::move(e)}, _pin{pin} {
         type = (_e->getType() == intType) ? okType : errorType;
@@ -22,7 +19,7 @@ public:
     int16_t getPin() const {return _pin;};
     expressionNode *getExpr() const {return _e.get();};
 
-    std::string to_string() override {
+    std::string to_string() const override {
         return "write(" + std::to_string(_pin) + ", " + _e->to_string() + ")";
     }
 
@@ -37,8 +34,8 @@ public:
         _e->setSSA(t);
     }
 private:
-    const int16_t _pin;
     std::shared_ptr <expressionNode> _e;
+    const int16_t _pin;
 };
 
 #endif //ANTLR_CPP_TUTORIAL_WRITENODE_HPP

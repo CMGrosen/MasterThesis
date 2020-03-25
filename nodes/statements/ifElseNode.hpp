@@ -5,9 +5,7 @@
 #ifndef ANTLR_CPP_TUTORIAL_IFELSENODE_H
 #define ANTLR_CPP_TUTORIAL_IFELSENODE_H
 
-#include <nodes/expressions/expressionNode.hpp>
-
-class ifElseNode : public statementNode {
+class ifElseNode : virtual public statementNode {
 public:
     ifElseNode(Type t, std::shared_ptr<expressionNode> c, std::shared_ptr<statementNode> tb, std::shared_ptr<statementNode> fb)
         : condition{std::move(c)}, trueBranch{std::move(tb)}, falseBranch{std::move(fb)} {
@@ -18,7 +16,7 @@ public:
     const std::shared_ptr<statementNode> getTrueBranch() const {return trueBranch;}
     const std::shared_ptr<statementNode> getFalseBranch() const {return falseBranch;}
 
-    std::string to_string() override {
+    std::string to_string() const override {
         return "if(" + condition->to_string() + ")";
     }
 

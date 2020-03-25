@@ -5,11 +5,11 @@
 #ifndef ANTLR_CPP_TUTORIAL_SKIPNODE_HPP
 #define ANTLR_CPP_TUTORIAL_SKIPNODE_HPP
 
-class skipNode : public statementNode {
+class skipNode : virtual public statementNode {
 public:
     skipNode() {setNodeType(Skip); setType(okType);}
 
-    std::string to_string() override {
+    std::string to_string() const override {
         return "skip";
     }
     std::shared_ptr<statementNode> copy_statement() const override {

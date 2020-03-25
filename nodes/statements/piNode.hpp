@@ -5,7 +5,7 @@
 #ifndef ANTLR_CPP_TUTORIAL_PINODE_HPP
 #define ANTLR_CPP_TUTORIAL_PINODE_HPP
 
-class piNode : public statementNode {
+class piNode : virtual public statementNode {
     std::string _variable;
     std::string name;
     int num;
@@ -13,18 +13,28 @@ class piNode : public statementNode {
 
 public:
     piNode(Type t, std::string variable, int _num, std::vector<std::string> possible_variables)
-        : _variable{std::move(variable)}, _possible_variables{std::move(possible_variables)}, num{_num} {
-        name = "-T_" + _variable + "_" + std::to_string(num);
+        : _variable{std::move(variable)}, _possible_variables{std::move(possible_variables)} {
+        name = "-T_" + _variable + "_" + std::to_string(_num);
+        num = _num;
         setType(t);
         setNodeType(Pi);
         setSSA(true);
     }
 
-    std::string to_string() override {
+    piNode(phiNode *phi) : _variable{phi->getOriginalName()}, name{phi->getName()} {
+        std::string sub = name.substr(_variable.size()+1);
+        num = std::stoi(sub);
+        for (const auto &v : *phi->get_variables()) _possible_variables.push_back(v);
+        setType(phi->getType());
+        setNodeType(Pi);
+        setSSA(true);
+    }
+
+    std::string to_string() const override {
         std::string res = nameToTikzName(name, true) + " = $\\pi($";
         if (!_possible_variables.empty()) {
             res += nameToTikzName(_possible_variables[0], true);
-            for (auto i = 1; i < _possible_variables.size(); ++i)
+            for (size_t i = 1; i < _possible_variables.size(); ++i)
                 res += (", " + nameToTikzName(_possible_variables[i], true));
         }
         res += ")";
@@ -37,6 +47,7 @@ public:
             _pos_vars.push_back(v);
         }
         auto _this = std::make_shared<piNode>(piNode(type, _variable, num, std::move(_pos_vars)));
+        _this->name = name;
         _this->setSSA(onSSA);
         return _this;
     }
