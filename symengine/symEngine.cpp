@@ -392,7 +392,8 @@ z3::expr symEngine::evaluate_expression(z3::context *c, const expressionNode *ex
         case BinaryExpression: {
             auto binexpr = dynamic_cast<const binaryExpressionNode*>(expr);
             return evaluate_operator
-                    ( evaluate_expression(c, binexpr->getLeft(), run)
+                    ( c
+                    , evaluate_expression(c, binexpr->getLeft(), run)
                     , evaluate_expression(c, binexpr->getRight(), run)
                     , binexpr->getOperator()
                     );
@@ -400,7 +401,7 @@ z3::expr symEngine::evaluate_expression(z3::context *c, const expressionNode *ex
         case UnaryExpression: {
             auto unexpr = dynamic_cast<const unaryExpressionNode*>(expr);
             z3::expr exp = evaluate_expression(c, unexpr->getExpr(), run);
-            return evaluate_operator(exp, exp, unexpr->getOperator());
+            return evaluate_operator(c, exp, exp, unexpr->getOperator());
         }
         case Assign:
         case AssignArrField:
@@ -421,7 +422,7 @@ z3::expr symEngine::evaluate_expression(z3::context *c, const expressionNode *ex
     assert(false);
 }
 
-z3::expr symEngine::evaluate_operator(const z3::expr& left, const z3::expr& right, op _operator) {
+z3::expr symEngine::evaluate_operator(z3::context *c, const z3::expr& left, const z3::expr& right, op _operator) {
     switch (_operator) {
         case PLUS:
             return left + right;
@@ -430,9 +431,9 @@ z3::expr symEngine::evaluate_operator(const z3::expr& left, const z3::expr& righ
         case MULT:
             return left * right;
         case DIV:
-            return left / right;
+            return (left / right) && (right != c->int_val(0)); //don't want right-hand side to be 0, even if this is possible (for now)
         case MOD:
-            return left % right;
+            return (left % right) && (right != c->int_val(0)); //don't want right-hand side to be 0, even if this is possible (for now)
         case NOT:
             return !left;
         case AND:
