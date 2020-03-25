@@ -197,9 +197,10 @@ void basicblock::updateUsedVariables() {
             case Phi: {
                 auto phi = dynamic_cast<phiNode*>(stmt.get());
                 defines.insert({phi->getOriginalName(), std::set<std::string>{phi->getName()}});
+                // break?
             }
             default: {
-
+                // should there be code here?
             }
         }
     }
