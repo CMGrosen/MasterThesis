@@ -17,7 +17,7 @@ stmt :
     | FORK thread
     | event
     | skipStmt
-    | assert
+    | assertStmt
     ;
     
 assign :
@@ -49,7 +49,7 @@ skipStmt :
     SKIPPING
     ;
 
-assert :
+assertStmt :
     ASSERT LPAREN expr RPAREN
     ;
 
