@@ -269,7 +269,7 @@ bool interpreter::exec_stmt(const std::shared_ptr<statementNode> &stmt) {
     return true;
 }
 
-void interpreter::execute(edge ed) {
+void interpreter::execute(bool going_to_conflictnode, edge ed, std::set<std::shared_ptr<basicblock>> *blks) {
     std::shared_ptr<basicblock> blk = ed.neighbours[0];
     for (const auto &stmt : blk->statements) {
         bool res = exec_stmt(stmt);
@@ -278,19 +278,27 @@ void interpreter::execute(edge ed) {
             return;
         }
         else if (stmt->getNodeType() == If) {
-            if (res && ed.neighbours[1] != blk->nexts[0]) {
+            if (going_to_conflictnode && res && ed.neighbours[1] != blk->nexts[0]) {
                 std::cout << "error occured. If statement should have been false\n";
-            } else if (!res && ed.neighbours[1] != blk->nexts[1]) {
+            } else if (going_to_conflictnode && !res && ed.neighbours[1] != blk->nexts[1]) {
                 std::cout << "error occured. If statement should have been true\n";
             }
+            res ? blks->insert(blk->nexts[0]) : blks->insert(blk->nexts[1]);
         }
     }
+    if (blk->type == Cobegin) {
+        for (const auto &nxt : blk->nexts) blks->insert(nxt);
+    } else if (blk->statements.back()->getNodeType() != If) {
+        blks->insert(blk->nexts[0]);
+    }
+    blks->erase(blk);
 }
 
 
 bool interpreter::reachable(const std::pair<std::shared_ptr<basicblock>, std::string> &blk, const std::string& origname) {
     std::set<std::shared_ptr<basicblock>> conflictsForRun1;
     std::set<std::shared_ptr<basicblock>> conflictsForRun2;
+    std::shared_ptr<basicblock> conflictNode;
     bool conflict1 = false, conflict2 = false;
     bool onconflictnode = false;
     std::string valForRun1 = std::get<0>(differences.find(blk.second)->second);
@@ -303,8 +311,9 @@ bool interpreter::reachable(const std::pair<std::shared_ptr<basicblock>, std::st
         conflictsForRun2.insert(engine.ccfg->defs.find(value)->second);
     }
 
-    std::shared_ptr<basicblock> current = engine.ccfg->startNode;
+    std::set<std::shared_ptr<basicblock>> currents = {engine.ccfg->startNode};
 
+    std::shared_ptr<basicblock> current = *currents.begin();
     while (current) {
         if (!onconflictnode) {
             std::pair<bool, std::vector<edge>> path;
@@ -322,13 +331,43 @@ bool interpreter::reachable(const std::pair<std::shared_ptr<basicblock>, std::st
                     std::cout << "an error occured. Cannot reach conflict\n";
                 }
                 for (const auto &ed : path.second) {
-                    execute(ed);
+                    execute(true, ed, &currents);
                 }
+                //we're at possible race-condition location. Don't want to continue from this node
+                conflictNode = path.second.back().neighbours[1];
+                currents.erase(conflictNode);
             }
         } else {
-
+            if (conflict1 && conflictsForRun2.find(current) != conflictsForRun2.end()) {
+                std::string current_val = current_values[origname].first;
+                if (current_val == valForRun1) {
+                    execute(false, edge(current, current->nexts.empty() ? nullptr : current->nexts[0]), &currents);
+                    if (current_values[origname].first != current_val || current_values[origname].first == valForRun2) {
+                        std::cout << "found both conflicts\n";
+                    }
+                }
+                std::cout << "found both conflicts\n";
+                return true;
+            } else if (conflict2 && conflictsForRun1.find(current) != conflictsForRun1.end()) {
+                std::string current_val = current_values[origname].first;
+                if (current_val == valForRun2) {
+                    execute(false, edge(current, current->nexts.empty() ? nullptr : current->nexts[0]), &currents);
+                    if (current_values[origname].first != current_val || current_values[origname].first == valForRun1) {
+                        std::cout << "found both conflicts\n";
+                    }
+                }
+                std::cout << "found both conflicts\n";
+                return true;
+            } else {
+                if (blk.first == current) {
+                    //we're at node with race-condition but haven't yet met a node with a conflicting variable assignment
+                    //unlikely to ever happen
+                    std::cout << "at node with race-condition but haven't yet met a node with a conflicting variable assignment\n";
+                }
+                execute(false, edge(current, current->nexts.empty() ? nullptr : current->nexts[0]), &currents);
+            }
         }
-        current = nullptr;
+        current = *currents.begin();
     }
     std::cout << "here";
 }
