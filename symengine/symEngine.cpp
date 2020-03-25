@@ -223,6 +223,10 @@ z3::expr symEngine::get_run(z3::context *c, basicblock *previous, std::shared_pt
                     }
                     return final;
                 }
+                case Assert: {
+                    //handle assert
+                    assert(false);
+                }
                 case AssignArrField:
                 case EndConcurrent:
                 case Sequential:
@@ -391,6 +395,7 @@ z3::expr symEngine::evaluate_expression(z3::context *c, const expressionNode *ex
         case BasicBlock:
         case Phi:
         case Pi:
+        case Assert:
             assert(false);
             break;
     }

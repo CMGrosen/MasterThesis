@@ -37,7 +37,7 @@ public:
 
         //std::vector<std::shared_ptr<statementNode>> l = a->debug_getAllNodes();
         //std::cout << "\n\n\nwriting out what we have:\n";
-  //      WriteType(a);
+        //WriteType(a);
         //std::cout << dynamic_cast<literalNode*>(dynamic_cast<additionNode*>(a[0]->value)->getLeft())->value << std::endl;
         //a->setNextStatement(firstStatement);
 
@@ -219,6 +219,13 @@ public:
 
     virtual antlrcpp::Any visitSkipStmt(SmallParser::SkipStmtContext *context) override {
         std::shared_ptr<statementNode> res = std::make_shared<skipNode>(skipNode());
+        return res;
+    }
+
+    virtual antlrcpp::Any visitAssert(SmallParser::AssertContext *ctx) override {
+        std::shared_ptr<expressionNode> condition = visitExpr(ctx->expr());
+        Type t = (condition->getType() == boolType) ? okType : errorType;
+        std::shared_ptr<statementNode> res = std::make_shared<assertNode>(assertNode(t, condition));
         return res;
     }
 

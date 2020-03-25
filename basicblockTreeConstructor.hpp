@@ -47,6 +47,7 @@ struct CCFG {
                     case Skip:
                     case Phi:
                     case Pi:
+                    case Assert:
                         n->type = Compute;
                         break;
                     case Concurrent:
@@ -502,6 +503,7 @@ public:
         switch (startTree->getNodeType()) {
             case Assign:
             case AssignArrField:
+            case Assert:
             case Write:
             case Event:
             case Skip:
@@ -540,12 +542,13 @@ public:
                 auto rest = get_tree(seqNode->getNext(), nxt);
                 block = get_tree(seqNode->getBody(), rest);
                 NodeType nType = seqNode->getBody()->getNodeType();
-                if (nType == Assign || nType == AssignArrField || nType == Write || nType == Skip) {
+                if (nType == Assign || nType == AssignArrField || nType == Write || nType == Skip || nType == Assert) {
                     std::vector<std::shared_ptr<statementNode>> remainingStmts;
                     int stmtsRemoved = 0;
                     for (const auto stmt : rest->statements) {
                         nType = stmt->getNodeType();
-                        if (nType == Assign || nType == AssignArrField || nType == Write || nType == Skip) {
+                        if (nType == Assign || nType == AssignArrField || nType == Write ||
+                            nType == Skip || nType == Assert) {
                             block->statements.push_back(stmt);
                             stmtsRemoved++;
                         } else {

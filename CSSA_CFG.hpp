@@ -167,6 +167,9 @@ private:
                     /*for (const auto &name : *pNode->get_variables())
                         res.emplace_back(stmt, name, use);*/
                     break;
+                } case Assert:  {
+                    //handle assert here
+                    assert(false);
                 }
                 default:
                     break;
@@ -282,11 +285,14 @@ private:
                 rename_expr(eNode->getCondition(), use, piName);
                 break;
             } case Phi: {
-                auto phi = dynamic_cast<phiNode*>(stmt.get());
-                for (auto s : *phi->get_variables()) {
-                    if (s == use) {s = piName;}
+                auto phi = dynamic_cast<phiNode *>(stmt.get());
+                for(auto s : *phi->get_variables()) {
+                    if(s == use) { s = piName; }
                 }
                 break;
+            } case Assert:  {
+                //handle assert here
+                assert(false);
             } default:
                 break;
         }

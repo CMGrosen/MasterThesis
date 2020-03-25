@@ -14,6 +14,7 @@ IF      : 'if';
 ELSE    : 'else';
 READ    : 'read';
 WRITE   : 'write';
+ASSERT  : 'assert';
 
 SQUARE_BRACKET_BEGIN: '[';
 SQUARE_BRACKET_END: ']';

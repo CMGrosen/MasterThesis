@@ -32,6 +32,13 @@ private:
     static std::shared_ptr<statementNode> unpackStatement(std::shared_ptr<statementNode> stmt, CCFG *ccfg) {
         std::shared_ptr<statementNode> unStmt;
         switch (stmt->getNodeType()) {
+            case Assert: {
+                auto assert_node = dynamic_cast<assertNode*>(stmt.get());
+                auto expr = unpackExpr(assert_node->getCondition(), ccfg);
+                expr->get_last()->next = std::make_shared<unpacked>(boolType, Assert);
+                unStmt = std::make_shared<unpackedstmt>(unpackedstmt(expr));
+                break;
+            }
             case Assign: {
                 auto assNode = dynamic_cast<assignNode*>(stmt.get());
                 auto unpack = unpackExpr(assNode->getExpr(), ccfg);
