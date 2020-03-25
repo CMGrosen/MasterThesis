@@ -239,8 +239,9 @@ private:
 
     void add_conflict_edges() {
         for (auto blk : nodes) {
+            if (blk->type != joinNode)
             for (auto cmp : nodes) {
-                if (concurrent(blk, cmp)) {
+                if (cmp->type != joinNode && concurrent(blk, cmp)) {
                     for (const auto &var : blk->defines) {
                         if ((cmp->uses.find(var.first)) != cmp->uses.end()) {//|| cmp->defines.find(var.first) != cmp->defines.end()) {
                             //blocks are concurrent
