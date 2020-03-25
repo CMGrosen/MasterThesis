@@ -13,7 +13,6 @@ struct statementsTransformer {
 
     static std::shared_ptr<CCFG> get_transformedCCFG(const std::shared_ptr<CSSA_CFG> &cssacfg){
         std::shared_ptr<CCFG> ccfg = std::make_shared<CCFG>(*cssacfg->ccfg);
-        ccfg->reads.clear();
         for (auto &blk : ccfg->nodes) {
             unpackBlock(blk, ccfg.get());
         }
@@ -84,7 +83,6 @@ private:
         switch (expr->getNodeType()) {
             case Read: {
                 unpack = std::make_shared<unpacked>(unpacked(intType, Read, dynamic_cast<readNode*>(expr)->getName()));
-                ccfg->reads.push_back(unpack->value);
                 break;
             } case Literal: {
                 auto lit = dynamic_cast<literalNode*>(expr);

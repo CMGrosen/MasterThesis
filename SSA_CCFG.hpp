@@ -22,6 +22,7 @@ struct SSA_CCFG {
         place_phi_functions();
 
         rename(domTree->root);
+        ccfg->readcount = Count["-readVal"];
 
         setSSA();
 

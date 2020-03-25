@@ -35,8 +35,9 @@ symEngine::symEngine(std::shared_ptr<SSA_CCFG> ccfg, std::unordered_map<std::str
 symEngine::symEngine(std::shared_ptr<CSSA_CFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table) : c{}, s{z3::solver(c)}, event_encountered{false}, ccfg{std::move(ccfg->ccfg)}, symboltable(std::move(table)) {}
 
 void symEngine::add_reads() {
-    for (const auto &read : ccfg->reads) {
-        z3::expr name = c.int_const(read.c_str());
+    size_t i = 0;
+    while(i++<ccfg->readcount) {
+        z3::expr name = c.int_const(("-readVal_" + std::to_string(i)).c_str());
         z3::expr r = name >= INT16_MIN && name <= INT16_MAX;
         std::cout << r.to_string() << "\n";
         s.add(r);

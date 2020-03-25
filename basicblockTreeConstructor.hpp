@@ -20,7 +20,7 @@ struct CCFG {
     std::shared_ptr<basicblock> exitNode;
     std::map<std::string, std::shared_ptr<basicblock>> defs;
     std::map<basicblock *, std::set<basicblock *>> concurrent_events;
-    std::vector<std::string> reads;
+    size_t readcount;
     std::unordered_map<std::shared_ptr<basicblock>, std::unordered_set<std::shared_ptr<basicblock>>> prec;
     std::vector<std::pair<std::shared_ptr<basicblock>, size_t>> pis_and_depth;
     std::vector<std::shared_ptr<basicblock>> fiNodes;
@@ -85,7 +85,7 @@ struct CCFG {
     CCFG(CCFG&& o) noexcept
             : nodes{std::move(o.nodes)}, edges{std::move(o.edges)}, conflict_edges{std::move(o.conflict_edges)},
             startNode{std::move(o.startNode)}, exitNode{std::move(o.exitNode)},
-            defs{std::move(o.defs)}, concurrent_events{std::move(o.concurrent_events)}, reads{std::move(o.reads)},
+            defs{std::move(o.defs)}, concurrent_events{std::move(o.concurrent_events)}, readcount{o.readcount},
             prec{std::move(o.prec)}, pis_and_depth(std::move(o.pis_and_depth)),
             fiNodes{std::move(o.fiNodes)}, endconcNodes{std::move(o.endconcNodes)}
     {}
@@ -103,7 +103,7 @@ struct CCFG {
         exitNode = std::move(other.exitNode);
         defs = std::move(other.defs);
         concurrent_events = std::move(other.concurrent_events);
-        reads = std::move(other.reads);
+        readcount = other.readcount;
         prec = std::move(other.prec);
         pis_and_depth = std::move(other.pis_and_depth);
         fiNodes = std::move(other.fiNodes);
@@ -146,6 +146,7 @@ private:
         return 0;
     }
     void copy_tree(const CCFG& a) {
+        readcount = a.readcount;
         auto oldMapsTo = std::map<basicblock*, std::shared_ptr<basicblock>>{};
         for (auto &n : a.nodes) {
             auto newNode = std::make_shared<basicblock>(basicblock(*n));
