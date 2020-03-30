@@ -5,6 +5,7 @@
 #ifndef ANTLR_CPP_TUTORIAL_CSSA_CFG_HPP
 #define ANTLR_CPP_TUTORIAL_CSSA_CFG_HPP
 
+#include <cassert>
 #include <basicblockTreeConstructor.hpp>
 
 struct CSSA_CFG {
@@ -152,7 +153,7 @@ private:
                 std::vector<std::string*> vec;
                 vec.reserve(phi->get_variables()->size());
                 for (auto & i : *phi->get_variables()) {
-                    vec.push_back(&i);
+                    vec.push_back(&i.first);
                 }
                 usages = {phi->get_variables()->size(), vec};
                 break;
@@ -176,6 +177,25 @@ private:
         return usages;
     }
 
+    static std::string findboolname(const std::shared_ptr<basicblock>& blk, const std::string& varname) {
+        for (const auto &stmt : blk->statements) {
+            if (auto ass = dynamic_cast<assignNode*>(stmt.get())) {
+                if (ass->getName() == varname) {
+                    return stmt->get_boolname();
+                }
+            } else if (auto assArrF = dynamic_cast<arrayFieldAssignNode*>(stmt.get())) {
+                if (assArrF->getName() == varname) {
+                    return stmt->get_boolname();
+                }
+            } else if (auto phiN = dynamic_cast<phiNode*>(stmt.get())) {
+                if (phiN->getName() == varname) {
+                    return stmt->get_boolname();
+                }
+            }
+        }
+        assert(false);
+    }
+
     void place_phi_functions() {
         for (const auto &pair : ccfg->conflict_edges) {
             std::shared_ptr<basicblock> a = pair.first;
@@ -196,11 +216,14 @@ private:
                             vec.reserve(usages.first + b->statements.size());
                             Type t = symboltable->find(varname)->second->getType();
                             for (size_t i = 0; i < usages.first; ++i) {
+                                std::string argname = *(b->uses.find(varname)->second.begin());
+                                std::string boolname = findboolname(ccfg->defs[argname], argname);
+
                                 pinodes.emplace_back(std::make_shared<piNode>(piNode
                                     ( t
                                     , varname
                                     , counter[varname]++
-                                    , std::vector<std::string>{*(b->uses.find(varname)->second.begin())}
+                                    , std::vector<std::pair<std::string, std::string>>{{argname, boolname}}
                                     )
                                 ));
                                 vec.push_back(pinodes.back());
@@ -225,7 +248,8 @@ private:
                                 if (auto pi = dynamic_cast<piNode *>(stmt.get())) {
                                     std::string var = *(a->defines.find(varname)->second.begin());
                                     if (pi->getVar() == varname && !pi->contains(var)) {
-                                        pi->addVariable(var);
+                                        std::string boolname = findboolname(ccfg->defs[var], var);
+                                        pi->addVariable({var, boolname});
                                     }
                                 }
                             }

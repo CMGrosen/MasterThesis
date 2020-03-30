@@ -47,6 +47,7 @@ private:
     std::unordered_map<std::string, std::list<std::shared_ptr<basicblock>>> defsites;
     std::unordered_map<std::shared_ptr<basicblock>, std::unordered_set<std::string>> Aorig; //variable definitions in block
     std::unordered_map<std::shared_ptr<basicblock>, std::unique_ptr<std::unordered_set<std::string>>> Aphi; //Does block have a phi function for variable
+    std::unordered_map<std::string, int> name_to_boolnamenum; //useful later for symengine work for use with pinodes
 
 
     void initialise() {
@@ -98,7 +99,7 @@ private:
                         std::vector<std::string> args;
                         for (size_t i = 0; i < Y->parents.size(); ++i) args.push_back(var);
                         Type t = table->find(var)->second->getType();
-                        std::shared_ptr<statementNode> stmt = std::make_shared<phiNode>(phiNode(t, var, args));
+                        std::shared_ptr<statementNode> stmt = std::make_shared<phiNode>(phiNode(t, var, &args));
                         stmts.push_back(stmt);
                         for(const auto &s : Y->statements) stmts.push_back(s);
                         Y->statements = stmts;
@@ -129,6 +130,7 @@ private:
     void update_def_stmtNode(const std::shared_ptr<statementNode> &stmt, std::map<std::string, uint32_t> *defcounts) {
         std::string name;
         std::string oldName;
+        stmt->set_boolname("-b_" + std::to_string(Count["-b"]));
         if (stmt->getNodeType() == Assign) {
             auto node = dynamic_cast<assignNode*>(stmt.get());
             int i = ++Count[node->getName()];
@@ -138,7 +140,7 @@ private:
             oldName = node->getName();
             name = oldName + "_" + std::to_string(i);
             node->setName(name);
-
+            name_to_boolnamenum.insert({name, Count["-b"]});
         } else if (stmt->getNodeType() == Phi) {
             auto node = dynamic_cast<phiNode*>(stmt.get());
             int i = ++Count[node->getName()];
@@ -148,6 +150,7 @@ private:
             oldName = node->getName();
             name = oldName + "_" + std::to_string(i);
             node->setName(name);
+            name_to_boolnamenum.insert({name, Count["-b"]});
         } else if (stmt->getNodeType() == AssignArrField) {
             auto node = dynamic_cast<arrayFieldAssignNode*>(stmt.get());
             int i = ++Count[node->getName()];
@@ -157,7 +160,9 @@ private:
             oldName = node->getName();
             name = oldName + "_" + std::to_string(i);
             node->setName(name);
-        } else return;
+            name_to_boolnamenum.insert({name, Count["-b"]});
+        }
+        ++Count["-b"];
         //blk->defines.find(oldName)->second.insert(name);
     }
 
@@ -242,7 +247,6 @@ private:
                 update_uses_stmtNode(n->basic_block, stmt);
             }
             update_def_stmtNode(stmt, &defcounts);
-            stmt->set_boolname("-b_" + std::to_string(Count["-b"]++));
         }
         for (const auto &successor : n->basic_block->nexts) {
             // Suppose n is the j'th predecessor of successor
@@ -254,8 +258,9 @@ private:
                 if (stmt->getNodeType() == Phi) {
                     // Suppose the j'th operand of the phi-function is 'a'
                     auto phi = dynamic_cast<phiNode*>(stmt.get());
-                    std::string a = phi->get_variables()->at(j);
-                    phi->get_variables()->at(j) += ("_" + std::to_string(Stack[a].top()));
+                    std::string a = phi->get_variables()->at(j).first;
+                    std::string newname = a + "_" + std::to_string(Stack[a].top());
+                    phi->update_variableindex(j, {newname, name_to_boolnamenum[newname]});
                 }
             }
         }
@@ -304,10 +309,10 @@ private:
                 for (const auto &stmt : phiN.first->statements) {
                     if (auto phi = dynamic_cast<phiNode *>(stmt.get())) {
                         auto vars = *phi->get_variables();
-                        std::vector<std::string> res;
+                        std::vector<std::pair<std::string, int>> res;
                         for (const auto &var : vars) {
                             auto conc = phiN.first->concurrentBlock.first;
-                            basicblock *current_concnode = ccfg->defs[var].get();
+                            basicblock *current_concnode = ccfg->defs[var.first].get();
                             while (current_concnode) {
                                 if (current_concnode == conc) {
                                     res.push_back(var);
@@ -318,25 +323,6 @@ private:
                         }
                         phi->set_variables(res);
                     }
-                }
-            }
-        }
-    }
-
-    void remove_duplicates() {
-        for (const auto &blk : Aphi) {
-            for (const auto &stmt : blk.first->statements) {
-                if (auto phi = dynamic_cast<phiNode*>(stmt.get())) {
-                    std::set<std::string> names;
-                    std::vector<std::string> updateNames;
-                    for (const auto &name : *phi->get_variables()) {
-                        names.insert(name);
-                    }
-                    updateNames.reserve(names.size());
-                    for (const auto &name : names) {
-                        updateNames.push_back(name);
-                    }
-                    phi->set_variables(std::move(updateNames));
                 }
             }
         }

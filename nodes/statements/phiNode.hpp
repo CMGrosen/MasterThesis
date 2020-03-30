@@ -8,16 +8,26 @@
 class phiNode : virtual public statementNode {
     std::string _name;
     std::string origName;
-    std::vector<std::string> _variables;
+    std::vector<std::pair<std::string, int>> _variables;
 public:
-    phiNode(Type t, std::string name, std::vector<std::string> variables) :
+
+    phiNode(Type t, std::string name, const std::vector<std::string> *variables) :
+    _name{name}, origName{std::move(name)} {
+        for (const auto &v : *variables) {
+            _variables.emplace_back(v, 0);
+        }
+        setNodeType(Phi);
+        setType(t);
+    }
+
+    phiNode(Type t, std::string name, std::vector<std::pair<std::string, int>> variables) :
     _name{name}, origName{std::move(name)}, _variables{std::move(variables)} {
         setNodeType(Phi);
         setType(t);
         onSSA = true;
     }
 
-    phiNode(Type t, std::string name, std::string origname, std::vector<std::string> variables) :
+    phiNode(Type t, std::string name, std::string origname, std::vector<std::pair<std::string, int>> variables) :
             _name{std::move(name)}, origName{std::move(origname)}, _variables{std::move(variables)} {
         setNodeType(Phi);
         setType(t);
@@ -27,9 +37,9 @@ public:
     std::string to_string() const override {
         std::string res = nameToTikzName(_name, true) + " = $\\phi($";
         if (!_variables.empty()) {
-            res += nameToTikzName(_variables[0], true);
+            res += nameToTikzName(_variables[0].first, true);
             for (size_t i = 1; i < _variables.size(); ++i)
-                res += (", " + nameToTikzName(_variables[i], true));
+                res += (", " + nameToTikzName(_variables[i].first, true));
         }
         res += ")";
         return res;
@@ -52,8 +62,9 @@ public:
     void setSSA(bool t) override {
         onSSA = t;
     }
-    std::vector<std::string> *get_variables() {return &_variables;}
-    void set_variables(std::vector<std::string> names) {_variables = std::move(names);}
+    std::vector<std::pair<std::string, int>> *get_variables() {return &_variables;}
+    void update_variableindex(int index, const std::pair<std::string, int>& p) {_variables[index] = p;}
+    void set_variables(std::vector<std::pair<std::string, int>> names) {_variables = std::move(names);}
     /*std::shared_ptr<expressionNode> copy_expression() const override {
         std::vector<std::shared_ptr<variableNode>> _vars;
         for (auto v : _variables) {

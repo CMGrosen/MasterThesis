@@ -7,6 +7,7 @@
 
 #define _run1 "run1-"
 #define _run2 "run2-"
+#define errorval INT_MAX
 
 #include <SSA_CCFG.hpp>
 #include <CSSA_CFG.hpp>
@@ -15,6 +16,7 @@
 #include "trace.hpp"
 
 class symEngine {
+    int boolname_counter;
     z3::context c;
     z3::solver s;
 
@@ -29,10 +31,7 @@ class symEngine {
     std::vector<std::string> includable_vars(const std::shared_ptr<statementNode>&, std::unordered_map<std::string, std::vector<std::string>>);
     bool event_encountered;
 public:
-    symEngine(std::shared_ptr<CCFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table);
-    symEngine(std::shared_ptr<SSA_CCFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table);
-    symEngine(std::shared_ptr<CSSA_CFG> ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table);
-
+    symEngine(const std::shared_ptr<CSSA_CFG>& ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table);
 
     symEngine(const symEngine& a);
     symEngine& operator=(const symEngine&);
