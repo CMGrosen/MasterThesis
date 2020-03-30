@@ -13,6 +13,7 @@
 
 struct SSA_CCFG {
     std::shared_ptr<CCFG> ccfg;
+    int counter;
     SSA_CCFG(std::shared_ptr<CCFG> _ccfg, std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<expressionNode>>> _symboltable, std::shared_ptr<DomTree> _domTree)
     : ccfg{std::move(_ccfg)}, table{std::move(_symboltable)}, domTree{std::move(_domTree)} {
         Variables.reserve(table->size());
@@ -23,7 +24,7 @@ struct SSA_CCFG {
 
         rename(domTree->root);
         ccfg->readcount = Count["-readVal"];
-
+        counter = Count["-b"];
         setSSA();
 
         update_uses_and_defines();
@@ -57,6 +58,7 @@ private:
             Variables.emplace_back(it.first);
         }
         Count.insert({"-readVal", 0});
+        Count.insert({"-b", 1});
 
         //initialise Aorig and Aphi maps
         for (const auto &blk : ccfg->nodes) {
@@ -240,6 +242,7 @@ private:
                 update_uses_stmtNode(n->basic_block, stmt);
             }
             update_def_stmtNode(stmt, &defcounts);
+            stmt->set_boolname("-b_" + std::to_string(Count["-b"]++));
         }
         for (const auto &successor : n->basic_block->nexts) {
             // Suppose n is the j'th predecessor of successor

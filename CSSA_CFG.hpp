@@ -11,9 +11,10 @@ struct CSSA_CFG {
     std::shared_ptr<CCFG> ccfg;
     std::shared_ptr<DomTree> domTree;
     std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<expressionNode>>> symboltable;
+    int boolname_counter;
 
-    CSSA_CFG(const CCFG &_ccfg, std::shared_ptr<DomTree> _domTree, std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<expressionNode>>> table)
-    : ccfg{std::make_shared<CCFG>(CCFG(_ccfg))}, domTree{std::move(_domTree)}, symboltable{std::move(table)} {
+    CSSA_CFG(const CCFG &_ccfg, std::shared_ptr<DomTree> _domTree, std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<expressionNode>>> table, int boolname_count)
+    : ccfg{std::make_shared<CCFG>(CCFG(_ccfg))}, domTree{std::move(_domTree)}, symboltable{std::move(table)}, boolname_counter{boolname_count} {
         update_mapstoMap(_ccfg.startNode, ccfg->startNode);
         ccfg->updateConflictEdges();
         for (const auto &s : *symboltable) {
@@ -23,15 +24,14 @@ struct CSSA_CFG {
         place_phi_functions();
         std::cout << "here";
 
-        for (const auto &blk : ccfg->nodes) {
-            if (blk->type == Coend) {
-                std::vector<std::shared_ptr<statementNode>> vec;
-                for (size_t i = 0; i < blk->statements.size()-1; ++i) {
-                    vec.push_back(std::make_shared<piNode>(piNode(dynamic_cast<phiNode*>(blk->statements[i].get()))));
-                }
-                vec.push_back(blk->statements.back());
-                blk->statements = std::move(vec);
+        for (const auto &blk : ccfg->endconcNodes) {
+            std::vector<std::shared_ptr<statementNode>> vec;
+            vec.reserve(blk->statements.size());
+            for (size_t i = 0; i < blk->statements.size()-1; ++i) {
+                vec.push_back(std::make_shared<piNode>(piNode(dynamic_cast<phiNode*>(blk->statements[i].get()))));
             }
+            vec.push_back(blk->statements.back());
+            blk->statements = std::move(vec);
         }
         std::set<std::shared_ptr<basicblock>> visited;
         get_thread_and_depth_level(&visited, ccfg->startNode, 0);
@@ -206,6 +206,7 @@ private:
                                 vec.push_back(pinodes.back());
                                 ccfg->defs.insert({pinodes.back()->getName(), b});
                                 pinodeblocks.push_back(b);
+                                pinodes.back()->set_boolname("-b_" + std::to_string(boolname_counter++));
                             }
                             size_t i = usages.first;
                             for (auto item : usages.second) {

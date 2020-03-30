@@ -90,7 +90,7 @@ SSA_CCFG do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_pt
 
     std::cout << ssa_ccfg.ccfg->startNode->statements[0]->getNodeType() << "\n";
 
-    auto cssaccfg = std::make_shared<CSSA_CFG>(CSSA_CFG(*ssa_ccfg.ccfg, dominatorTree, symboltable));
+    auto cssaccfg = std::make_shared<CSSA_CFG>(CSSA_CFG(*ssa_ccfg.ccfg, dominatorTree, symboltable, ssa_ccfg.counter));
 
     auto third = CCFGTree(*cssaccfg->ccfg);
     std::cout << "\nmade third: \n" << third.DrawCCFG() << "\n";

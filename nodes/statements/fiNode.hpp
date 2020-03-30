@@ -28,6 +28,7 @@ public:
     std::string to_string() const override  {return "endfi";};
     std::shared_ptr<statementNode> copy_statement() const override {
         std::shared_ptr<statementNode> stmt = std::make_shared<fiNode>(fiNode(parents));
+        stmt->set_boolname(get_boolname());
         return stmt;
     }
 };

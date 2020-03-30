@@ -1,9 +1,7 @@
 #ifndef ANTLR_CPP_TUTORIAL_ASSERTNODE_HPP
 #define ANTLR_CPP_TUTORIAL_ASSERTNODE_HPP
 
-#include <nodes/expressions/expressionNode.hpp>
-
-class assertNode : public statementNode{
+class assertNode : virtual public statementNode{
 public:
     assertNode(Type t, std::shared_ptr<expressionNode> condition) : _condition{std::move(condition)} {
         setType(t);
@@ -17,6 +15,7 @@ public:
         std::shared_ptr<expressionNode> _expr = _condition->copy_expression();
         std::shared_ptr<statementNode> _this = std::make_shared<assertNode>(assertNode(type, _expr));
         _this->setSSA(onSSA);
+        _this->set_boolname(get_boolname());
         return _this;
     }
     void setSSA(bool t) override {

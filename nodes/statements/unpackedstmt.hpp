@@ -15,6 +15,7 @@ struct unpackedstmt : virtual public statementNode {
 
     std::shared_ptr<statementNode> copy_statement() const override {
         std::shared_ptr<statementNode> _new = std::make_shared<unpackedstmt>(unpackedstmt(_this->copy()));
+        _new->set_boolname(get_boolname());
         return _new;
     }
 };

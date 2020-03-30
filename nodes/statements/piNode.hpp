@@ -26,6 +26,7 @@ public:
         num = std::stoi(sub);
         for (const auto &v : *phi->get_variables()) _possible_variables.push_back(v);
         setType(phi->getType());
+        set_boolname(phi->get_boolname());
         setNodeType(Pi);
         setSSA(true);
     }
@@ -49,6 +50,7 @@ public:
         auto _this = std::make_shared<piNode>(piNode(type, _variable, num, std::move(_pos_vars)));
         _this->name = name;
         _this->setSSA(onSSA);
+        _this->set_boolname(get_boolname());
         return _this;
     }
 
