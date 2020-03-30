@@ -10,16 +10,17 @@
 
 struct CSSA_CFG {
     std::shared_ptr<CCFG> ccfg;
-    std::shared_ptr<DomTree> domTree;
     std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<expressionNode>>> symboltable;
     int boolname_counter;
 
-    CSSA_CFG(const CCFG &_ccfg, std::shared_ptr<DomTree> _domTree, std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<expressionNode>>> table, int boolname_count)
-    : ccfg{std::make_shared<CCFG>(CCFG(_ccfg))}, domTree{std::move(_domTree)}, symboltable{std::move(table)}, boolname_counter{boolname_count} {
+    CSSA_CFG(const CCFG &_ccfg, std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<expressionNode>>> table, int boolname_count)
+    : ccfg{std::make_shared<CCFG>(CCFG(_ccfg))}, symboltable{std::move(table)}, boolname_counter{boolname_count} {
         update_mapstoMap(_ccfg.startNode, ccfg->startNode);
         ccfg->updateConflictEdges();
+        std::map<std::string, std::string> var_to_SSAvar;
         for (const auto &s : *symboltable) {
             counter.insert({s.first, 1});
+            var_to_SSAvar.insert({s.first, s.first});
         }
 
         place_phi_functions();
@@ -46,6 +47,8 @@ struct CSSA_CFG {
         });
 
         for (const auto &blk : ccfg->nodes) blk->updateUsedVariables();
+
+        updatePiStatements(ccfg->startNode, &var_to_SSAvar);
     }
 
 private:
@@ -53,6 +56,7 @@ private:
     std::map<std::shared_ptr<basicblock>, std::shared_ptr<basicblock>> oldMapsTo;
     std::vector<std::shared_ptr<piNode>> pinodes;
     std::vector<std::shared_ptr<basicblock>> pinodeblocks;
+    std::map<std::string, std::string> origvar_for_pis;
 
     void update_mapstoMap(const std::shared_ptr<basicblock> &oldNode, const std::shared_ptr<basicblock> &newNode) {
         if (oldMapsTo.insert({oldNode, newNode}).second) {
@@ -191,6 +195,10 @@ private:
                 if (phiN->getName() == varname) {
                     return stmt->get_boolname();
                 }
+            } else if (auto piN = dynamic_cast<piNode*>(stmt.get())) {
+                if (piN->getName() == varname) {
+                    return stmt->get_boolname();
+                }
             }
         }
         assert(false);
@@ -230,6 +238,7 @@ private:
                                 ccfg->defs.insert({pinodes.back()->getName(), b});
                                 pinodeblocks.push_back(b);
                                 pinodes.back()->set_boolname("-b_" + std::to_string(boolname_counter++));
+                                origvar_for_pis.insert({pinodes.back()->getName(), argname});
                             }
                             size_t i = usages.first;
                             for (auto item : usages.second) {
@@ -271,6 +280,107 @@ private:
         }
     }
 
+
+    void updatePiStatements(std::shared_ptr<basicblock> node, std::map<std::string, std::string> *var_to_SSAvar) {
+        std::set<std::shared_ptr<basicblock>> blks;
+        updatePiStatementsHelper(node, nullptr, &blks, var_to_SSAvar);
+    }
+
+    void updatePiStatementsHelper(std::shared_ptr<basicblock> node, std::shared_ptr<basicblock> parent, std::set<std::shared_ptr<basicblock>> *blks, std::map<std::string, std::string> *vars_to_ssa) {
+        if (blks->insert(node).second || node->type == joinNode) {
+            for (const auto &stmt : node->statements) {
+                switch (stmt->getNodeType()) {
+                    case Assign: {
+                        auto assStmt = dynamic_cast<assignNode *>(stmt.get());
+                        vars_to_ssa->find(assStmt->getOriginalName())->second = assStmt->getName();
+                        break;
+                    }
+                    case AssignArrField: {
+                        auto assArrF = dynamic_cast<arrayFieldAssignNode *>(stmt.get());
+                        vars_to_ssa->find(assArrF->getOriginalName())->second = assArrF->getName();
+                        break;
+                    }
+                    case Concurrent: {
+                        for (size_t i = 1; i < node->nexts.size(); ++i) {
+                            auto newmap = *vars_to_ssa;
+                            updatePiStatementsHelper(node->nexts[i], node, blks, &newmap);
+                        }
+                        break;
+                    } case EndConcurrent:
+                        break;
+                    case Sequential:
+                        break;
+                    case While:
+                    case If: {
+                        auto newmap = *vars_to_ssa;
+                        updatePiStatementsHelper(node->nexts[1], node, blks, &newmap);
+                        break;
+                    }
+                    case EndFi:
+                        break;
+                    case Write:
+                        break;
+                    case Read:
+                        break;
+                    case Literal:
+                        break;
+                    case ArrayAccess:
+                        break;
+                    case ArrayLiteral:
+                        break;
+                    case Event:
+                        break;
+                    case Variable:
+                        break;
+                    case BinaryExpression:
+                        break;
+                    case UnaryExpression:
+                        break;
+                    case Skip:
+                        break;
+                    case BasicBlock:
+                        break;
+                    case Phi: {
+                        auto phiN = dynamic_cast<phiNode *>(stmt.get());
+                        for (size_t i = 0; i < node->parents.size(); ++i) {
+                            if (node->parents[i].lock() == parent) {
+                                std::string varname = vars_to_ssa->find(phiN->getOriginalName())->second;
+                                if (phiN->get_variables()->at(i).first != varname) {
+                                    phiN->update_variableindex(i, {varname, findboolname(ccfg->defs[varname], varname)});
+                                }
+                                break;
+                            }
+                        }
+                        vars_to_ssa->find(phiN->getOriginalName())->second = phiN->getName();
+                        break;
+                    }
+                    case Pi: {
+                        auto piN = dynamic_cast<piNode *>(stmt.get());
+                        if (node->type != Coend) {
+                            for (size_t i = 0; i < piN->get_variables()->size(); ++i) {
+                                std::string varname = piN->get_variables()->at(i).first;
+                                if (varname == origvar_for_pis[piN->getName()]) {
+                                    auto it = vars_to_ssa->find(piN->getVar());
+                                    piN->updateVariablesAtIndex
+                                      ( i
+                                      , {it->second, findboolname(ccfg->defs[varname], varname)}
+                                      );
+                                    it->second = piN->getName();
+                                    break;
+                                }
+                            }
+                        } else {
+                            vars_to_ssa->find(piN->getVar())->second = piN->getName();
+                        }
+                        break;
+                    }
+                    case Assert:
+                        break;
+                }
+            }
+            if (node != ccfg->exitNode) updatePiStatementsHelper(node->nexts[0], node, blks, vars_to_ssa);
+        }
+    }
 
 };
 

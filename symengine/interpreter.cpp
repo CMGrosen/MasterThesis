@@ -248,7 +248,7 @@ bool interpreter::exec_stmt(const std::shared_ptr<statementNode> &stmt) {
             //value already assigned, since the value that should be assigned, is the one already stored
             //maybe check to see if model value is the one already stored
             auto pi = dynamic_cast<piNode *>(stmt.get());
-            if (current_values.insert({pi->getName(), current_values[pi->getVar()]}).second) {
+            if (!current_values.insert({pi->getName(), current_values[pi->getVar()]}).second) {
                 std::cout << "error occured. This pi-node has been visited once already. Shouldn't be possible!\n";
             }
             break;
@@ -289,7 +289,7 @@ void interpreter::execute(bool going_to_conflictnode, edge ed, std::set<std::sha
     if (blk->type == Cobegin) {
         for (const auto &nxt : blk->nexts) blks->insert(nxt);
     } else if (blk->statements.back()->getNodeType() != If) {
-        blks->insert(blk->nexts[0]);
+        if (blk != engine.ccfg->exitNode) blks->insert(blk->nexts[0]);
     }
     blks->erase(blk);
 }

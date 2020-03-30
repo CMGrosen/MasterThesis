@@ -24,7 +24,7 @@ public:
     piNode(phiNode *phi) : _variable{phi->getOriginalName()}, name{phi->getName()} {
         std::string sub = name.substr(_variable.size()+1);
         num = std::stoi(sub);
-        for (const auto &v : *phi->get_variables()) _possible_variables.emplace_back(v.first, "-b_" + std::to_string(v.second));
+        for (const auto &v : *phi->get_variables()) _possible_variables.emplace_back(v);
         setType(phi->getType());
         set_boolname(phi->get_boolname());
         setNodeType(Pi);
@@ -63,6 +63,7 @@ public:
         return false;
     }
 
+    void updateVariablesAtIndex(int index, std::pair<std::string, std::string> p) {_possible_variables[index] = p;}
     void addVariable(std::pair<std::string, std::string> var) {_possible_variables.push_back(std::move(var));}
     std::string getName() const {return name;}
     std::string getVar() const {return _variable;}
