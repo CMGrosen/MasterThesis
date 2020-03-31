@@ -11,7 +11,7 @@
 class interpreter {
     symEngine engine;
     std::map<std::string, std::pair<std::string, Type>> current_values;
-    std::map<std::string, std::pair<std::set<std::string>, Type>> variableValues;
+    std::map<std::string, std::set<std::shared_ptr<VariableValue>>> variableValues;
     std::map<std::string, std::shared_ptr<VariableValue>> valuesFromModel;
     std::map<std::string, std::tuple<std::string, std::string, Type>> differences;
     void update();

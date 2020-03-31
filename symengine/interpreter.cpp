@@ -29,8 +29,8 @@ void interpreter::update() {
 
     for (const auto &val : valuesFromModel) {
         if (val.first[0] == '-' && val.first[1] == 'r') { //this is a -readVal
-            auto res = variableValues.insert({val.second->value, {{val.first}, val.second->getType()}});
-            if (!res.second) res.first->second.first.insert(val.first);
+            auto res = variableValues.insert({val.second->value, {val.second}});
+            if (!res.second) res.first->second.insert(val.second);
         } else {
             size_t len = val.first.size() - 5;
             std::string var = val.first.substr(0, len);
@@ -42,8 +42,8 @@ void interpreter::update() {
                 } else if (val.second->value != res->second->value) {
                     differences.insert({var, {val.second->value, res->second->value, val.second->getType()}});
                 }
-                auto inserted = variableValues.insert({val.second->value, {{var}, val.second->getType()}});
-                if (!inserted.second) inserted.first->second.first.insert(var);
+                auto inserted = variableValues.insert({val.second->value, {val.second}});
+                if (!inserted.second) inserted.first->second.insert(val.second);
             } else {
                 auto res = valuesFromModel.find(var + _run1);
                 if (res == valuesFromModel.end())
@@ -304,11 +304,11 @@ bool interpreter::reachable(const std::pair<std::shared_ptr<basicblock>, std::st
     std::string valForRun1 = std::get<0>(differences.find(blk.second)->second);
     std::string valForRun2 = std::get<1>(differences.find(blk.second)->second);
 
-    for (const auto &value : variableValues.find(valForRun1)->second.first) {
-        conflictsForRun1.insert(engine.ccfg->defs.find(value)->second);
+    for (const auto &value : variableValues.find(valForRun1)->second) {
+        conflictsForRun1.insert(engine.ccfg->defs.find(value->name)->second);
     }
-    for (const auto &value : variableValues.find(valForRun2)->second.first) {
-        conflictsForRun2.insert(engine.ccfg->defs.find(value)->second);
+    for (const auto &value : variableValues.find(valForRun2)->second) {
+        conflictsForRun2.insert(engine.ccfg->defs.find(value->name)->second);
     }
 
     std::set<std::shared_ptr<basicblock>> currents = {engine.ccfg->startNode};
