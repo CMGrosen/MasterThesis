@@ -7,13 +7,14 @@
 
 
 #include "symEngine.hpp"
+#include "Difference.hpp"
 
 class interpreter {
     symEngine engine;
     std::map<std::string, std::pair<std::string, Type>> current_values;
     std::map<std::string, std::set<std::shared_ptr<VariableValue>>> variableValues;
     std::map<std::string, std::shared_ptr<VariableValue>> valuesFromModel;
-    std::map<std::string, std::tuple<std::string, std::string, Type>> differences;
+    std::map<std::string, Difference> differences;
     void update();
     void refresh();
     static std::string compute_operator(const std::string&, const std::string&, op);

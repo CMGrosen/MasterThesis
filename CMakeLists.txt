@@ -55,7 +55,7 @@ set(visitor_SRC
         ${PROJECT_SOURCE_DIR}/main.cpp
         ${PROJECT_SOURCE_DIR}/DST.cpp
         ${visitor-GENERATED_SRC}
-        nodes/nodes.hpp nodes/edge.cpp nodes/edge.hpp nodes/basicblock.cpp nodes/basicblock.hpp symengine/symEngine.cpp symengine/symEngine.hpp symengine/trace.cpp symengine/trace.hpp nodes/expressions/readNode.cpp symengine/interpreter.cpp symengine/interpreter.hpp symengine/VariableValue.hpp)
+        nodes/nodes.hpp nodes/edge.cpp nodes/edge.hpp nodes/basicblock.cpp nodes/basicblock.hpp symengine/symEngine.cpp symengine/symEngine.hpp symengine/trace.cpp symengine/trace.hpp nodes/expressions/readNode.cpp symengine/interpreter.cpp symengine/interpreter.hpp symengine/VariableValue.hpp symengine/Difference.hpp)
 
 if (NOT CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     set (flags_1 "-Wno-overloaded-virtual")

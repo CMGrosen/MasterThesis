@@ -26,6 +26,12 @@ bool interpreter::run() {
 void interpreter::update() {
     valuesFromModel = engine.getModel();
 
+    std::shared_ptr<VariableValue> undef = std::make_shared<VariableValue>(VariableValue
+            ( errorType
+            , "undef"
+            , "undef"
+            , "undef"
+            ));
 
     for (const auto &val : valuesFromModel) {
         if (val.first[0] == '-' && val.first[1] == 'r') { //this is a -readVal
@@ -38,16 +44,16 @@ void interpreter::update() {
             if (*val.first.rbegin() == '-' && *(val.first.rbegin()+1) == '1') { //this value ends with run1-
                 auto res = valuesFromModel.find(var + _run2);
                 if (res == valuesFromModel.end()) {
-                    differences.insert({var, {val.second->value, "undef", val.second->getType()}});
+                    differences.insert({var, Difference(val.second, undef)});
                 } else if (val.second->value != res->second->value) {
-                    differences.insert({var, {val.second->value, res->second->value, val.second->getType()}});
+                    differences.insert({var, Difference(val.second, res->second)});
                 }
                 auto inserted = variableValues.insert({val.second->value, {val.second}});
                 if (!inserted.second) inserted.first->second.insert(val.second);
             } else {
                 auto res = valuesFromModel.find(var + _run1);
                 if (res == valuesFromModel.end())
-                    differences.insert({var, {"undef", val.second->value, val.second->getType()}});
+                    differences.insert({var, Difference(undef, val.second)});
             }
         }
     }
@@ -301,8 +307,8 @@ bool interpreter::reachable(const std::pair<std::shared_ptr<basicblock>, std::st
     std::shared_ptr<basicblock> conflictNode;
     bool conflict1 = false, conflict2 = false;
     bool onconflictnode = false;
-    std::string valForRun1 = std::get<0>(differences.find(blk.second)->second);
-    std::string valForRun2 = std::get<1>(differences.find(blk.second)->second);
+    std::string valForRun1 = differences.find(blk.second)->second.run1;
+    std::string valForRun2 = differences.find(blk.second)->second.run2;
 
     for (const auto &value : variableValues.find(valForRun1)->second) {
         conflictsForRun1.insert(engine.ccfg->defs.find(value->name)->second);
