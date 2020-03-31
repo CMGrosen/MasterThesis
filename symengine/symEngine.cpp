@@ -67,6 +67,7 @@ bool symEngine::execute() {
     //std::cout << "\n\n\n\n\nencoded:\n" << encoded.to_string() << std::endl;
 
     auto run1 = get_run(nullptr, ccfg->startNode, ccfg->exitNode, _run1);
+    event_encountered = false;
     auto run2 = get_run(nullptr, ccfg->startNode, ccfg->exitNode, _run2);
 
     //std::cout << "\n" << t.to_string() << "\n\n" << std::endl;
@@ -240,6 +241,9 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                 return constraints;
             }
             case Event: {
+                if (run == _run2) {
+                    std::cout << "temp";
+                }
                 z3::expr condition = evaluate_expression(&c, dynamic_cast<eventNode*>(stmt.get())->getCondition(), run);
                 bool changed_event = false;
                 if (event_encountered) {
@@ -445,6 +449,7 @@ z3::expr symEngine::evaluate_expression(z3::context *c, const expressionNode *ex
         case BasicBlock:
         case Phi:
         case Pi:
+        case Assert:
             break;
     }
     assert(false);

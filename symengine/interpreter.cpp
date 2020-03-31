@@ -14,7 +14,8 @@ interpreter::interpreter(symEngine e) : engine{std::move(e)} {
         }
         std::sort(blks_and_names.begin(), blks_and_names.end()
                 , [&](const auto& a, const auto& b) {return a.first->depth < b.first->depth;});
-        reach_potential_raceConditions(blks_and_names);
+        bool res = reach_potential_raceConditions(blks_and_names);
+        if (!res) std::cout << "didn't find race-condition: updating constraints: ...\n";
         std::cout << "here";
     }
 }
@@ -54,6 +55,9 @@ void interpreter::update() {
                 auto res = valuesFromModel.find(var + _run1);
                 if (res == valuesFromModel.end())
                     differences.insert({var, Difference(undef, val.second)});
+                //no need for else clause.
+                // Else-clause will either have reached the else-if branch of the first if-statement
+                // or will later through the iteration
             }
         }
     }
@@ -155,8 +159,6 @@ std::string interpreter::compute_operator(const std::string &left, const std::st
         case NEG:
             val = std::to_string(-std::stoi(left));
             break;
-        case NOTUSED:
-            break;
     }
     return val;
 }
@@ -178,6 +180,7 @@ std::string interpreter::exec_expr(expressionNode* expr) {
         case BasicBlock:
         case Phi:
         case Pi:
+        case Assert:
             std::cout << "expression is apparently a statement. error\n";
             assert(false);
             break;
@@ -258,6 +261,14 @@ bool interpreter::exec_stmt(const std::shared_ptr<statementNode> &stmt) {
                 std::cout << "error occured. This pi-node has been visited once already. Shouldn't be possible!\n";
             }
             break;
+        } case Assert: {
+            auto assertstmt = dynamic_cast<assertNode*>(stmt.get());
+            auto res = exec_expr(assertstmt->getCondition());
+            if (res != "true") {
+                std::cout << "assertion in code\nExpected (" << assertstmt->getCondition()->to_string() << ") to be true\nWas " << res;
+                assert(false);
+            }
+            break;
         }
 
         case Read:
@@ -335,13 +346,17 @@ bool interpreter::reachable(const std::pair<std::shared_ptr<basicblock>, std::st
             if (onconflictnode) {
                 if (!path.first) {
                     std::cout << "an error occured. Cannot reach conflict\n";
+                    currents.erase(current);
+                } else {
+                    for (const auto &ed : path.second) {
+                        execute(true, ed, &currents);
+                    }
+                    //we're at possible race-condition location. Don't want to continue from this node
+                    conflictNode = path.second.back().neighbours[1];
+                    currents.erase(conflictNode);
                 }
-                for (const auto &ed : path.second) {
-                    execute(true, ed, &currents);
-                }
-                //we're at possible race-condition location. Don't want to continue from this node
-                conflictNode = path.second.back().neighbours[1];
-                currents.erase(conflictNode);
+            } else {
+                execute(false, edge(flow, current, current->nexts[0]), &currents);
             }
         } else {
             if (conflict1 && conflictsForRun2.find(current) != conflictsForRun2.end()) {
@@ -375,5 +390,5 @@ bool interpreter::reachable(const std::pair<std::shared_ptr<basicblock>, std::st
         }
         current = *currents.begin();
     }
-    std::cout << "here";
+    return false;
 }

@@ -9,17 +9,14 @@ struct unpacked : public node {
     unpacked(Type t, NodeType nt) {
         type = t;
         nodetype = nt;
-        _operator = NOTUSED;
     }
     unpacked(Type t, NodeType nt, std::string _value) : value{std::move(_value)} {
         type = t;
         nodetype = nt;
-        _operator = NOTUSED;
     }
     unpacked(Type t, NodeType nt, std::string _value, std::string _prevName) : value{std::move(_value)}, previous_name{std::move(_prevName)} {
         type = t;
         nodetype = nt;
-        _operator = NOTUSED;
     }
     unpacked(Type t, NodeType nt, op _operator) : _operator{_operator} {
         type = t;
