@@ -11,6 +11,7 @@
 
 #include <SSA_CCFG.hpp>
 #include <CSSA_CFG.hpp>
+#include "VariableValue.hpp"
 #include <memory>
 #include <z3++.h>
 #include "trace.hpp"
@@ -41,7 +42,7 @@ public:
 
     std::shared_ptr<CCFG> ccfg;
     std::unordered_map<std::string, std::shared_ptr<expressionNode>> symboltable;
-    std::map<std::string, std::pair<std::string, Type>> getModel();
+    std::map<std::string, std::shared_ptr<VariableValue>> getModel();
 
     bool execute();
 

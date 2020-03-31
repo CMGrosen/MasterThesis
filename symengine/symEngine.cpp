@@ -3,6 +3,7 @@
 //
 
 #include "symEngine.hpp"
+#include "VariableValue.hpp"
 #include <limits>
 #include <string>
 
@@ -728,8 +729,8 @@ z3::expr symEngine::encoded_pis(const std::vector<std::pair<std::shared_ptr<basi
     }
 }
 
-std::map<std::string, std::pair<std::string, Type>> symEngine::getModel() {
-    std::map<std::string, std::pair<std::string, Type>> values;
+std::map<std::string, std::shared_ptr<VariableValue>> symEngine::getModel() {
+    std::map<std::string, std::shared_ptr<VariableValue>> values;
 
     z3::model m = s.get_model();
 
@@ -743,7 +744,12 @@ std::map<std::string, std::pair<std::string, Type>> symEngine::getModel() {
             if (value == "true" || value == "false") t = boolType; else t = intType;
             if (value.front() == '(') //the number is negative. Remove z3 formatting ( "(- 2)" => "-2" )
                 value = "-" + value.substr(3, value.size() - 4); //remove "(- " from the front and ")" from the back
-            values.insert({v.name().str(), {value, t}});
+
+            std::string name; //remove run1 and run2 from names
+            if (*v.name().str().rbegin() != '-') name = v.name().str();
+            else name = v.name().str().substr(0, v.name().str().size()-5);
+            std::string origname = ccfg->defs[name]->defmapping[name];
+            values.insert({v.name().str(), std::make_shared<VariableValue>(VariableValue(t, name, origname, value))});
             std::cout << v.name() << " = " << value << "\n";
         }
     }

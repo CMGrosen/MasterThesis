@@ -29,7 +29,7 @@ void interpreter::update() {
 
     for (const auto &val : valuesFromModel) {
         if (val.first[0] == '-' && val.first[1] == 'r') { //this is a -readVal
-            auto res = variableValues.insert({val.second.first, {{val.first}, val.second.second}});
+            auto res = variableValues.insert({val.second->value, {{val.first}, val.second->getType()}});
             if (!res.second) res.first->second.first.insert(val.first);
         } else {
             size_t len = val.first.size() - 5;
@@ -38,16 +38,16 @@ void interpreter::update() {
             if (*val.first.rbegin() == '-' && *(val.first.rbegin()+1) == '1') { //this value ends with run1-
                 auto res = valuesFromModel.find(var + _run2);
                 if (res == valuesFromModel.end()) {
-                    differences.insert({var, {val.second.first, "undef", val.second.second}});
-                } else if (val.second.first != res->second.first) {
-                    differences.insert({var, {val.second.first, res->second.first, val.second.second}});
+                    differences.insert({var, {val.second->value, "undef", val.second->getType()}});
+                } else if (val.second->value != res->second->value) {
+                    differences.insert({var, {val.second->value, res->second->value, val.second->getType()}});
                 }
-                auto inserted = variableValues.insert({val.second.first, {{var}, val.second.second}});
+                auto inserted = variableValues.insert({val.second->value, {{var}, val.second->getType()}});
                 if (!inserted.second) inserted.first->second.first.insert(var);
             } else {
                 auto res = valuesFromModel.find(var + _run1);
                 if (res == valuesFromModel.end())
-                    differences.insert({var, {"undef", val.second.first, val.second.second}});
+                    differences.insert({var, {"undef", val.second->value, val.second->getType()}});
             }
         }
     }
@@ -177,7 +177,7 @@ std::string interpreter::exec_expr(expressionNode* expr) {
             break;
 
         case Read:
-            val = valuesFromModel[dynamic_cast<readNode*>(expr)->getName()].first;
+            val = valuesFromModel[dynamic_cast<readNode*>(expr)->getName()]->value;
             break;
         case Literal:
             val = dynamic_cast<literalNode*>(expr)->value;
