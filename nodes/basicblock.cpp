@@ -237,7 +237,8 @@ std::string basicblock::get_address() {
 std::string basicblock::to_string() {
     std::string res;
     for (const auto &stmt : statements) {
-        res += stmt->to_string() + "\\\\";
+        //res += stmt->to_string() + "\\\\";
+        res += stmt->boolname_as_tikz() + ": " + stmt->to_string() + "\\\\";
     }
     return res;
 }
@@ -246,7 +247,7 @@ size_t basicblock::get_stmt_length() {
     int32_t longest_stmt = 0;
     for (const auto &stmt : statements) {
         std::string str = stmt->to_string();
-        int32_t stmtlen = str.length();
+        int32_t stmtlen = str.length() + (stmt->get_boolname().size() + 1); //boolname + ": "
         for (auto it = str.begin(); it != str.end(); ++it) {
             if (*it == '\\' || *it == '$' || *it == '{' || *it == '}' || (*it == '_' && *(it-1) != '\\')) {
                 --stmtlen;

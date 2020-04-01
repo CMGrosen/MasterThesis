@@ -48,13 +48,25 @@ void symEngine::add_reads() {
     }
 }
 
+static z3::expr encode_boolname (z3::context *c, const std::string& name, bool val, const std::string& run) {
+    return c->bool_const((name + run).c_str()) == c->bool_val(val);
+}
+
 static z3::expr conjunction(const z3::expr_vector& vec) {
     z3::expr final = *vec.begin();
     for (auto it = ++vec.begin(); it != vec.end(); ++it) final = final && *it;
     return final;
 }
 
-static z3::expr disjunction(const z3::expr_vector& vec) {
+static z3::expr conjunction(z3::context *c, const std::vector<std::string> &vec, bool val, const std::string& run) {
+    z3::expr final = encode_boolname(c, *vec.begin(), val, run);
+    for (auto it = ++vec.begin(); it != vec.end(); ++it)
+        final = final && encode_boolname(c, *it, val, run);
+    return final;
+}
+
+static z3::expr disjunction(z3::context *c, const z3::expr_vector& vec) {
+    if (vec.empty()) return c->bool_val(true);
     z3::expr final = *vec.begin();
     for (auto it = ++vec.begin(); it != vec.end(); ++it) final = final || *it;
     return final;
@@ -99,8 +111,9 @@ bool symEngine::execute() {
             }
         }
     }
-    s.add(disjunction(vec));
+    s.add(disjunction(&c, vec));
 
+    /*
     z3::expr_vector assumptions(c);
 
     for(int i = 1; i < boolname_counter; ++i) {
@@ -108,8 +121,8 @@ bool symEngine::execute() {
         assumptions.push_back(c.bool_const((name + _run1).c_str()));
         assumptions.push_back(c.bool_const((name + _run2).c_str()));
     }
-
-    if (s.check(assumptions) == z3::sat) {
+    */
+    if (s.check() == z3::sat) {
         auto model = s.get_model();
         std::cout << "sat\n";
         std::cout << model << "\n" << std::endl;
@@ -177,10 +190,10 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                             ? c.int_const((assnode->getName() + run).c_str())
                             : c.bool_const((assnode->getName() + run).c_str());
 
-                constraints.push_back(z3::implies
-                ( c.bool_const((stmt->get_boolname() + run).c_str())
-                , name == evaluate_expression(&c, assnode->getExpr(), run))
-                );
+                constraints.push_back(
+                        (name == evaluate_expression(&c, assnode->getExpr(), run)) &&
+                        (encode_boolname(&c, stmt->get_boolname(), true, run)));
+
                 break;
             }
             case Concurrent: {
@@ -196,7 +209,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                     }
                     vec.push_back(conjunction(get_run(node, nxt, endConc->parents[i++].lock(), run)));
                 }
-                constraints.push_back(z3::implies(c.bool_const((stmt->get_boolname() + run).c_str()), conjunction(vec)));
+                constraints.push_back(conjunction(vec) && encode_boolname(&c, stmt->get_boolname(), true, run));
 
                 if (changed_event) {
                     event_encountered = true;
@@ -208,22 +221,25 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
             case If: {
                 std::shared_ptr<basicblock> firstCommonChild = find_common_child(node);
                 bool changed_event = false;
+                auto *ifNode = dynamic_cast<ifElseNode*>(stmt.get());
                 if (event_encountered) {
                     event_encountered = false;
                     changed_event = true;
                 }
-                z3::expr truebranch = conjunction(get_run(node, node->nexts[0], firstCommonChild, run));
+                z3::expr truebranch = conjunction(get_run(node, node->nexts[0], firstCommonChild, run))
+                        && conjunction(&c, ifNode->boolnamesForFalseBranch, false, run);
                 if (event_encountered) {
                     event_encountered = false;
                     changed_event = true;
                 }
-                z3::expr falsebranch = conjunction(get_run(node, node->nexts[1], firstCommonChild, run));
+                z3::expr falsebranch = conjunction(get_run(node, node->nexts[1], firstCommonChild, run))
+                        && conjunction(&c, ifNode->boolnamesForTrueBranch, false, run);
                 if (event_encountered) {
                     changed_event = true;
                 }
-                z3::expr final = z3::implies((stmt->get_boolname() + run).c_str(), z3::ite(
-                        evaluate_expression(&c, dynamic_cast<ifElseNode *>(stmt.get())->getCondition(), run),
-                        truebranch, falsebranch));
+                z3::expr final = (z3::ite(
+                        evaluate_expression(&c, ifNode->getCondition(), run),
+                        truebranch, falsebranch)) && encode_boolname(&c, stmt->get_boolname(), true, run);
 
                 constraints.push_back(final);
                 if (changed_event) return constraints;
@@ -241,9 +257,6 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                 return constraints;
             }
             case Event: {
-                if (run == _run2) {
-                    std::cout << "temp";
-                }
                 z3::expr condition = evaluate_expression(&c, dynamic_cast<eventNode*>(stmt.get())->getCondition(), run);
                 bool changed_event = false;
                 if (event_encountered) {
@@ -261,7 +274,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                             for (const auto &event : res->second) {
                                 finalCond.push_back(c.bool_const((event->statements.back()->get_boolname() + run).c_str()));
                             }
-                            constraints.push_back(z3::implies((stmt->get_boolname() + run).c_str(), z3::ite(condition, truebranch, c.bool_val(false))));
+                            constraints.push_back(z3::ite(condition, truebranch, c.bool_val(false)) && encode_boolname(&c, stmt->get_boolname(), true, run));
 
                             z3::expr finalConstraint =
                                 z3::ite(conjunction(finalCond)
@@ -274,7 +287,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                             return v;
                         } else {
                             z3::expr_vector v(c);
-                            v.push_back(z3::implies(c.bool_const((stmt->get_boolname() + run).c_str()), z3::ite(condition, truebranch, c.bool_val(false))));
+                            v.push_back(z3::ite(condition, truebranch, c.bool_val(false)) && encode_boolname(&c, stmt->get_boolname(), true, run));
                             return v;
                         }
                     }
@@ -283,7 +296,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                     }
                 }
                 event_encountered = true;
-                constraints.push_back(z3::implies(c.bool_const((stmt->get_boolname() + run).c_str()), z3::ite(condition, truebranch, c.bool_val(false))));
+                constraints.push_back(z3::ite(condition, truebranch, c.bool_val(false)) && encode_boolname(&c, stmt->get_boolname(), true, run));
                 return constraints;
             }
             case EndConcurrent:
@@ -301,7 +314,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
             case UnaryExpression:
             case Skip:
             case BasicBlock:
-                constraints.push_back(z3::implies(c.bool_const((stmt->get_boolname() + run).c_str()), c.bool_val(true)));
+                constraints.push_back(encode_boolname(&c, stmt->get_boolname(), true, run));
                 break;
             case Phi: {
                 auto phi = dynamic_cast<phiNode *>(stmt.get());
@@ -312,7 +325,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                         z3::expr name = c.int_const((phi->getName() + run).c_str());
                         for (size_t i = 0; i < parents.size(); ++i) {
                             if (previous == parents[i].lock()) {
-                                constraints.push_back(z3::implies(c.bool_const((stmt->get_boolname() + run).c_str()), name == c.int_const((phi->get_variables()->at(i).first + run).c_str())));
+                                constraints.push_back((name == c.int_const((phi->get_variables()->at(i).first + run).c_str())) && encode_boolname(&c, stmt->get_boolname(), true, run));
                                 break;
                             }
                         }
@@ -322,7 +335,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                         z3::expr name = c.bool_const((phi->getName() + run).c_str());
                         for (size_t i = 0; i < parents.size(); ++i) {
                             if (previous == parents[i].lock()) {
-                                constraints.push_back(z3::implies(c.bool_const((stmt->get_boolname() + run).c_str()), name == c.bool_const((phi->get_variables()->at(i).first + run).c_str())));
+                                constraints.push_back((name == c.bool_const((phi->get_variables()->at(i).first + run).c_str())) && encode_boolname(&c, stmt->get_boolname(), true, run));
                                 break;
                             }
                         }
@@ -375,7 +388,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                     default:
                         break;
                 }
-                constraints.push_back(disjunction(expressions));
+                constraints.push_back(disjunction(&c, expressions) && encode_boolname(&c, stmt->get_boolname(), true, run));
                 break;
             }
         }
@@ -734,9 +747,9 @@ z3::expr symEngine::encoded_pis(const std::vector<std::pair<std::shared_ptr<basi
     }
 }
 
-std::map<std::string, std::shared_ptr<VariableValue>> symEngine::getModel() {
+std::pair<std::map<std::string, std::shared_ptr<VariableValue>>, std::map<std::string, bool>> symEngine::getModel() {
     std::map<std::string, std::shared_ptr<VariableValue>> values;
-
+    std::map<std::string, bool> paths;
     z3::model m = s.get_model();
 
     for (unsigned i = 0; i < m.size(); i++) {
@@ -755,8 +768,12 @@ std::map<std::string, std::shared_ptr<VariableValue>> symEngine::getModel() {
             else name = v.name().str().substr(0, v.name().str().size()-5);
             std::string origname = ccfg->defs[name]->defmapping[name];
             values.insert({v.name().str(), std::make_shared<VariableValue>(VariableValue(t, name, origname, value))});
-            std::cout << v.name() << " = " << value << "\n";
+            //std::cout << v.name() << " = " << value << "\n";
+        } else if (*(v.name().str().rbegin()+1) == '1') { //boolean tracking constant for run1-
+            std::string name = v.name().str().substr(0, v.name().str().size()-5);
+            paths.insert({name, value == "true"});
         }
+        std::cout << v.name().str() << " = " << value << std::endl;
     }
-    return values;
+    return {values, paths};
 }

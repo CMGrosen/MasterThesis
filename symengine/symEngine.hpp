@@ -42,7 +42,7 @@ public:
 
     std::shared_ptr<CCFG> ccfg;
     std::unordered_map<std::string, std::shared_ptr<expressionNode>> symboltable;
-    std::map<std::string, std::shared_ptr<VariableValue>> getModel();
+    std::pair<std::map<std::string, std::shared_ptr<VariableValue>>, std::map<std::string, bool>> getModel();
 
     bool execute();
 

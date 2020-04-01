@@ -49,7 +49,8 @@ static std::map< const char *, const char * > test_files = {
         {"small_concurrent_events_test", "../code_examples/test_programs/small_concurrent_events.small"},
         {"unreachable", "../code_examples/test_programs/unreachable.small"},
         {"multiple_uses", "../code_examples/test_programs/multiple_uses_in_concnode.small"},
-        {"while", "../code_examples/test_programs/while_unroll_test.small"}
+        {"while", "../code_examples/test_programs/while_unroll_test.small"},
+        {"if-false", "../code_examples/test_programs/if-false-not-possible.small"}
 };
 
 

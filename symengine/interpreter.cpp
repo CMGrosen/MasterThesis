@@ -10,7 +10,7 @@ interpreter::interpreter(symEngine e) : engine{std::move(e)} {
         std::vector<std::pair<std::shared_ptr<basicblock>, std::string>> blks_and_names;
         refresh();
         for (const auto &dif : differences) {
-            blks_and_names.push_back({engine.ccfg->defs.find(dif.first)->second, dif.first});
+            blks_and_names.emplace_back(engine.ccfg->defs.find(dif.first)->second, dif.first);
         }
         std::sort(blks_and_names.begin(), blks_and_names.end()
                 , [&](const auto& a, const auto& b) {return a.first->depth < b.first->depth;});
@@ -25,7 +25,9 @@ bool interpreter::run() {
 }
 
 void interpreter::update() {
-    valuesFromModel = engine.getModel();
+    auto res = engine.getModel();
+    valuesFromModel = std::move(res.first);
+    statementsExecuted = std::move(res.second);
 
     std::shared_ptr<VariableValue> undef = std::make_shared<VariableValue>(VariableValue
             ( errorType

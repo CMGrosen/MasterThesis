@@ -14,6 +14,7 @@ class interpreter {
     std::map<std::string, std::pair<std::string, Type>> current_values;
     std::map<std::string, std::set<std::shared_ptr<VariableValue>>> variableValues;
     std::map<std::string, std::shared_ptr<VariableValue>> valuesFromModel;
+    std::map<std::string, bool> statementsExecuted;
     std::map<std::string, Difference> differences;
     void update();
     void refresh();
