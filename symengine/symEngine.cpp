@@ -100,14 +100,15 @@ bool symEngine::execute() {
     for (const auto &p : ccfg->pis_and_depth) {
         for (const auto &stmt : p.first->statements) {
             if (auto pi = dynamic_cast<piNode*>(stmt.get())) {
-                pi->getType() == intType
-                ? vec.push_back
-                  (  (c.int_const((pi->getName() + _run1).c_str()) != c.int_const((pi->getName() + _run2).c_str()))
-                  && (c.int_const((pi->getName() + _run1).c_str()) != c.int_val(errorval))
-                  && (c.int_const((pi->getName() + _run2).c_str()) != c.int_val(errorval))
-                  )
-                : vec.push_back(c.bool_const((pi->getName() + _run1).c_str()) != c.bool_const((pi->getName() + _run2).c_str()))
+                z3::expr expr = pi->getType() == intType
+                    ? (  (c.int_const((pi->getName() + _run1).c_str()) != c.int_const((pi->getName() + _run2).c_str()))
+                      && (c.int_const((pi->getName() + _run1).c_str()) != c.int_val(errorval))
+                      && (c.int_const((pi->getName() + _run2).c_str()) != c.int_val(errorval))
+                      )
+                    : ( c.bool_const((pi->getName() + _run1).c_str()) != c.bool_const((pi->getName() + _run2).c_str()))
                 ;
+                expr = expr && encode_boolname(&c, pi->get_boolname(), true, _run1) && encode_boolname(&c, pi->get_boolname(), true, _run2);
+                vec.push_back(expr);
             }
         }
     }
