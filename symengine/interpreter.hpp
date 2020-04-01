@@ -21,7 +21,7 @@ class interpreter {
     static std::string compute_operator(const std::string&, const std::string&, op);
     std::string exec_expr(expressionNode*);
     bool exec_stmt(const std::shared_ptr<statementNode>&);
-    void execute(bool, edge, std::set<std::shared_ptr<basicblock>> *);
+    void execute(const std::shared_ptr<basicblock>&, std::set<std::shared_ptr<basicblock>> *);
     bool reachable(const std::pair<std::shared_ptr<basicblock>, std::string>&, const std::string&);
     bool reach_potential_raceConditions(const std::vector<std::pair<std::shared_ptr<basicblock>, std::string>>&);
 public:
