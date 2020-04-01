@@ -364,7 +364,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                             expressions.push_back(z3::ite
                               ( c.bool_const((conflict.second + run).c_str())
                               , name == c.int_const((conflict.first + run).c_str())
-                              , name == c.int_const((conflict.first + run).c_str()) && name == c.int_val(errorval)
+                              , name == c.int_const((conflict.first + run).c_str()) && name == c.int_val(errorval) //unsatisfiable
                               ));
                         }
                         break;
@@ -375,7 +375,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                             expressions.push_back(z3::ite
                               ( c.bool_const((conflict.second + run).c_str())
                               , name == c.bool_const((conflict.first + run).c_str())
-                              , name == c.bool_const((conflict.first + run).c_str()) && name == c.bool_val(false)
+                              , name == c.bool_val(false) && name == c.bool_val(true) //unsatisfiable. Won't ever pick this option
                               ));
                         }
                         break;
