@@ -241,6 +241,7 @@ private:
                                 pinodeblocks.push_back(b);
                                 pinodes.back()->set_boolname("-b_" + std::to_string(boolname_counter++));
                                 origvar_for_pis.insert({pinodes.back()->getName(), argname});
+                                ccfg->boolnameStatements.insert({vec.back()->get_boolname(), vec.back()});
                             }
                             size_t i = usages.first;
                             for (auto item : usages.second) {

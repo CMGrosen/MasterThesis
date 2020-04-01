@@ -131,6 +131,7 @@ private:
         std::string name;
         std::string oldName;
         stmt->set_boolname("-b_" + std::to_string(Count["-b"]));
+        ccfg->boolnameStatements.insert({stmt->get_boolname(), stmt});
         if (stmt->getNodeType() == Assign) {
             auto node = dynamic_cast<assignNode*>(stmt.get());
             int i = ++Count[node->getName()];

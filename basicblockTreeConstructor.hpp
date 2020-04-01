@@ -25,6 +25,7 @@ struct CCFG {
     std::vector<std::pair<std::shared_ptr<basicblock>, size_t>> pis_and_depth;
     std::vector<std::shared_ptr<basicblock>> fiNodes;
     std::vector<std::shared_ptr<basicblock>> endconcNodes;
+    std::map<std::string, std::shared_ptr<statementNode>> boolnameStatements;
 
 
     void updateConflictEdges() { add_conflict_edges(); };
@@ -88,7 +89,7 @@ struct CCFG {
             startNode{std::move(o.startNode)}, exitNode{std::move(o.exitNode)},
             defs{std::move(o.defs)}, concurrent_events{std::move(o.concurrent_events)}, readcount{o.readcount},
             prec{std::move(o.prec)}, pis_and_depth(std::move(o.pis_and_depth)),
-            fiNodes{std::move(o.fiNodes)}, endconcNodes{std::move(o.endconcNodes)}
+            fiNodes{std::move(o.fiNodes)}, endconcNodes{std::move(o.endconcNodes)}, boolnameStatements{std::move(o.boolnameStatements)}
     {}
 
     CCFG& operator=(const CCFG& a) {
@@ -109,6 +110,7 @@ struct CCFG {
         pis_and_depth = std::move(other.pis_and_depth);
         fiNodes = std::move(other.fiNodes);
         endconcNodes = std::move(other.endconcNodes);
+        boolnameStatements = std::move(other.boolnameStatements);
         return *this;
     }
 
@@ -155,6 +157,9 @@ private:
             else if (a.exitNode == n) exitNode = newNode;
             nodes.insert(newNode);
             oldMapsTo.insert({n.get(), newNode});
+            if (!a.boolnameStatements.empty())
+                for (const auto &stmt : newNode->statements)
+                    boolnameStatements.insert({stmt->get_boolname(), stmt});
         }
         for (const auto &n : a.nodes) {
             oldMapsTo[n.get()]->concurrentBlock = std::make_pair(oldMapsTo[n->concurrentBlock.first].get(), n->concurrentBlock.second);
