@@ -49,6 +49,8 @@ struct CSSA_CFG {
         for (const auto &blk : ccfg->nodes) blk->updateUsedVariables();
 
         updatePiStatements(ccfg->startNode, &var_to_SSAvar);
+
+        update_if_statements_boolname_branches();
     }
 
 private:
@@ -382,6 +384,35 @@ private:
         }
     }
 
+    void update_if_statements_boolname_branches() {
+        for (const auto &n : ccfg->fiNodes) {
+            auto parents = dynamic_cast<fiNode*>(n->statements.back().get())->get_parents();
+            for (const auto &p : *parents) {
+                auto ifN = dynamic_cast<ifElseNode*>(p->statements.back().get());
+                update_if_statement_boolname_branches(ifN, p, n);
+            }
+        }
+    }
+
+    static void update_if_statement_boolname_branches(ifElseNode *ifstatement, const std::shared_ptr<basicblock>& start, std::shared_ptr<basicblock> goal) {
+        update_if_statement_boolname_branches_helper(ifstatement, start->nexts[0], goal, true);
+        update_if_statement_boolname_branches_helper(ifstatement, start->nexts[1], goal, false);
+    }
+
+    static void update_if_statement_boolname_branches_helper(ifElseNode *ifstatement, const std::shared_ptr<basicblock>& node, const std::shared_ptr<basicblock>& goal, bool branch) {
+        if (node == goal) return;
+
+        for (const auto &stmt : node->statements) {
+            branch
+              ? ifstatement->boolnamesForTrueBranch.push_back(stmt->get_boolname())
+              : ifstatement->boolnamesForFalseBranch.push_back(stmt->get_boolname())
+              ;
+        }
+
+        for (const auto &nxt : node->nexts) {
+            update_if_statement_boolname_branches_helper(ifstatement, nxt, goal, branch);
+        }
+    }
 };
 
 #endif //ANTLR_CPP_TUTORIAL_CSSA_CFG_HPP

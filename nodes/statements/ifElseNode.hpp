@@ -24,9 +24,12 @@ public:
         std::shared_ptr<expressionNode> _condition = condition->copy_expression();
         std::shared_ptr<statementNode> _trueBranch = trueBranch->copy_statement();
         std::shared_ptr<statementNode> _falseBranch = falseBranch->copy_statement();
-        std::shared_ptr<statementNode> _this = std::make_shared<ifElseNode>(ifElseNode(type, _condition, _trueBranch, _falseBranch));
+        std::shared_ptr<ifElseNode> _this = std::make_shared<ifElseNode>(ifElseNode(type, _condition, _trueBranch, _falseBranch));
         _this->setSSA(onSSA);
         _this->set_boolname(get_boolname());
+        _this->boolnamesForTrueBranch = boolnamesForTrueBranch;
+        _this->boolnamesForFalseBranch = boolnamesForFalseBranch;
+
         return _this;
     }
 
@@ -36,6 +39,9 @@ public:
         /*trueBranch->setSSA(t);
         falseBranch->setSSA(t);*/
     }
+
+    std::vector<std::string> boolnamesForTrueBranch;
+    std::vector<std::string> boolnamesForFalseBranch;
 
 private:
     std::shared_ptr<expressionNode> condition;
