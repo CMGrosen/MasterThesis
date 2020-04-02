@@ -11,7 +11,12 @@ interpreter::interpreter(symEngine e) : engine{std::move(e)} {
 
 bool interpreter::run() {
     bool returnval = true;
-    if (engine.execute()) {
+    bool satisfiable = engine.execute();
+    if (!satisfiable) {
+        std::cout << "model unsatisfiable\n";
+        returnval = false;
+    }
+    while (satisfiable) {
         std::vector<std::pair<std::shared_ptr<basicblock>, std::string>> blks_and_names;
         refresh();
         if (differences.empty()) {
@@ -20,7 +25,8 @@ bool interpreter::run() {
             if (firstEarlyExit == valuesFromModel.end()) {
                 std::cout << "no early exits found. Program has no race-conditions\n";
             } else {
-                while (firstEarlyExit != valuesFromModel.end() && firstEarlyExit->first.front() >= '0' && firstEarlyExit->first.front() <= '9') {
+                while (firstEarlyExit != valuesFromModel.end() && firstEarlyExit->first.front() >= '0' &&
+                       firstEarlyExit->first.front() <= '9') {
                     //Still have values in model. Current iterator points to an early_exit variable
                     //This is a map, so keys are sorted lexiographically. Only early exists starts with a number
                     //So when a key that doesn't start with a number is located, there are no early exit variables remaining in the model
@@ -31,6 +37,7 @@ bool interpreter::run() {
                     ++firstEarlyExit;
                 }
             }
+            return returnval;
         } else {
             for (const auto &dif : differences) {
                 blks_and_names.emplace_back(engine.ccfg->defs.find(dif.first)->second, dif.first);
@@ -38,12 +45,17 @@ bool interpreter::run() {
             std::sort(blks_and_names.begin(), blks_and_names.end(),
                       [&](const auto &a, const auto &b) { return a.first->depth < b.first->depth; });
             returnval = reach_potential_raceConditions(blks_and_names);
-            if (!returnval) std::cout << "didn't find race-condition: updating constraints: ...\n";
-            std::cout << "here";
+            if (!returnval) {
+                std::cout << "didn't find race-condition: updating constraints: ...\n";
+                std::string firstVariable = blks_and_names.front().second;
+                Type t = engine.symboltable[engine.ccfg->defs[firstVariable]->defmapping[firstVariable]]->getType();
+                satisfiable = engine.updateModel(firstVariable, t); //Tell engine to make this variable equal between runs, and get new model
+            } else {
+                //Still probably satisfiable,
+                //  but as we've found a race-condition, we flip the boolean to get out of the while-loop
+                satisfiable = false;
+            }
         }
-    } else {
-        std::cout << "model unsatisfiable\n";
-        returnval = false;
     }
     return returnval;
 }
