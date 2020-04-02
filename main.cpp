@@ -53,6 +53,28 @@ static std::map< const char *, const char * > test_files = {
         {"if-false", "../code_examples/test_programs/if-false-not-possible.small"}
 };
 
+std::pair<const std::shared_ptr<statementNode>, const std::unordered_map<std::string, std::shared_ptr<expressionNode>>>
+parse_program(const std::string& path) {
+    std::ifstream stream;
+    stream.open(path);
+
+    ANTLRInputStream input(stream);
+    SmallLexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    SmallParser parser(&tokens);
+
+    SmallParser::FileContext* tree = parser.file();
+    if (parser.getNumberOfSyntaxErrors())
+        return {nullptr, std::unordered_map<std::string, std::shared_ptr<expressionNode>>{}};
+    DST visitor;
+
+    auto treeAndSymbolTable = visitor.getTree(tree);
+
+    if(visitor.getNumErrors() || treeAndSymbolTable.first->getType() == errorType) {
+        return {nullptr, std::unordered_map<std::string, std::shared_ptr<expressionNode>>{}};
+    }
+    return treeAndSymbolTable;
+}
 
 SSA_CCFG do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_ptr<statementNode>, const std::unordered_map<std::string, std::shared_ptr<expressionNode>>> *treeAndSymbolTable) {
     auto ccfg = std::make_shared<CCFG>(test.get_ccfg(treeAndSymbolTable->first));
@@ -105,7 +127,11 @@ SSA_CCFG do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_pt
     //symEngine engine = symEngine(cssaccfg, treeAndSymbolTable->second);
 
     interpreter checker = interpreter(engine);
-
+    if (checker.run()) {
+        std::cout << "all good\n";
+    } else {
+        std::cout << "error\n";
+    }
 
 
     //auto res = engine.execute();
@@ -114,33 +140,15 @@ SSA_CCFG do_stuff(basicBlockTreeConstructor test, std::pair<const std::shared_pt
 }
 
 void run(const std::string& path) {
-    std::ifstream stream;
-    stream.open(path);
-
-    ANTLRInputStream input(stream);
-    SmallLexer lexer(&input);
-    CommonTokenStream tokens(&lexer);
-    SmallParser parser(&tokens);
-
-    SmallParser::FileContext* tree = parser.file();
-    if (parser.getNumberOfSyntaxErrors())
-        return;
-    DST visitor;
-
-    auto treeAndSymbolTable = visitor.getTree(tree);
-
-    if(visitor.getNumErrors() || treeAndSymbolTable.first->getType() == errorType)
-        return;
-
     basicBlockTreeConstructor test;
-
+    auto treeAndSymbolTable = parse_program(path);
     auto ccfg = std::make_shared<SSA_CCFG>(do_stuff(test, &treeAndSymbolTable));
     std::cout << "done with run: " << std::to_string(basicblock::get_number_of_blocks()) << "\n";
 }
 
 int main(int argc, const char* argv[]) {
 
-    run(test_files["while"]);
+    run(test_files["if-false"]);
     //run(files["reportExample"]);
 
     std::cout << "done: " << std::to_string(basicblock::get_number_of_blocks()) << "\n";

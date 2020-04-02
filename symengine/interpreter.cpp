@@ -6,6 +6,11 @@
 #include "interpreter.hpp"
 
 interpreter::interpreter(symEngine e) : engine{std::move(e)} {
+
+}
+
+bool interpreter::run() {
+    bool returnval = true;
     if (engine.execute()) {
         std::vector<std::pair<std::shared_ptr<basicblock>, std::string>> blks_and_names;
         refresh();
@@ -21,24 +26,26 @@ interpreter::interpreter(symEngine e) : engine{std::move(e)} {
                     //So when a key that doesn't start with a number is located, there are no early exit variables remaining in the model
                     if (firstEarlyExit->second->value == "true") {//We exited the program early
                         std::cout << firstEarlyExit->first << " = " << firstEarlyExit->second->value << "\n";
+                        returnval = false;
                     }
                     ++firstEarlyExit;
                 }
             }
+        } else {
+            for (const auto &dif : differences) {
+                blks_and_names.emplace_back(engine.ccfg->defs.find(dif.first)->second, dif.first);
+            }
+            std::sort(blks_and_names.begin(), blks_and_names.end(),
+                      [&](const auto &a, const auto &b) { return a.first->depth < b.first->depth; });
+            returnval = reach_potential_raceConditions(blks_and_names);
+            if (!returnval) std::cout << "didn't find race-condition: updating constraints: ...\n";
+            std::cout << "here";
         }
-        for (const auto &dif : differences) {
-            blks_and_names.emplace_back(engine.ccfg->defs.find(dif.first)->second, dif.first);
-        }
-        std::sort(blks_and_names.begin(), blks_and_names.end()
-                , [&](const auto& a, const auto& b) {return a.first->depth < b.first->depth;});
-        bool res = reach_potential_raceConditions(blks_and_names);
-        if (!res) std::cout << "didn't find race-condition: updating constraints: ...\n";
-        std::cout << "here";
+    } else {
+        std::cout << "model unsatisfiable\n";
+        returnval = false;
     }
-}
-
-bool interpreter::run() {
-    return false;
+    return returnval;
 }
 
 void interpreter::update() {
