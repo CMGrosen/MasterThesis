@@ -9,6 +9,23 @@ interpreter::interpreter(symEngine e) : engine{std::move(e)} {
     if (engine.execute()) {
         std::vector<std::pair<std::shared_ptr<basicblock>, std::string>> blks_and_names;
         refresh();
+        if (differences.empty()) {
+            std::cout << "both runs identical. No potential race-conditions found\n";
+            auto firstEarlyExit = valuesFromModel.find(std::string("0_early_exit_1") + _run1);
+            if (firstEarlyExit == valuesFromModel.end()) {
+                std::cout << "no early exits found. Program has no race-conditions\n";
+            } else {
+                while (firstEarlyExit != valuesFromModel.end() && firstEarlyExit->first.front() >= '0' && firstEarlyExit->first.front() <= '9') {
+                    //Still have values in model. Current iterator points to an early_exit variable
+                    //This is a map, so keys are sorted lexiographically. Only early exists starts with a number
+                    //So when a key that doesn't start with a number is located, there are no early exit variables remaining in the model
+                    if (firstEarlyExit->second->value == "true") {//We exited the program early
+                        std::cout << firstEarlyExit->first << " = " << firstEarlyExit->second->value << "\n";
+                    }
+                    ++firstEarlyExit;
+                }
+            }
+        }
         for (const auto &dif : differences) {
             blks_and_names.emplace_back(engine.ccfg->defs.find(dif.first)->second, dif.first);
         }
