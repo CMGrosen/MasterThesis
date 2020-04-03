@@ -7,7 +7,6 @@
 
 #define _run1 "run1-"
 #define _run2 "run2-"
-#define errorval INT_MAX
 
 #include <SSA_CCFG.hpp>
 #include <CSSA_CFG.hpp>

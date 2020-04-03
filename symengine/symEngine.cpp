@@ -104,15 +104,12 @@ bool symEngine::execute() {
             for (const auto &stmt : p.first->statements) {
                 if (auto pi = dynamic_cast<piNode*>(stmt.get())) {
                     z3::expr expr = pi->getType() == intType
-                        ? (  (c.int_const((pi->getName() + _run1).c_str()) != c.int_const((pi->getName() + _run2).c_str()))
-                          && (c.int_const((pi->getName() + _run1).c_str()) != c.int_val(errorval))
-                          && (c.int_const((pi->getName() + _run2).c_str()) != c.int_val(errorval))
-                          )
-                        : ( c.bool_const((pi->getName() + _run1).c_str()) != c.bool_const((pi->getName() + _run2).c_str()))
+                        ? c.int_const((pi->getName() + _run1).c_str()) != c.int_const((pi->getName() + _run2).c_str())
+                        : c.bool_const((pi->getName() + _run1).c_str()) != c.bool_const((pi->getName() + _run2).c_str())
                     ;
                     expr = expr
-                            && encode_boolname(&c, pi->get_boolname(), true, _run1)
-                            && encode_boolname(&c, pi->get_boolname(), true, _run2);
+                        && encode_boolname(&c, pi->get_boolname(), true, _run1)
+                        && encode_boolname(&c, pi->get_boolname(), true, _run2);
                     vec.push_back(expr);
                 }
             }
@@ -370,7 +367,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                             expressions.push_back(z3::ite
                               ( c.bool_const((conflict.second + run).c_str())
                               , name == c.int_const((conflict.first + run).c_str())
-                              , name == c.int_const((conflict.first + run).c_str()) && name == c.int_val(errorval) //unsatisfiable
+                              , name == c.int_val(0) && name == c.int_val(1) //unsatisfiable
                               ));
                         }
                         break;
