@@ -35,7 +35,7 @@ public:
     }
 
     std::string to_string() const override {
-        std::string res = nameToTikzName(_name, true) + " = $\\phi($";
+        std::string res = nameToTikzName(_name, true) + " = $\\phi$(";
         if (!_variables.empty()) {
             res += nameToTikzName(_variables[0].first, true);
             for (size_t i = 1; i < _variables.size(); ++i)

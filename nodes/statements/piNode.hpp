@@ -32,7 +32,7 @@ public:
     }
 
     std::string to_string() const override {
-        std::string res = nameToTikzName(name, true) + " = $\\pi($";
+        std::string res = nameToTikzName(name, true) + " = $\\pi$(";
         if (!_possible_variables.empty()) {
             res += nameToTikzName(_possible_variables[0].first, true);
             for (size_t i = 1; i < _possible_variables.size(); ++i)
