@@ -129,8 +129,9 @@ private:
         return usages;
     }
 
-    static std::pair<size_t, std::vector<std::string*>> num_usages(const std::shared_ptr<statementNode> &stmt, const std::string &var) {
+    static std::tuple<bool, size_t, std::vector<std::string*>> num_usages(const std::shared_ptr<statementNode> &stmt, const std::string &var) {
         std::pair<size_t, std::vector<std::string*>> usages;
+        bool event = false;
         switch (stmt->getNodeType()) {
             case Assign: {
                 usages = find_usages_in_expression(dynamic_cast<assignNode*>(stmt.get())->getExpr(), var);
@@ -152,6 +153,7 @@ private:
                 usages = find_usages_in_expression(dynamic_cast<writeNode*>(stmt.get())->getExpr(), var);
                 break;
             } case Event: {
+                event = true;
                 usages = find_usages_in_expression(dynamic_cast<eventNode*>(stmt.get())->getCondition(), var);
                 break;
             } case Phi: {
@@ -180,7 +182,7 @@ private:
             case BasicBlock:
                 break;
         }
-        return usages;
+        return {event, usages.first, std::move(usages.second)};
     }
 
     static std::string findboolname(const std::shared_ptr<basicblock>& blk, const std::string& varname) {
@@ -221,11 +223,16 @@ private:
                             }
                         }
                         if (!hasPiFunction) { //if b does not have a pi function
-                            std::pair<size_t, std::vector<std::string *>> usages = num_usages(b->statements.back(), varname);
+                            std::tuple<bool, size_t, std::vector<std::string *>> result = num_usages(b->statements.back(), varname);
+                            const bool event = std::get<0>(result);
+                            const size_t numUsages = std::get<1>(result);
+                            const std::vector<std::string *> varsToRename = std::move(std::get<2>(result));
                             std::vector<std::shared_ptr<statementNode>> vec;
-                            vec.reserve(usages.first + b->statements.size());
+                            vec.reserve(numUsages + b->statements.size());
                             Type t = symboltable->find(varname)->second->getType();
-                            for (size_t i = 0; i < usages.first; ++i) {
+
+                            size_t iterations = event ? 1 : numUsages;
+                            for (size_t i = 0; i < iterations; ++i) {
                                 std::string argname = *(b->uses.find(varname)->second.begin());
                                 std::string boolname = findboolname(ccfg->defs[argname], argname);
 
@@ -243,9 +250,16 @@ private:
                                 origvar_for_pis.insert({pinodes.back()->getName(), argname});
                                 ccfg->boolnameStatements.insert({vec.back()->get_boolname(), vec.back()});
                             }
-                            size_t i = usages.first;
-                            for (auto item : usages.second) {
-                                *item = "-T_" + varname + "_" + std::to_string(counter[varname] - (i--));
+
+                            if (!event) {
+                                size_t i = numUsages;
+                                for (auto item : varsToRename) {
+                                    *item = "-T_" + varname + "_" + std::to_string(counter[varname] - (i--));
+                                }
+                            } else {
+                                for (auto item : varsToRename) {
+                                    *item = "-T_" + varname + "_" + std::to_string(counter[varname] - 1);
+                                }
                             }
 
                             for (const auto &stmt: b->statements) {
