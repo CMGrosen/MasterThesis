@@ -19,7 +19,13 @@ bool interpreter::run() {
     while (satisfiable) {
         std::vector<std::pair<std::shared_ptr<basicblock>, std::string>> blks_and_names;
         refresh();
-        if (differences.empty()) {
+        for (const auto &dif : differences) {
+            //Don't add difference if pi-function is used in an event
+            if (dif.first[0] == '-' && dif.first[1] == 'T' && engine.ccfg->defs[dif.first]->statements.back()->getNodeType() != Event) {
+                blks_and_names.emplace_back(engine.ccfg->defs.find(dif.first)->second, dif.first);
+            }
+        }
+        if (blks_and_names.empty()) {
             std::cout << "both runs identical. No potential race-conditions found\n";
             auto firstEarlyExit = valuesFromModel.find(std::string("0_early_exit_1") + _run1);
             if (firstEarlyExit == valuesFromModel.end()) {
@@ -39,17 +45,14 @@ bool interpreter::run() {
             }
             return returnval;
         } else {
-            for (const auto &dif : differences) {
-                blks_and_names.emplace_back(engine.ccfg->defs.find(dif.first)->second, dif.first);
-            }
             std::sort(blks_and_names.begin(), blks_and_names.end(),
                       [&](const auto &a, const auto &b) { return a.first->depth < b.first->depth; });
             returnval = reach_potential_raceConditions(blks_and_names);
             if (!returnval) {
                 std::cout << "didn't find race-condition: updating constraints: ...\n";
-                std::string firstVariable = blks_and_names.front().second;
-                Type t = engine.symboltable[engine.ccfg->defs[firstVariable]->defmapping[firstVariable]]->getType();
-                satisfiable = engine.updateModel(firstVariable, t); //Tell engine to make this variable equal between runs, and get new model
+                auto conflict = blks_and_names.front();
+                Type t = engine.symboltable[conflict.first->defmapping[conflict.second]]->getType();
+                satisfiable = engine.updateModel(conflict.second, t); //Tell engine to make this variable equal between runs, and get new model
             } else {
                 //Still probably satisfiable,
                 //  but as we've found a race-condition, we flip the boolean to get out of the while-loop
@@ -121,7 +124,7 @@ bool interpreter::reach_potential_raceConditions(const std::vector<std::pair<std
     return false;
 }
 
-std::pair<bool, std::vector<edge>> edges_to_take(std::shared_ptr<basicblock> current, std::shared_ptr<basicblock> conflict, const std::string& origname) {
+std::pair<bool, std::vector<edge>> interpreter::edges_to_take(std::shared_ptr<basicblock> current, std::shared_ptr<basicblock> conflict, const std::string& origname) {
     std::vector<edge> edges;
     if (current->depth > conflict->depth) {
         current.swap(conflict);
@@ -129,13 +132,9 @@ std::pair<bool, std::vector<edge>> edges_to_take(std::shared_ptr<basicblock> cur
     std::pair<bool, std::vector<edge>> res;
     for (const auto& blk : conflict->parents) {
         if (blk.lock() == current) return {true, {edge(blk.lock(), conflict)}};
-        auto defs = blk.lock()->defines.find(origname);
-        if (defs != blk.lock()->defines.end()) {
-            for (const auto &def : defs->second) {
-                if (def.front() != '-') { //overwriting this conflict. skipping.
-                    return {false, {}};
-                }
-            }
+        //if block wasn't visited during an execution, then we don't want to consider it
+        if (valuesFromModel.find(blk.lock()->statements.front()->get_boolname() + _run1)->second->value == "false") {
+            continue;
         }
         auto inter = edges_to_take(current, blk.lock(), origname);
         if (inter.first) {

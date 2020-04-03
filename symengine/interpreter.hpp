@@ -24,6 +24,7 @@ class interpreter {
     void execute(const std::shared_ptr<basicblock>&, std::set<std::shared_ptr<basicblock>> *);
     bool reachable(const std::pair<std::shared_ptr<basicblock>, std::string>&, const std::string&);
     bool reach_potential_raceConditions(const std::vector<std::pair<std::shared_ptr<basicblock>, std::string>>&);
+    std::pair<bool, std::vector<edge>> edges_to_take(std::shared_ptr<basicblock>, std::shared_ptr<basicblock>, const std::string&);
 public:
     interpreter(symEngine);
     bool run();

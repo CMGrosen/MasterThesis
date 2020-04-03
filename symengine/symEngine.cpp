@@ -98,17 +98,23 @@ bool symEngine::execute() {
 
     z3::expr_vector vec(c);
     for (const auto &p : ccfg->pis_and_depth) {
-        for (const auto &stmt : p.first->statements) {
-            if (auto pi = dynamic_cast<piNode*>(stmt.get())) {
-                z3::expr expr = pi->getType() == intType
-                    ? (  (c.int_const((pi->getName() + _run1).c_str()) != c.int_const((pi->getName() + _run2).c_str()))
-                      && (c.int_const((pi->getName() + _run1).c_str()) != c.int_val(errorval))
-                      && (c.int_const((pi->getName() + _run2).c_str()) != c.int_val(errorval))
-                      )
-                    : ( c.bool_const((pi->getName() + _run1).c_str()) != c.bool_const((pi->getName() + _run2).c_str()))
-                ;
-                expr = expr && encode_boolname(&c, pi->get_boolname(), true, _run1) && encode_boolname(&c, pi->get_boolname(), true, _run2);
-                vec.push_back(expr);
+        //Don't want to add these pi-functions if used in an event,
+        // as race-conditions cannot occur here
+        if (p.first->statements.back()->getNodeType() != Event) {
+            for (const auto &stmt : p.first->statements) {
+                if (auto pi = dynamic_cast<piNode*>(stmt.get())) {
+                    z3::expr expr = pi->getType() == intType
+                        ? (  (c.int_const((pi->getName() + _run1).c_str()) != c.int_const((pi->getName() + _run2).c_str()))
+                          && (c.int_const((pi->getName() + _run1).c_str()) != c.int_val(errorval))
+                          && (c.int_const((pi->getName() + _run2).c_str()) != c.int_val(errorval))
+                          )
+                        : ( c.bool_const((pi->getName() + _run1).c_str()) != c.bool_const((pi->getName() + _run2).c_str()))
+                    ;
+                    expr = expr
+                            && encode_boolname(&c, pi->get_boolname(), true, _run1)
+                            && encode_boolname(&c, pi->get_boolname(), true, _run2);
+                    vec.push_back(expr);
+                }
             }
         }
     }
