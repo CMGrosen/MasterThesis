@@ -12,6 +12,7 @@ class fiNode : virtual public statementNode {
     fiNode(std::set<std::shared_ptr<basicblock>> blks) : parents{std::move(blks)} {
         nodetype = EndFi;
         type = okType;
+        set_linenum(-1);
     }
 
 public:
@@ -26,6 +27,9 @@ public:
     void add_parent(std::shared_ptr<basicblock> blk) {parents.insert(std::move(blk));}
 
     std::string to_string() const override  {return "endfi";};
+    std::string strOnSourceForm() const override {
+        return to_string();
+    }
     std::shared_ptr<statementNode> copy_statement() const override {
         std::shared_ptr<statementNode> stmt = std::make_shared<fiNode>(fiNode(parents));
         stmt->set_boolname(get_boolname());

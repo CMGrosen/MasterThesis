@@ -17,6 +17,7 @@ public:
             _variables.emplace_back(v, "0");
         }
         setNodeType(Phi);
+        set_linenum(-1);
         setType(t);
     }
 
@@ -24,6 +25,7 @@ public:
     _name{name}, origName{std::move(name)}, _variables{std::move(variables)} {
         setNodeType(Phi);
         setType(t);
+        set_linenum(-1);
         onSSA = true;
     }
 
@@ -31,6 +33,7 @@ public:
             _name{std::move(name)}, origName{std::move(origname)}, _variables{std::move(variables)} {
         setNodeType(Phi);
         setType(t);
+        set_linenum(-1);
         onSSA = true;
     }
 
@@ -43,6 +46,10 @@ public:
         }
         res += ")";
         return res;
+    }
+
+    std::string strOnSourceForm() const override {
+        return to_string();
     }
 
     std::shared_ptr<statementNode> copy_statement() const override {

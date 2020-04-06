@@ -18,7 +18,11 @@ public:
     variableNode *getVar() const {return var.get();}
 
     std::string to_string() const override {
-        return nameToTikzName(var->name, onSSA) + "[" + value->to_string() + "] ";
+        return nameToTikzName(var->name, onSSA) + "[" + value->to_string() + "]";
+    }
+
+    std::string strOnSourceForm() const override {
+        return var->origName + "[" + value->strOnSourceForm() + "]";
     }
 
     std::shared_ptr<expressionNode> copy_expression() const override {

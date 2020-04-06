@@ -17,6 +17,7 @@ public:
         name = "-T_" + _variable + "_" + std::to_string(_num);
         num = _num;
         setType(t);
+        set_linenum(-1);
         setNodeType(Pi);
         setSSA(true);
     }
@@ -27,6 +28,7 @@ public:
         for (const auto &v : *phi->get_variables()) _possible_variables.emplace_back(v);
         setType(phi->getType());
         set_boolname(phi->get_boolname());
+        set_linenum(-1);
         setNodeType(Pi);
         setSSA(true);
     }
@@ -40,6 +42,10 @@ public:
         }
         res += ")";
         return res;
+    }
+
+    std::string strOnSourceForm() const override {
+        return to_string();
     }
 
     std::shared_ptr<statementNode> copy_statement() const override {

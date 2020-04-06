@@ -16,7 +16,11 @@ public:
     }
 
     std::string to_string() const override {
-        return left->to_string() + " " + operatorToString[_operator] + " " + right->to_string();
+        return left->to_string() + " " + operatorToTikz[_operator] + " " + right->to_string();
+    }
+
+    std::string strOnSourceForm() const override {
+        return left->strOnSourceForm() + " " + operatorToString[_operator] + " " + right->strOnSourceForm();
     }
 
     std::shared_ptr<expressionNode> copy_expression() const override {

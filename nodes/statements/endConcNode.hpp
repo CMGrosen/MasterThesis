@@ -14,6 +14,7 @@ class endConcNode : virtual public statementNode {
 public:
     endConcNode(int number_of_threads) : threadCount{number_of_threads} {
         setNodeType(EndConcurrent);
+        set_linenum(-1);
         setType(okType);
     }
     endConcNode(int number_of_threads, std::shared_ptr<basicblock> concurrent_node)
@@ -28,6 +29,9 @@ public:
     void setConcNode(std::shared_ptr<basicblock> blk) {concNode = std::move(blk);}
     std::string to_string() const override {
         return "end conc-node of " + std::to_string(threadCount) + " threads";
+    }
+    std::string strOnSourceForm() const override {
+        return to_string();
     }
     std::shared_ptr<statementNode> copy_statement() const override {
         std::shared_ptr<statementNode> _this = std::make_shared<endConcNode>(endConcNode(threadCount, concNode));

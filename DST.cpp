@@ -83,7 +83,7 @@ antlrcpp::Any DST::visitAssign(SmallParser::AssignContext *ctx) {
             t = okType;
         }
 
-        std::shared_ptr<statementNode> res = std::make_shared<arrayFieldAssignNode>(arrayFieldAssignNode(t, name, field, value));
+        std::shared_ptr<statementNode> res = std::make_shared<arrayFieldAssignNode>(arrayFieldAssignNode(t, name, field, value, ctx->start->getLine()));
         return res;
     } else if (ctx->NAME() && ctx->arrayLiteral()) {
         std::shared_ptr<arrayLiteralNode> node = visitArrayLiteral(ctx->arrayLiteral());
@@ -102,7 +102,7 @@ antlrcpp::Any DST::visitAssign(SmallParser::AssignContext *ctx) {
             }
         }
         std::shared_ptr<expressionNode> expr = node;
-        std::shared_ptr<statementNode> res = std::make_shared<assignNode>(assignNode(pair.first->second->getType() == errorType ? errorType : okType, name, expr));
+        std::shared_ptr<statementNode> res = std::make_shared<assignNode>(assignNode(pair.first->second->getType() == errorType ? errorType : okType, name, expr, ctx->start->getLine()));
         return res;
         //return sequentialAssignForArray(name,0, arr);
     } else {
@@ -115,7 +115,7 @@ antlrcpp::Any DST::visitAssign(SmallParser::AssignContext *ctx) {
             pair.first->second->setType(errorType);
 //        std::shared_ptr<assignNode> res = std::make_shared<assignNode>(assignNode(name, node));
 
-        assignNode assNode = assignNode(pair.first->second->getType() == errorType ? errorType : okType, name, node);
+        assignNode assNode = assignNode(pair.first->second->getType() == errorType ? errorType : okType, name, node, ctx->start->getLine());
         std::shared_ptr<statementNode> a = std::make_shared<assignNode>(assNode);
         return a;
     }
@@ -124,34 +124,34 @@ antlrcpp::Any DST::visitAssign(SmallParser::AssignContext *ctx) {
 antlrcpp::Any DST::visitIter(SmallParser::IterContext *ctx) {
     std::shared_ptr<expressionNode> _condition = visitExpr(ctx->expr());
     std::shared_ptr<statementNode> _body = visitStmts(ctx->scope()->stmts());
-    std::shared_ptr<statementNode> falseBranch = std::make_shared<skipNode>(skipNode());
+    std::shared_ptr<statementNode> falseBranch = std::make_shared<skipNode>(skipNode(ctx->start->getLine()));
     Type t = okType;
     if (_condition->getType() != boolType || _body->getType() != okType) t = errorType;
     // create early exit setup and check to help determine if loop is exited naturally
     std::string early_exit = std::to_string(early_exits) + "_early_exit";
     std::shared_ptr<expressionNode> assExpr  = std::make_shared<literalNode>(literalNode(boolType,"false"));
 
-    std::shared_ptr<assignNode> early_exit_setup = std::make_shared<assignNode>(assignNode(okType, early_exit, assExpr));
+    std::shared_ptr<assignNode> early_exit_setup = std::make_shared<assignNode>(assignNode(okType, early_exit, assExpr, ctx->start->getLine()));
 
     assExpr = std::make_shared<literalNode>(literalNode(boolType,"true"));
-    std::shared_ptr<assignNode> early_exit_check = std::make_shared<assignNode>(assignNode(okType, early_exit, assExpr));
+    std::shared_ptr<assignNode> early_exit_check = std::make_shared<assignNode>(assignNode(okType, early_exit, assExpr, ctx->start->getLine()));
     // add early_exit variable to symbol table
     symboltables.insert({early_exit, assExpr});
     // increment early_exits to ensure unique names for all early_exit variables.
     early_exits++;
     // create early exit check
-    std::shared_ptr<statementNode> temp = std::make_shared<ifElseNode>(ifElseNode(t, _condition, early_exit_check, falseBranch));
+    std::shared_ptr<statementNode> temp = std::make_shared<ifElseNode>(ifElseNode(t, _condition, early_exit_check, falseBranch, ctx->start->getLine(), true));
 
     // create MAXITER number of  iterations, starts with the last iteration and ends with the first.
     for(int i = 0; i < MAXITER; i++){
         //create new nodes and pointers to ensure uniqueness
         std::shared_ptr<expressionNode> condition = _condition->copy_expression();
         std::shared_ptr<statementNode> body = _body->copy_statement();
-        falseBranch = std::make_shared<skipNode>(skipNode());
+        falseBranch = std::make_shared<skipNode>(skipNode(ctx->start->getLine()));
         // nest the next iteration into this iteration
         std::shared_ptr<statementNode> trueBranch = std::make_shared<sequentialNode>(sequentialNode(body, temp));
         // current iteration
-        temp = std::make_shared<ifElseNode>(ifElseNode(t, condition, trueBranch, falseBranch));
+        temp = std::make_shared<ifElseNode>(ifElseNode(t, condition, trueBranch, falseBranch, ctx->start->getLine(), true));
     }
     //std::shared_ptr<statementNode> res = std::make_shared<whileNode>(whileNode(t, condition, body));
     // sequential node with the early_exit setup before the unrolled loop.
@@ -164,8 +164,9 @@ antlrcpp::Any DST::visitIfs(SmallParser::IfsContext *ctx) {
     std::shared_ptr<statementNode> trueBranch = visitStmts(ctx->scope(0)->stmts());
     std::shared_ptr<statementNode> falseBranch = visitStmts(ctx->scope(1)->stmts());
     Type t = okType;
+    std::string txt = ctx->IF()->getText();
     if (condition->getType() != boolType || trueBranch->getType() != okType || falseBranch->getType() != okType) t = errorType;
-    std::shared_ptr<statementNode> res = std::make_shared<ifElseNode>(ifElseNode(t, condition, trueBranch, falseBranch));
+    std::shared_ptr<statementNode> res = std::make_shared<ifElseNode>(ifElseNode(t, condition, trueBranch, falseBranch, ctx->start->getLine()));
     return res;
 }
 
@@ -181,27 +182,27 @@ antlrcpp::Any DST::visitThread(SmallParser::ThreadContext *ctx) {
             break;
         }
     }
-    std::shared_ptr<statementNode> res = std::make_shared<concurrentNode>(concurrentNode(t, statements));
+    std::shared_ptr<statementNode> res = std::make_shared<concurrentNode>(concurrentNode(t, statements, ctx->start->getLine()));
     return res;
 }
 
 antlrcpp::Any DST::visitEvent(SmallParser::EventContext *ctx) {
     std::shared_ptr<expressionNode> condition = visitExpr(ctx->expr());
     Type t = (condition->getType() == boolType) ? okType : errorType;
-    std::shared_ptr<statementNode> res = std::make_shared<eventNode>(eventNode(t, condition));
+    std::shared_ptr<statementNode> res = std::make_shared<eventNode>(eventNode(t, condition, ctx->start->getLine()));
     return res;
 }
 
 
 antlrcpp::Any DST::visitSkipStmt(SmallParser::SkipStmtContext *ctx) {
-    std::shared_ptr<statementNode> res = std::make_shared<skipNode>(skipNode());
+    std::shared_ptr<statementNode> res = std::make_shared<skipNode>(skipNode(ctx->start->getLine()));
     return res;
 }
 
 antlrcpp::Any DST::visitAssertStmt(SmallParser::AssertStmtContext *ctx) {
     std::shared_ptr<expressionNode> condition = visitExpr(ctx->expr());
     Type t = (condition->getType() == boolType) ? okType : errorType;
-    std::shared_ptr<statementNode> res = std::make_shared<assertNode>(assertNode(t, condition));
+    std::shared_ptr<statementNode> res = std::make_shared<assertNode>(assertNode(t, condition, ctx->start->getLine()));
     return res;
 }
 

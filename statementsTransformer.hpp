@@ -34,7 +34,7 @@ private:
                 auto assert_node = dynamic_cast<assertNode*>(stmt.get());
                 auto expr = unpackExpr(assert_node->getCondition(), ccfg);
                 expr->get_last()->next = std::make_shared<unpacked>(boolType, Assert);
-                unStmt = std::make_shared<unpackedstmt>(unpackedstmt(expr));
+                unStmt = std::make_shared<unpackedstmt>(unpackedstmt(expr, stmt->get_linenum()));
                 break;
             }
             case Assign: {
@@ -45,7 +45,7 @@ private:
                 int num = std::stoi(assNode->getName().erase(0,chars_to_remove)) - 1;
                 newname = assNode->getOriginalName() + "_" + std::to_string(num);
                 unpack->get_last()->next = std::make_shared<unpacked>(unpacked(assNode->getExpr()->getType(), Assign, assNode->getName(), newname));
-                unStmt = std::make_shared<unpackedstmt>(unpackedstmt(unpack));
+                unStmt = std::make_shared<unpackedstmt>(unpackedstmt(unpack, stmt->get_linenum()));
                 break;
             } case AssignArrField: {
                 auto assignArF = dynamic_cast<arrayFieldAssignNode*>(stmt.get());
@@ -56,28 +56,28 @@ private:
                 int num = std::stoi(assignArF->getName().erase(0,chars_to_remove)) - 1;
                 newname = assignArF->getOriginalName() + "_" + std::to_string(num);
                 unpack->get_last()->next = std::make_shared<unpacked>(unpacked(assignArF->getExpr()->getType(), AssignArrField, assignArF->getName(), newname));
-                unStmt = std::make_shared<unpackedstmt>(unpackedstmt(unpack));
+                unStmt = std::make_shared<unpackedstmt>(unpackedstmt(unpack, stmt->get_linenum()));
                 break;
             } case If: {
                 auto ifNode = dynamic_cast<ifElseNode*>(stmt.get());
                 auto unpack = unpackExpr(ifNode->getCondition(), ccfg);
                 unpack->get_last()->next = std::make_shared<unpacked>(unpacked(boolType, If));
-                unStmt = std::make_shared<unpackedstmt>(unpackedstmt(unpack));
+                unStmt = std::make_shared<unpackedstmt>(unpackedstmt(unpack, stmt->get_linenum()));
                 break;
             } case Write: {
                 auto writeStmt = dynamic_cast<writeNode*>(stmt.get());
                 auto unpack = unpackExpr(writeStmt->getExpr(), ccfg);
                 unpack->get_last()->next = std::make_shared<unpacked>(okType, Write);
-                unStmt = std::make_shared<unpackedstmt>(unpackedstmt(unpack));
+                unStmt = std::make_shared<unpackedstmt>(unpackedstmt(unpack, stmt->get_linenum()));
                 break;
             } case Event: {
                 auto eventStmt = dynamic_cast<eventNode*>(stmt.get());
                 auto unpack = unpackExpr(eventStmt->getCondition(), ccfg);
                 unpack->get_last()->next = std::make_shared<unpacked>(boolType, Event);
-                unStmt = std::make_shared<unpackedstmt>(unpackedstmt(unpack));
+                unStmt = std::make_shared<unpackedstmt>(unpackedstmt(unpack, stmt->get_linenum()));
                 break;
             } case Skip: {
-                unStmt = std::make_shared<unpackedstmt>(unpackedstmt(std::make_shared<unpacked>(unpacked(okType, Skip))));
+                unStmt = std::make_shared<unpackedstmt>(unpackedstmt(std::make_shared<unpacked>(unpacked(okType, Skip)), stmt->get_linenum()));
                 break;
             }
             default: return stmt;

@@ -18,6 +18,7 @@ public:
     void setName(std::string);
 
     std::string to_string() const override;
+    std::string strOnSourceForm() const override;
 
     bool operator==(const expressionNode *node) const override;
 

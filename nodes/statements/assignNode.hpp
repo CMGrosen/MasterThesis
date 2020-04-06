@@ -9,9 +9,10 @@
 
 class assignNode : virtual public statementNode {
 public:
-    assignNode (Type t, std::string _name, std::shared_ptr<expressionNode> n) : name{std::move(_name)}, expr{std::move(n)} {
+    assignNode (Type t, std::string _name, std::shared_ptr<expressionNode> n, int linenum) : name{std::move(_name)}, expr{std::move(n)} {
         origName = name;
         setType(t);
+        set_linenum(linenum);
         setNodeType(Assign);
     };
 
@@ -22,9 +23,12 @@ public:
     std::string to_string() const override {
         return nameToTikzName(name, onSSA) + " = " + expr->to_string();
     }
+    std::string strOnSourceForm() const override {
+        return origName + " = " + expr->strOnSourceForm() + ";";
+    }
     std::shared_ptr<statementNode> copy_statement() const override {
         std::shared_ptr<expressionNode> _expr = expr->copy_expression();
-        std::shared_ptr<statementNode> _this = std::make_shared<assignNode>(assignNode(type, origName, _expr));
+        std::shared_ptr<statementNode> _this = std::make_shared<assignNode>(assignNode(type, origName, _expr, get_linenum()));
         _this->setSSA(onSSA);
         dynamic_cast<assignNode*>(_this.get())->setName(name);
         _this->set_boolname(get_boolname());

@@ -356,6 +356,7 @@ bool interpreter::reachable(const std::pair<std::shared_ptr<basicblock>, std::st
     std::set<std::shared_ptr<basicblock>> conflictsForRun1;
     std::set<std::shared_ptr<basicblock>> conflictsForRun2;
     std::shared_ptr<basicblock> conflictNode;
+    std::pair<std::shared_ptr<basicblock>, std::shared_ptr<basicblock>> conflictingDefs;
     bool conflict1 = false, conflict2 = false;
     bool onconflictnode = false;
     std::string valForRun1 = differences.find(blk.second)->second.run1;
@@ -375,10 +376,12 @@ bool interpreter::reachable(const std::pair<std::shared_ptr<basicblock>, std::st
         if (!onconflictnode) {
             std::pair<bool, std::vector<edge>> path;
             if (conflictsForRun1.find(current) != conflictsForRun1.end()) {
+                conflictingDefs.first = current;
                 path = edges_to_take(current, blk.first, origname);
                 conflict1 = true;
                 onconflictnode = true;
             } else if (conflictsForRun2.find(current) != conflictsForRun2.end()) {
+                conflictingDefs.second = current;
                 path = edges_to_take(current, blk.first, origname);
                 conflict2 = true;
                 onconflictnode = true;
@@ -401,16 +404,19 @@ bool interpreter::reachable(const std::pair<std::shared_ptr<basicblock>, std::st
         } else {
             if (conflict1 && conflictsForRun2.find(current) != conflictsForRun2.end()) {
                 std::string current_val = current_values[origname].first;
+                conflictingDefs.second = current;
+                execute(current, &currents);
                 if (current_val == valForRun1) {
-                    execute(current, &currents);
                     if (current_values[origname].first != current_val || current_values[origname].first == valForRun2) {
                         std::cout << "found both conflicts\n";
                     }
                 }
-                std::cout << "found both conflicts\n";
+
+                std::cout << report_racecondition(origname, conflictNode->statements.back(), {conflictingDefs.first, current_val}, {conflictingDefs.second, current_values[origname].first});
                 return true;
             } else if (conflict2 && conflictsForRun1.find(current) != conflictsForRun1.end()) {
                 std::string current_val = current_values[origname].first;
+                conflictingDefs.first = current;
                 if (current_val == valForRun2) {
                     execute(current, &currents);
                     if (current_values[origname].first != current_val || current_values[origname].first == valForRun1) {
@@ -431,4 +437,22 @@ bool interpreter::reachable(const std::pair<std::shared_ptr<basicblock>, std::st
         current = *currents.begin();
     }
     return false;
+}
+
+std::string interpreter::report_racecondition
+  ( std::string name
+  , std::shared_ptr<statementNode> stmtUsage
+  , std::pair<std::shared_ptr<basicblock>, std::string> defVal1
+  , std::pair<std::shared_ptr<basicblock>, std::string> defVal2
+  ) {
+    std::shared_ptr<statementNode> def1 = defVal1.first->defsite[*defVal1.first->defines[name].begin()];
+    std::shared_ptr<statementNode> def2 = defVal2.first->defsite[*defVal2.first->defines[name].begin()];
+    std::string raceconditionStr =
+    "Use of variable '" + name + "' in statement: '" + stmtUsage->strOnSourceForm() + "' can have two different values\n"
+    + defVal1.second + " defined in statement: '" + def1->strOnSourceForm() + "' on line " + std::to_string(def1->get_linenum()) + "\n"
+    "and\n"
+    + defVal2.second + " defined in statement: '" + def2->strOnSourceForm() + "' on line " + std::to_string(def2->get_linenum()) + "\n";
+
+
+    return raceconditionStr;
 }

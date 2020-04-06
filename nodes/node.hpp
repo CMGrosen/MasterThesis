@@ -46,6 +46,7 @@ static std::map< NodeType, const char * > nodeInfo = {
 class node {
 public:
     virtual std::string to_string() const = 0;
+    virtual std::string strOnSourceForm() const = 0;
     virtual Type getType() const {return type;};
     virtual void setType(Type t) {type = t;};
     virtual NodeType getNodeType() const {return nodetype;};

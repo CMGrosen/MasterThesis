@@ -38,6 +38,16 @@ public:
         return res;
     }
 
+    std::string strOnSourceForm() const override {
+        std::string res = "[";
+        for (const auto &v : value) {
+            res += v->strOnSourceForm() + ", ";
+        }
+        *(res.rbegin()+2) = ']';
+        res.resize(res.size()-1);
+        return res;
+    }
+
     std::shared_ptr<expressionNode> copy_expression() const override {
         std::vector<std::shared_ptr<expressionNode>> _values;
         _values.reserve(value.size());

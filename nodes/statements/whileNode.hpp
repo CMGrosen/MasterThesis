@@ -18,6 +18,10 @@ public:
         return "while(" + condition->to_string() + ")";
     }
 
+    std::string strOnSourceForm() const override {
+        return "while(" + condition->strOnSourceForm() + ") { ...";
+    }
+
     std::shared_ptr<statementNode> copy_statement() const override {
         std::shared_ptr<expressionNode> _c = condition->copy_expression();
         std::shared_ptr<statementNode> _b = body->copy_statement();

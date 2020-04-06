@@ -26,9 +26,7 @@ basicblock::basicblock(std::vector<std::shared_ptr<statementNode>> stmts, std::v
 
 
 basicblock::basicblock(const basicblock &o) {
-    for (const auto &stmt : o.statements) {
-        statements.push_back(stmt->copy_statement());
-    }
+    copy_statements(&o);
     type = o.type;
     uses = o.uses;
     defines = o.defines;
@@ -42,9 +40,7 @@ basicblock::basicblock(const basicblock &o) {
 }
 
 basicblock& basicblock::operator=(const basicblock &o) {
-    for (const auto &stmt : o.statements) {
-        statements.push_back(stmt->copy_statement());
-    }
+    copy_statements(&o);
     depth = o.depth;
     uses = o.uses;
     defines = o.defines;
@@ -53,7 +49,7 @@ basicblock& basicblock::operator=(const basicblock &o) {
     return *this;
 }
 
-basicblock::basicblock(basicblock &&o) noexcept : statements{std::move(o.statements)}, parents{std::move(o.parents)}, nexts{std::move(o.nexts)}, depth{o.depth}, uses{std::move(o.uses)}, defines{std::move(o.defines)}, type{o.type} {
+basicblock::basicblock(basicblock &&o) noexcept : statements{std::move(o.statements)}, parents{std::move(o.parents)}, nexts{std::move(o.nexts)}, depth{o.depth}, uses{std::move(o.uses)}, defines{std::move(o.defines)}, defsite{std::move(o.defsite)}, type{o.type} {
     counterblocks++;
 }
 
@@ -64,6 +60,7 @@ basicblock& basicblock::operator=(basicblock &&o) noexcept  {
     depth = o.depth;
     uses = std::move(o.uses);
     defines = std::move(o.defines);
+    defsite = std::move(o.defsite);
     type = o.type;
     counterblocks++;
     return *this;
@@ -107,12 +104,14 @@ void basicblock::updateUsedVariables() {
     defmapping.clear();
     defines.clear();
     uses.clear();
+    defsite.clear();
     for (const auto &stmt : statements) {
         switch (stmt->getNodeType()) {
             case Assign: {
                 auto assStmt = dynamic_cast<assignNode*>(stmt.get());
                 auto pair = defines.insert({assStmt->getOriginalName(), std::set<std::string>{assStmt->getName()}});
                 defmapping.insert({assStmt->getName(), assStmt->getOriginalName()});
+                defsite.insert({assStmt->getName(), stmt});
                 if(!pair.second) {
                     pair.first->second.insert(assStmt->getName());
                 }
@@ -131,7 +130,7 @@ void basicblock::updateUsedVariables() {
                 auto assArrStmt = dynamic_cast<arrayFieldAssignNode*>(stmt.get());
                 auto pair = defines.insert({assArrStmt->getOriginalName(), std::set<std::string>{assArrStmt->getName()}});
                 defmapping.insert({assArrStmt->getName(), assArrStmt->getOriginalName()});
-
+                defsite.insert({assArrStmt->getName() + "[]", stmt}); //doesn't work as expected
                 if(!pair.second) {
                     pair.first->second.insert(assArrStmt->getName());
                 }
@@ -201,6 +200,7 @@ void basicblock::updateUsedVariables() {
                 auto phi = dynamic_cast<phiNode*>(stmt.get());
                 auto res = defines.insert({phi->getOriginalName(), std::set<std::string>{phi->getName()}});
                 defmapping.insert({phi->getName(), phi->getOriginalName()});
+                defsite.insert({phi->getName(), stmt});
                 if (!res.second) res.first->second.insert(phi->getName());
                 break;
             }
@@ -208,6 +208,7 @@ void basicblock::updateUsedVariables() {
                 auto pi = dynamic_cast<piNode*>(stmt.get());
                 auto res = defines.insert({pi->getVar(), std::set<std::string>{pi->getName()}});
                 defmapping.insert({pi->getName(), pi->getVar()});
+                defsite.insert({pi->getName(), stmt});
                 if (!res.second) res.first->second.insert(pi->getName());
                 break;
             }
@@ -276,3 +277,15 @@ size_t basicblock::get_stmt_count() {
 }
 
 std::string name = std::string{};
+
+void basicblock::copy_statements(const basicblock *o) {
+    std::map<std::shared_ptr<statementNode>, std::shared_ptr<statementNode>> oldMapsTo;
+    for (const auto &stmt : o->statements) {
+        std::shared_ptr<statementNode> newstmt = stmt->copy_statement();
+        oldMapsTo[stmt] = newstmt;
+        statements.push_back(newstmt);
+    }
+    for (const auto &def : o->defsite) {
+        defsite[def.first] = oldMapsTo[def.second];
+    }
+}

@@ -15,6 +15,9 @@ int16_t readNode::getPin() const {return _pin;}
 std::string readNode::to_string() const {
     return "read(" + std::to_string(_pin) + ")";
 }
+std::string readNode::strOnSourceForm() const {
+    return to_string();
+}
 std::shared_ptr<expressionNode> readNode::copy_expression() const {
     std::shared_ptr<expressionNode> _this = std::make_shared<readNode>(readNode(_pin, read_name));
     _this->setSSA(onSSA);

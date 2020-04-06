@@ -14,7 +14,11 @@ public:
     op getOperator() const {return _operator;};
 
     std::string to_string() const override {
-        return operatorToString[_operator] + expr->to_string();
+        return operatorToTikz[_operator] + expr->to_string();
+    }
+
+    std::string strOnSourceForm() const override {
+        return operatorToString[_operator] + expr->strOnSourceForm();
     }
 
     expressionNode *getExpr() const {return expr.get();}

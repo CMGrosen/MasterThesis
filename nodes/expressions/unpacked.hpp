@@ -63,7 +63,7 @@ struct unpacked : public node {
                 break;
             case BinaryExpression:
             case UnaryExpression:
-                res = operatorToString[_operator];
+                res = operatorToTikz[_operator];
                 break;
             case Skip:
                 res = "skip";
@@ -72,6 +72,11 @@ struct unpacked : public node {
         }
         return next ? res + " " + next->to_string() : res;
     }
+
+    std::string strOnSourceForm() const override {
+        return to_string();
+    }
+
     std::shared_ptr<unpacked> next;
     std::string value;
     std::string previous_name;

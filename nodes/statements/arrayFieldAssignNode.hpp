@@ -11,8 +11,9 @@
 
 class arrayFieldAssignNode : virtual public statementNode {
 public:
-    arrayFieldAssignNode (Type t, std::string _name, std::shared_ptr<expressionNode> arrField, std::shared_ptr<expressionNode> n) : name{std::move(_name)}, field{std::move(arrField)}, expr{std::move(n)} {
+    arrayFieldAssignNode (Type t, std::string _name, std::shared_ptr<expressionNode> arrField, std::shared_ptr<expressionNode> n, int linenum) : name{std::move(_name)}, field{std::move(arrField)}, expr{std::move(n)} {
         setType(t);
+        set_linenum(linenum);
         origName = name;
         setNodeType(AssignArrField);
     };
@@ -28,11 +29,14 @@ public:
         std::string res = nameToTikzName(name, onSSA) + "[" + field->to_string() + "] = " + expr->to_string();
         return res;
     }
+    std::string strOnSourceForm() const override {
+        return origName + "[" + field->strOnSourceForm() + "] = " + expr->strOnSourceForm() + ";";
+    }
     std::shared_ptr<statementNode> copy_statement() const override {
         std::shared_ptr<expressionNode> _field = field->copy_expression();
         //std::shared_ptr<arrayAccessNode> _field = std::make_shared<arrayAccessNode>(arrayAccessNode(field->getType(), _fieldExpr, name));
         std::shared_ptr<expressionNode> _expr = expr->copy_expression();
-        std::shared_ptr<statementNode> _this = std::make_shared<arrayFieldAssignNode>(arrayFieldAssignNode(type, origName, _field, _expr));
+        std::shared_ptr<statementNode> _this = std::make_shared<arrayFieldAssignNode>(arrayFieldAssignNode(type, origName, _field, _expr, get_linenum()));
         _this->setSSA(onSSA);
         dynamic_cast<arrayFieldAssignNode*>(_this.get())->setName(name);
         _this->set_boolname(get_boolname());

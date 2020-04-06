@@ -54,6 +54,7 @@ struct basicblock {
     std::map<std::string, std::set<std::string>> uses;
     std::map<std::string, std::set<std::string>> defines;
     std::map<std::string, std::string> defmapping;
+    std::map<std::string, std::shared_ptr<statementNode>> defsite;
 
     std::pair<basicblock*, int> concurrentBlock;
     std::string get_name();
@@ -105,6 +106,8 @@ private:
         }
         return vars;
     }
+
+    void copy_statements(const basicblock*);
 };
 
 #endif //ANTLR_CPP_TUTORIAL_BASICBLOCK_HPP

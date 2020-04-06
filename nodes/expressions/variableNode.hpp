@@ -35,6 +35,10 @@ public:
         return res;
     }
 
+    std::string strOnSourceForm() const override {
+        return origName;
+    }
+
     std::shared_ptr<expressionNode> copy_expression() const override {
         std::shared_ptr<expressionNode> _this = std::make_shared<variableNode>(variableNode(type, name, origName));
         _this->setSSA(onSSA);

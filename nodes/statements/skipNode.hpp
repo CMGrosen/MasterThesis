@@ -7,13 +7,17 @@
 
 class skipNode : virtual public statementNode {
 public:
-    skipNode() {setNodeType(Skip); setType(okType);}
+    skipNode(int linenum) {setNodeType(Skip); setType(okType); set_linenum(linenum);}
 
     std::string to_string() const override {
         return "skip";
     }
+    std::string strOnSourceForm() const override {
+        return "skip;";
+    }
+
     std::shared_ptr<statementNode> copy_statement() const override {
-        std::shared_ptr<statementNode> _this = std::make_shared<skipNode>(skipNode());
+        std::shared_ptr<statementNode> _this = std::make_shared<skipNode>(skipNode(get_linenum()));
         _this->setSSA(onSSA);
         _this->set_boolname(get_boolname());
         return _this;

@@ -10,6 +10,7 @@ public:
     sequentialNode(std::shared_ptr<statementNode> body, std::shared_ptr<statementNode> next) : _body{std::move(body)}, _next{std::move(next)} {
         if (_body->getType() == okType && _next->getType() == okType) setType(okType);
         else setType(errorType);
+        set_linenum(-1);
         setNodeType(Sequential);
     };
 
@@ -33,6 +34,9 @@ public:
     }*/
     std::string to_string() const override {
         return "";
+    }
+    std::string strOnSourceForm() const override {
+        return to_string();
     }
     std::shared_ptr<statementNode> copy_statement() const override {
         std::shared_ptr<statementNode> __body = _body->copy_statement();

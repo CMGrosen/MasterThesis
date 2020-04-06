@@ -7,14 +7,18 @@
 
 struct unpackedstmt : virtual public statementNode {
     std::shared_ptr<unpacked> _this;
-    unpackedstmt(std::shared_ptr<unpacked> _this) : _this{std::move(_this)} {}
+    unpackedstmt(std::shared_ptr<unpacked> _this, int linenum) : _this{std::move(_this)} {set_linenum(linenum);}
 
     std::string to_string() const override {
         return _this->to_string();
     }
 
+    std::string strOnSourceForm() const override {
+        return _this->strOnSourceForm();
+    }
+
     std::shared_ptr<statementNode> copy_statement() const override {
-        std::shared_ptr<statementNode> _new = std::make_shared<unpackedstmt>(unpackedstmt(_this->copy()));
+        std::shared_ptr<statementNode> _new = std::make_shared<unpackedstmt>(unpackedstmt(_this->copy(), get_linenum()));
         _new->set_boolname(get_boolname());
         return _new;
     }

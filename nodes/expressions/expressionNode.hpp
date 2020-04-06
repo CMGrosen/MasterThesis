@@ -8,13 +8,30 @@
 
 enum op { PLUS, MINUS, MULT, DIV, MOD, NOT, AND, OR, LE, LEQ, GE, GEQ, EQ, NEQ, NEG};
 
-static std::map<op, std::string> operatorToString {
+static std::map<op, std::string> operatorToTikz {
         {PLUS, "+"},
         {MINUS, "-"},
         {MULT, "*"},
         {DIV, "/"},
         {MOD, "\\%"},
         {AND, "\\&\\&"},
+        {OR, "||"},
+        {LE, "<"},
+        {LEQ, "<="},
+        {GE, ">"},
+        {GEQ, ">="},
+        {EQ, "=="},
+        {NEQ, "!="},
+        {NEG, "-"}
+};
+
+static std::map<op, std::string> operatorToString {
+        {PLUS, "+"},
+        {MINUS, "-"},
+        {MULT, "*"},
+        {DIV, "/"},
+        {MOD, "%"},
+        {AND, "&&"},
         {OR, "||"},
         {LE, "<"},
         {LEQ, "<="},
