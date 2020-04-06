@@ -44,7 +44,7 @@ public:
     std::pair<std::map<std::string, std::shared_ptr<VariableValue>>, std::map<std::string, bool>> getModel();
 
     bool execute();
-    bool updateModel(const std::string&, Type);
+    bool updateModel(const std::vector<std::pair<std::string, Type>>&);
 };
 
 #endif //ANTLR_CPP_TUTORIAL_SYMENGINE_HPP

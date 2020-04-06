@@ -218,7 +218,7 @@ antlrcpp::Any DST::visitRead(SmallParser::ReadContext *ctx) {
 
 antlrcpp::Any DST::visitWrite(SmallParser::WriteContext *ctx) {
     std::shared_ptr<expressionNode> expr = visitExpr(ctx->expr());
-    std::shared_ptr<statementNode> res = std::make_shared<writeNode>(writeNode(std::stoi(ctx->INT_LITERAL()->getText()), expr));
+    std::shared_ptr<statementNode> res = std::make_shared<writeNode>(writeNode(std::stoi(ctx->INT_LITERAL()->getText()), expr, ctx->start->getLine()));
     return res;
 }
 

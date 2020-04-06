@@ -21,7 +21,8 @@ bool interpreter::run() {
         refresh();
         for (const auto &dif : differences) {
             //Don't add difference if pi-function is used in an event
-            if (dif.first[0] == '-' && dif.first[1] == 'T' && engine.ccfg->defs[dif.first]->statements.back()->getNodeType() != Event) {
+            std::shared_ptr<basicblock> blk = engine.ccfg->defs[dif.first];
+            if (blk->defsite[dif.first]->getNodeType() == Pi && blk->statements.back()->getNodeType() != Event) {
                 blks_and_names.emplace_back(engine.ccfg->defs.find(dif.first)->second, dif.first);
             }
         }
@@ -45,18 +46,23 @@ bool interpreter::run() {
             }
             return returnval;
         } else {
+            std::vector<std::string> races;
+            races.reserve(differences.size());
             std::sort(blks_and_names.begin(), blks_and_names.end(),
                       [&](const auto &a, const auto &b) { return a.first->depth < b.first->depth; });
-            returnval = reach_potential_raceConditions(blks_and_names);
+            returnval = reach_potential_raceConditions(blks_and_names, &races);
             if (!returnval) {
                 std::cout << "didn't find race-condition: updating constraints: ...\n";
                 auto conflict = blks_and_names.front();
                 Type t = engine.symboltable[conflict.first->defmapping[conflict.second]]->getType();
-                satisfiable = engine.updateModel(conflict.second, t); //Tell engine to make this variable equal between runs, and get new model
+                satisfiable = engine.updateModel({{conflict.second, t}}); //Tell engine to make this variable equal between runs, and get new model
             } else {
-                //Still probably satisfiable,
-                //  but as we've found a race-condition, we flip the boolean to get out of the while-loop
-                satisfiable = false;
+                //Still probably satisfiable. Update model to not include found race-conditions
+                std::vector<std::pair<std::string, Type>> varstoupdate;
+                for (const auto &conflict : races) {
+                    varstoupdate.emplace_back(conflict, engine.symboltable[engine.ccfg->defs[conflict]->defmapping[conflict]]->getType());
+                }
+                satisfiable = engine.updateModel(varstoupdate);
             }
         }
     }
@@ -106,6 +112,7 @@ void interpreter::update() {
     for (const auto &var : engine.symboltable) {
         current_values.insert({var.first, {"undef", var.second->getType()}});
     }
+    refreshConcs();
 }
 
 void interpreter::refresh() {
@@ -116,12 +123,37 @@ void interpreter::refresh() {
     update();
 }
 
-bool interpreter::reach_potential_raceConditions(const std::vector<std::pair<std::shared_ptr<basicblock>, std::string>>& blks) {
-    for (const auto &blk : blks) {
-
-        if (reachable(blk, blk.first->defmapping.find(blk.second)->second)) return true;
+static std::set<basicblock*> vecToSet(std::vector<std::weak_ptr<basicblock>> *vec) {
+    std::set<basicblock*> res;
+    for (const auto &ele : *vec) {
+        res.insert(ele.lock().get());
     }
-    return false;
+    return res;
+}
+
+void interpreter::refreshConcs() {
+    threadsToFinish.clear();
+    for (const auto &conc : engine.ccfg->endconcNodes) {
+        threadsToFinish.insert({conc, vecToSet(&conc->parents)});
+    }
+}
+
+bool interpreter::reach_potential_raceConditions(const std::vector<std::pair<std::shared_ptr<basicblock>, std::string>>& blks, std::vector<std::string> *foundConditions) {
+    bool foundrace = false;
+    for (const auto &blk : blks) {
+        if (reachable(blk, blk.first->defmapping.find(blk.second)->second)) {
+            foundConditions->push_back(blk.second);
+            foundrace = true;
+        }
+        refreshConcs();
+        std::vector<std::string> pis;
+        for (auto &p : current_values) {
+            p.second.first = "undef";
+            if (p.first[0] == '-' && p.first[1] == 'T') pis.push_back(p.first);
+        }
+        for (const auto &p : pis) current_values.erase(p);
+    }
+    return foundrace;
 }
 
 std::pair<bool, std::vector<edge>> interpreter::edges_to_take(std::shared_ptr<basicblock> current, std::shared_ptr<basicblock> conflict, const std::string& origname) {
@@ -148,6 +180,10 @@ std::pair<bool, std::vector<edge>> interpreter::edges_to_take(std::shared_ptr<ba
     else return {true, edges};
 }
 
+static std::string btos(bool val) {
+    return val ? "true" : "false";
+}
+
 std::string interpreter::compute_operator(const std::string &left, const std::string &right, op _operator) {
     std::string val;
     switch (_operator) {
@@ -167,31 +203,31 @@ std::string interpreter::compute_operator(const std::string &left, const std::st
             val = std::to_string(std::stoi(left) % std::stoi(right));
             break;
         case NOT:
-            val = std::to_string(left == "false");
+            val = btos(left == "false");
             break;
         case AND:
-            val = std::to_string(left == "true" && right == "true");
+            val = btos(left == "true" && right == "true");
             break;
         case OR:
-            val = std::to_string(left == "true" && right == "true");
+            val = btos(left == "true" || right == "true");
             break;
         case LE:
-            val = std::to_string(std::stoi(left) < std::stoi(right));
+            val = btos(std::stoi(left) < std::stoi(right));
             break;
         case LEQ:
-            val = std::to_string(std::stoi(left) <= std::stoi(right));
+            val = btos(std::stoi(left) <= std::stoi(right));
             break;
         case GE:
-            val = std::to_string(std::stoi(left) > std::stoi(right));
+            val = btos(std::stoi(left) > std::stoi(right));
             break;
         case GEQ:
-            val = std::to_string(std::stoi(left) >= std::stoi(right));
+            val = btos(std::stoi(left) >= std::stoi(right));
             break;
         case EQ:
-            val = std::to_string(left == right);
+            val = btos(left == right);
             break;
         case NEQ:
-            val = std::to_string(left != right);
+            val = btos(left != right);
             break;
         case NEG:
             val = std::to_string(-std::stoi(left));
@@ -223,22 +259,27 @@ std::string interpreter::exec_expr(expressionNode* expr) {
             break;
 
         case Read:
-            val = valuesFromModel[dynamic_cast<readNode*>(expr)->getName()]->value;
+            val = valuesFromModel.find(dynamic_cast<readNode*>(expr)->getName())->second->value;
             break;
         case Literal:
             val = dynamic_cast<literalNode*>(expr)->value;
             break;
         case ArrayAccess: {
             auto arracc = dynamic_cast<arrayAccessNode*>(expr);
-            val = current_values[arracc->getVar()->origName + "[" + exec_expr(arracc->getAccessor()) + "]"].first;
+            val = current_values.find(arracc->getVar()->origName + "[" + exec_expr(arracc->getAccessor()) + "]")->second.first;
             break;
         } case ArrayLiteral:
             //don't handle array, this is good enough for now
             break;
-        case Variable:
-            val = current_values[dynamic_cast<variableNode*>(expr)->origName].first;
+        case Variable: {
+            auto var = dynamic_cast<variableNode*>(expr);
+            if (var->name[0] == '-' && var->name[1] == 'T') {//pi-node
+                val = current_values.find(var->name)->second.first;
+            } else {
+                val = current_values.find(var->origName)->second.first;
+            }
             break;
-        case BinaryExpression: {
+        } case BinaryExpression: {
             auto binexpr = dynamic_cast<binaryExpressionNode*>(expr);
             val = compute_operator(exec_expr(binexpr->getLeft()), exec_expr(binexpr->getRight()), binexpr->getOperator());
             break;
@@ -251,19 +292,19 @@ std::string interpreter::exec_expr(expressionNode* expr) {
     return val;
 }
 
-bool interpreter::exec_stmt(const std::shared_ptr<statementNode> &stmt) {
+std::pair<bool, bool> interpreter::exec_stmt(const std::shared_ptr<statementNode> &stmt) {
     switch (stmt->getNodeType()) {
         case Assign: {
             auto assNode = dynamic_cast<assignNode *>(stmt.get());
             std::string value = exec_expr(assNode->getExpr());
-            current_values[assNode->getOriginalName()].first = value;
+            current_values.find(assNode->getOriginalName())->second.first = value;
             break;
         }
         case AssignArrField: {
             auto assArrF = dynamic_cast<arrayFieldAssignNode *>(stmt.get());
             std::string name = exec_expr(assArrF->getField());
             std::string value = exec_expr(assArrF->getExpr());
-            current_values[assArrF->getOriginalName() + "[" + name + "]"].first = value;
+            current_values.find(assArrF->getOriginalName() + "[" + name + "]")->second.first = value;
             break;
         } case Concurrent: {
             break;
@@ -275,7 +316,7 @@ bool interpreter::exec_stmt(const std::shared_ptr<statementNode> &stmt) {
             break;
         } case If: {
             auto ifnode = dynamic_cast<ifElseNode*>(stmt.get());
-            if (exec_expr(ifnode->getCondition()) == "false") return false;
+            if (exec_expr(ifnode->getCondition()) == "false") return {false, true};
             break;
         } case EndFi: {
             break;
@@ -283,7 +324,7 @@ bool interpreter::exec_stmt(const std::shared_ptr<statementNode> &stmt) {
             break;
         } case Event: {
             auto event = dynamic_cast<eventNode *>(stmt.get());
-            if (exec_expr(event->getCondition()) == "false") return false;
+            if (exec_expr(event->getCondition()) == "false") return {false, true};
             break;
         } case Skip: {
             break;
@@ -294,8 +335,15 @@ bool interpreter::exec_stmt(const std::shared_ptr<statementNode> &stmt) {
             //value already assigned, since the value that should be assigned, is the one already stored
             //maybe check to see if model value is the one already stored
             auto pi = dynamic_cast<piNode *>(stmt.get());
-            if (!current_values.insert({pi->getName(), current_values[pi->getVar()]}).second) {
-                std::cout << "error occured. This pi-node has been visited once already. Shouldn't be possible!\n";
+            std::string val = current_values.find(pi->getVar())->second.first;
+            auto res = current_values.find(pi->getName());
+            if (res != current_values.end()) return {true, true};
+
+            if (valuesFromModel.find(pi->getName() + _run1)->second->value == val || valuesFromModel.find(pi->getName() + _run2)->second->value == val) {
+                current_values.insert({pi->getName(), current_values.find(pi->getVar())->second});
+            } else {
+                std::cout << "visit this block later\n";
+                return {true, false};
             }
             break;
         } case Assert: {
@@ -320,35 +368,52 @@ bool interpreter::exec_stmt(const std::shared_ptr<statementNode> &stmt) {
             assert(false);
             break;
     }
-    return true;
+    return {true, true};
 }
 
-void interpreter::execute(const std::shared_ptr<basicblock>& blk, std::set<std::shared_ptr<basicblock>> *blks) {
+bool interpreter::execute(const std::shared_ptr<basicblock>& blk, std::set<std::shared_ptr<basicblock>> *blks) {
+    std::vector<std::shared_ptr<basicblock>> blksToInsert;
     for (const auto &stmt : blk->statements) {
-        bool res = exec_stmt(stmt);
-        if (stmt->getNodeType() == Event && !res) {
+        std::pair<bool, bool> res = exec_stmt(stmt);
+        if (!res.second) {
+            visitLater.insert(blk);
+            blks->erase(blk);
+            return false;
+        }
+        if (stmt->getNodeType() == Event && !res.first) {
             std::cout << "event is false, cannot continue to next block\n";
-            if (statementsExecuted[blk->nexts[0]->statements.front()->get_boolname()]) {
+            if (statementsExecuted.find(blk->nexts[0]->statements.front()->get_boolname())->second) {
                 std::cout << "This event should have been true!\n";
             }
-            return;
+            return false;
         }
         else if (stmt->getNodeType() == If) {
-            if (res && statementsExecuted[blk->nexts[1]->statements.front()->get_boolname()]) {
+            if (res.first && statementsExecuted.find(blk->nexts[1]->statements.front()->get_boolname())->second) {
                 std::cout << "error occured. If statement should have been false\n";
-            } else if (!res && statementsExecuted[blk->nexts[0]->statements.front()->get_boolname()]) {
+            } else if (!res.first && statementsExecuted.find(blk->nexts[0]->statements.front()->get_boolname())->second) {
                 std::cout << "error occured. If statement should have been true\n";
             } else {
-                res ? blks->insert(blk->nexts[0]) : blks->insert(blk->nexts[1]);
+                res.first ? blksToInsert.push_back(blk->nexts[0]) : blksToInsert.push_back(blk->nexts[1]);
             }
         }
     }
     if (blk->type == Cobegin) {
-        for (const auto &nxt : blk->nexts) blks->insert(nxt);
+        for (const auto &nxt : blk->nexts) blksToInsert.push_back(nxt);
     } else if (blk->statements.back()->getNodeType() != If && !blk->nexts.empty()) {
-        blks->insert(blk->nexts[0]);
+        if (blk->nexts[0]->type == Coend) {
+            if (!threadsToFinish.find(blk->nexts[0])->second.empty()) {
+                threadsToFinish.find(blk->nexts[0])->second.erase(blk.get());
+            } else {
+                blksToInsert.push_back(blk->nexts[0]);
+            }
+        } else {
+            blksToInsert.push_back(blk->nexts[0]);
+        }
     }
+
+    for (const auto &nBlk : blksToInsert) {blks->insert(nBlk);}
     blks->erase(blk);
+    return true;
 }
 
 
@@ -359,6 +424,8 @@ bool interpreter::reachable(const std::pair<std::shared_ptr<basicblock>, std::st
     std::pair<std::shared_ptr<basicblock>, std::shared_ptr<basicblock>> conflictingDefs;
     bool conflict1 = false, conflict2 = false;
     bool onconflictnode = false;
+    bool checkvisitLater = false;
+    bool found = false;
     std::string valForRun1 = differences.find(blk.second)->second.run1;
     std::string valForRun2 = differences.find(blk.second)->second.run2;
 
@@ -392,14 +459,14 @@ bool interpreter::reachable(const std::pair<std::shared_ptr<basicblock>, std::st
                     currents.erase(current);
                 } else {
                     for (const auto &ed : path.second) {
-                        execute(ed.neighbours[0], &currents);
+                        if (!execute(ed.neighbours[0], &currents)) checkvisitLater = true;
                     }
                     //we're at possible race-condition location. Don't want to continue from this node
                     conflictNode = path.second.back().neighbours[1];
                     currents.erase(conflictNode);
                 }
             } else {
-                execute(current, &currents);
+                if (!execute(current, &currents)) checkvisitLater = true;
             }
         } else {
             if (conflict1 && conflictsForRun2.find(current) != conflictsForRun2.end()) {
@@ -412,18 +479,18 @@ bool interpreter::reachable(const std::pair<std::shared_ptr<basicblock>, std::st
                     }
                 }
 
-                std::cout << report_racecondition(origname, conflictNode->statements.back(), {conflictingDefs.first, current_val}, {conflictingDefs.second, current_values[origname].first});
+                std::cout << report_racecondition(origname, conflictNode->statements.back(), {conflictingDefs.first, current_val}, {conflictingDefs.second, current_values[origname].first}) << "\n";
                 return true;
             } else if (conflict2 && conflictsForRun1.find(current) != conflictsForRun1.end()) {
                 std::string current_val = current_values[origname].first;
                 conflictingDefs.first = current;
+                execute(current, &currents);
                 if (current_val == valForRun2) {
-                    execute(current, &currents);
                     if (current_values[origname].first != current_val || current_values[origname].first == valForRun1) {
                         std::cout << "found both conflicts\n";
                     }
                 }
-                std::cout << "found both conflicts\n";
+                std::cout << report_racecondition(origname, conflictNode->statements.back(), {conflictingDefs.first, current_values[origname].first}, {conflictingDefs.second, current_val}) << "\n";
                 return true;
             } else {
                 if (blk.first == current) {
@@ -431,10 +498,21 @@ bool interpreter::reachable(const std::pair<std::shared_ptr<basicblock>, std::st
                     //unlikely to ever happen
                     std::cout << "at node with race-condition but haven't yet met a node with a conflicting variable assignment\n";
                 }
-                execute(current, &currents);
+                if (!execute(current, &currents)) checkvisitLater = true;
             }
-        }
+        }/*
+        if (currents.empty() && !visitLater.empty()) {
+            for (const auto &v : visitLater) {
+                currents.insert(v);
+            }
+            checkvisitLater = false;
+        }*/
         current = *currents.begin();
+        /*if (checkvisitLater) {
+            currents.insert(*visitLater.begin());
+            visitLater.erase(visitLater.begin());
+            checkvisitLater = false;
+        }*/
     }
     return false;
 }
@@ -448,7 +526,7 @@ std::string interpreter::report_racecondition
     std::shared_ptr<statementNode> def1 = defVal1.first->defsite[*defVal1.first->defines[name].begin()];
     std::shared_ptr<statementNode> def2 = defVal2.first->defsite[*defVal2.first->defines[name].begin()];
     std::string raceconditionStr =
-    "Use of variable '" + name + "' in statement: '" + stmtUsage->strOnSourceForm() + "' can have two different values\n"
+    "Use of variable '" + name + "' in statement: '" + stmtUsage->strOnSourceForm() + "' line " + std::to_string(stmtUsage->get_linenum()) + " can have two different values\n"
     + defVal1.second + " defined in statement: '" + def1->strOnSourceForm() + "' on line " + std::to_string(def1->get_linenum()) + "\n"
     "and\n"
     + defVal2.second + " defined in statement: '" + def2->strOnSourceForm() + "' on line " + std::to_string(def2->get_linenum()) + "\n";

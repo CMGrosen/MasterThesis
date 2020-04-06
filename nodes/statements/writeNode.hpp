@@ -7,12 +7,14 @@
 
 class writeNode : virtual public statementNode {
 public:
-    writeNode(int16_t pin, std::shared_ptr<expressionNode> e) : _e{std::move(e)}, _pin{pin} {
+    writeNode(int16_t pin, std::shared_ptr<expressionNode> e, int linenum) : _e{std::move(e)}, _pin{pin} {
         type = (_e->getType() == intType) ? okType : errorType;
+        set_linenum(linenum);
         setNodeType(Write);
     }
-    writeNode(Type t, int16_t pin, std::shared_ptr<expressionNode> e) : _e{std::move(e)}, _pin{pin} {
+    writeNode(Type t, int16_t pin, std::shared_ptr<expressionNode> e, int linenum) : _e{std::move(e)}, _pin{pin} {
         setType(t);
+        set_linenum(linenum);
         setNodeType(Write);
     }
 
@@ -29,7 +31,7 @@ public:
 
     std::shared_ptr<statementNode> copy_statement() const override {
         std::shared_ptr<expressionNode> _expr = _e->copy_expression();
-        std::shared_ptr<statementNode> _this = std::make_shared<writeNode>(writeNode(type, _pin, _expr));
+        std::shared_ptr<statementNode> _this = std::make_shared<writeNode>(writeNode(type, _pin, _expr, get_linenum()));
         _this->setSSA(onSSA);
         _this->set_boolname(get_boolname());
         return _this;

@@ -782,10 +782,11 @@ std::pair<std::map<std::string, std::shared_ptr<VariableValue>>, std::map<std::s
     return {values, paths};
 }
 
-bool symEngine::updateModel(const std::string &name, Type t) {
-    t == intType
-      ? s.add(c.int_const((name + _run1).c_str()) == c.int_const((name + _run2).c_str()))
-      : s.add(c.bool_const((name + _run1).c_str()) == c.bool_const((name + _run2).c_str()))
-      ;
+bool symEngine::updateModel(const std::vector<std::pair<std::string, Type>>& conflicts) {
+    for (const auto &p : conflicts) {
+        p.second == intType
+        ? s.add(c.int_const((p.first + _run1).c_str()) == c.int_const((p.first + _run2).c_str()))
+        : s.add(c.bool_const((p.first + _run1).c_str()) == c.bool_const((p.first + _run2).c_str()));
+    }
     return s.check() == z3::sat;
 }
