@@ -84,8 +84,10 @@ bool symEngine::execute() {
 
     //std::cout << "\n" << t.to_string() << "\n\n" << std::endl;
 
-    z3::expr exp = conjunction(run1) && conjunction(run2);
-    std::cout << exp.to_string() << std::endl;
+    z3::expr inter = conjunction(run1);
+    std::cout << inter.to_string() << std::endl;
+    z3::expr exp = inter && conjunction(run2);
+    //std::cout << exp.to_string() << std::endl;
     s.add(exp);
 /*
     z3::goal g(c);
@@ -187,15 +189,12 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
         switch (stmt->getNodeType()) {
             case Assign: {
                 auto assnode = dynamic_cast<assignNode *>(stmt.get());
-                if (assnode->getName() == "a_1") {
-                    std::cout << "here";
-                }
                 auto name = assnode->getExpr()->getType() == intType
                             ? c.int_const((assnode->getName() + run).c_str())
                             : c.bool_const((assnode->getName() + run).c_str());
 
                 constraints.push_back(
-                        (name == evaluate_expression(&c, assnode->getExpr(), run)) &&
+                        (name == evaluate_expression(&c, assnode->getExpr(), run, &constraints)) &&
                         (encode_boolname(&c, stmt->get_boolname(), true, run)));
 
                 break;
@@ -242,7 +241,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                     changed_event = true;
                 }
                 z3::expr final = (z3::ite(
-                        evaluate_expression(&c, ifNode->getCondition(), run),
+                        evaluate_expression(&c, ifNode->getCondition(), run, &constraints),
                         truebranch, falsebranch)) && encode_boolname(&c, stmt->get_boolname(), true, run);
 
                 constraints.push_back(final);
@@ -261,7 +260,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                 return constraints;
             }
             case Event: {
-                z3::expr condition = evaluate_expression(&c, dynamic_cast<eventNode*>(stmt.get())->getCondition(), run);
+                z3::expr condition = evaluate_expression(&c, dynamic_cast<eventNode*>(stmt.get())->getCondition(), run, &constraints);
                 bool changed_event = false;
                 if (event_encountered) {
                     changed_event = true;
@@ -416,7 +415,7 @@ std::shared_ptr<basicblock> symEngine::find_common_child(const std::shared_ptr<b
     return nullptr;
 }
 
-z3::expr symEngine::evaluate_expression(z3::context *c, const expressionNode *expr, const std::string &run) {
+z3::expr symEngine::evaluate_expression(z3::context *c, const expressionNode *expr, const std::string &run, z3::expr_vector *constraints) {
     switch (expr->getNodeType()) {
         case Read: {
             //don't use run here. That way, reads will be identical across runs
@@ -442,15 +441,16 @@ z3::expr symEngine::evaluate_expression(z3::context *c, const expressionNode *ex
             auto binexpr = dynamic_cast<const binaryExpressionNode*>(expr);
             return evaluate_operator
                     ( c
-                    , evaluate_expression(c, binexpr->getLeft(), run)
-                    , evaluate_expression(c, binexpr->getRight(), run)
+                    , evaluate_expression(c, binexpr->getLeft(), run, constraints)
+                    , evaluate_expression(c, binexpr->getRight(), run, constraints)
                     , binexpr->getOperator()
+                    , constraints
                     );
         }
         case UnaryExpression: {
             auto unexpr = dynamic_cast<const unaryExpressionNode*>(expr);
-            z3::expr exp = evaluate_expression(c, unexpr->getExpr(), run);
-            return evaluate_operator(c, exp, exp, unexpr->getOperator());
+            z3::expr exp = evaluate_expression(c, unexpr->getExpr(), run, constraints);
+            return evaluate_operator(c, exp, exp, unexpr->getOperator(), constraints);
         }
         case Assign:
         case AssignArrField:
@@ -472,7 +472,7 @@ z3::expr symEngine::evaluate_expression(z3::context *c, const expressionNode *ex
     assert(false);
 }
 
-z3::expr symEngine::evaluate_operator(z3::context *c, const z3::expr& left, const z3::expr& right, op _operator) {
+z3::expr symEngine::evaluate_operator(z3::context *c, const z3::expr& left, const z3::expr& right, op _operator, z3::expr_vector *constraints) {
     switch (_operator) {
         case PLUS:
             return left + right;
@@ -480,10 +480,10 @@ z3::expr symEngine::evaluate_operator(z3::context *c, const z3::expr& left, cons
             return left - right;
         case MULT:
             return left * right;
-        case DIV:
-            return (left / right) && (right != c->int_val(0)); //don't want right-hand side to be 0, even if this is possible (for now)
-        case MOD:
-            return (left % right) && (right != c->int_val(0)); //don't want right-hand side to be 0, even if this is possible (for now)
+        case DIV: constraints->push_back(right != c->int_val(0));
+            return (left / right); //don't want right-hand side to be 0, even if this is possible (for now)
+        case MOD: constraints->push_back(right != c->int_val(0));
+            return (left % right); //don't want right-hand side to be 0, even if this is possible (for now)
         case NOT:
             return !left;
         case AND:
