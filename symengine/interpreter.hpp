@@ -8,25 +8,25 @@
 
 #include "symEngine.hpp"
 #include "Difference.hpp"
+#include "state.hpp"
 
 class interpreter {
     symEngine engine;
-    std::map<std::string, std::pair<std::string, Type>> current_values;
     std::map<std::string, std::set<std::shared_ptr<VariableValue>>> variableValues;
     std::map<std::string, std::shared_ptr<VariableValue>> valuesFromModel;
-    std::map<std::shared_ptr<basicblock>, std::set<basicblock*>> threadsToFinish;
-    std::set<std::shared_ptr<basicblock>> visitLater;
     std::map<std::string, bool> statementsExecuted;
     std::map<std::string, Difference> differences;
     void update();
     void refresh();
-    void refreshConcs();
+    std::map<std::string, std::pair<std::string, Type>> get_current_values();
+    std::map<std::shared_ptr<basicblock>, std::set<basicblock*>> get_threads_to_finish();
 
     static std::string compute_operator(const std::string&, const std::string&, op);
-    std::string exec_expr(expressionNode*);
-    std::pair<bool, bool> exec_stmt(const std::shared_ptr<statementNode>&);
-    bool execute(const std::shared_ptr<basicblock>& blk, std::set<std::shared_ptr<basicblock>> *blks);
+    std::string exec_expr(expressionNode*, const std::map<std::string, std::pair<std::string, Type>> *);
+    std::pair<bool, bool> exec_stmt(const std::shared_ptr<statementNode>&, std::map<std::string, std::pair<std::string, Type>> *);
+    bool execute(const std::shared_ptr<basicblock>& blk, state *s);
 
+    bool recursive_read(const std::shared_ptr<basicblock>&, state);
     bool reachable(const std::pair<std::shared_ptr<basicblock>, std::string>&, const std::string&);
     bool reach_potential_raceConditions(const std::vector<std::pair<std::shared_ptr<basicblock>, std::string>>&, std::vector<std::string> *);
     std::pair<bool, std::vector<edge>> edges_to_take(std::shared_ptr<basicblock>, std::shared_ptr<basicblock>, const std::string&);
