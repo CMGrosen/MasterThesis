@@ -18,6 +18,7 @@ struct state {
     static std::string valForRun1;
     static std::string valForRun2;
     std::set<std::shared_ptr<basicblock>> currents;
+    std::set<std::shared_ptr<basicblock>> visited;
 
     state();
     state(std::set<std::shared_ptr<basicblock>> cr1, std::set<std::shared_ptr<basicblock>> cr2,
@@ -26,8 +27,12 @@ struct state {
           std::map<std::string, std::pair<std::string, Type>> cv,
           std::string v1, std::string v2);
 
-    bool onconflict(const std::shared_ptr<basicblock>&);
+    bool updateConflict();
+    bool isConflicting(const std::shared_ptr<basicblock>&);
     static std::string origname;
+    void updateVisited(const std::shared_ptr<basicblock>&, const std::vector<std::shared_ptr<basicblock>>&);
+    bool updateVal(const std::shared_ptr<basicblock>&);
+    std::string report_racecondition();
 };
 
 

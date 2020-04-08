@@ -777,7 +777,7 @@ std::pair<std::map<std::string, std::shared_ptr<VariableValue>>, std::map<std::s
             std::string name = v.name().str().substr(0, v.name().str().size()-5);
             paths.insert({name, value == "true"});
         }
-        std::cout << v.name().str() << " = " << value << std::endl;
+        //std::cout << v.name().str() << " = " << value << std::endl;
     }
     return {values, paths};
 }
