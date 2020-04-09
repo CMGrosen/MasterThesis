@@ -9,16 +9,17 @@
 
 symEngine::symEngine(const std::shared_ptr<CSSA_CFG>& ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table) :
     boolname_counter{ccfg->boolname_counter}, c{}, s{z3::solver(c)},
-    event_encountered{false}, ccfg{ccfg->ccfg}, symboltable(std::move(table)) {}
+    event_encountered{false}, constraintset{}, ccfg{ccfg->ccfg}, symboltable(std::move(table)) {}
 
 symEngine::symEngine(const symEngine &a) :
     boolname_counter{a.boolname_counter}, c{}, s{z3::solver(c)},
-    event_encountered{false}, ccfg{a.ccfg}, symboltable{a.symboltable} {}
+    event_encountered{false}, constraintset{}, ccfg{a.ccfg}, symboltable{a.symboltable} {}
 
 symEngine &symEngine::operator=(const symEngine &a) {
     boolname_counter = a.boolname_counter;
     s = z3::solver(c);
     event_encountered = false;
+    constraintset = a.constraintset;
     ccfg = a.ccfg;
     symboltable = a.symboltable;
     return *this;
@@ -26,12 +27,13 @@ symEngine &symEngine::operator=(const symEngine &a) {
 
 symEngine::symEngine(symEngine &&a) noexcept :
     boolname_counter{a.boolname_counter}, c{}, s{z3::solver(c)},
-    event_encountered{false}, ccfg{std::move(a.ccfg)}, symboltable{std::move(a.symboltable)} {}
+    event_encountered{false}, constraintset{std::move(a.constraintset)}, ccfg{std::move(a.ccfg)}, symboltable{std::move(a.symboltable)} {}
 
 symEngine &symEngine::operator=(symEngine &&a) noexcept {
     boolname_counter = a.boolname_counter;
     s = z3::solver(c);
     event_encountered = false;
+    constraintset = std::move(a.constraintset);
     ccfg = std::move(a.ccfg);
     symboltable = std::move(a.symboltable);
     return *this;
@@ -44,7 +46,7 @@ void symEngine::add_reads() {
         z3::expr name = c.int_const(("-readVal_" + std::to_string(i)).c_str());
         z3::expr r = name >= INT16_MIN && name <= INT16_MAX;
         std::cout << r.to_string() << "\n";
-        s.add(r);
+        constraintset.push_back(r);
     }
 }
 
@@ -72,8 +74,39 @@ static z3::expr disjunction(z3::context *c, const z3::expr_vector& vec) {
     return final;
 }
 
+static z3::expr encodepi(z3::context *c, Type t, const std::string& boolname, const std::string& name, std::vector<z3::expr> *constraintset) {
+    z3::expr run1use = encode_boolname(c, boolname, true, _run1);
+    z3::expr run2use = encode_boolname(c, boolname, true, _run2);
+    constraintset->emplace_back(z3::ite
+      ( !run1use
+      , t == intType //If both are assigned, make this constraint
+            ? c->int_const((name + _run1).c_str()) == c->int_const((name + _run2).c_str())
+            : c->bool_const((name + _run1).c_str()) == c->bool_const((name + _run2).c_str())
+      , c->bool_val(true)
+      ));
+    return z3::ite
+      ( run1use
+      , t == intType //If both are assigned, make this constraint
+          ? c->int_const((name + _run1).c_str()) != c->int_const((name + _run2).c_str())
+          : c->bool_const((name + _run1).c_str()) != c->bool_const((name + _run2).c_str())
+      , c->bool_val(false)
+      /*t == intType //As tracking booleans are false, we just assign the same value
+        ? c->int_const((name + _run1).c_str()) == c->int_const((name + _run2).c_str())
+        : c->bool_const((name + _run1).c_str()) == c->bool_const((name + _run2).c_str())
+        /* z3::ite //If both are false, force Z3 to pick another option
+        ( !run1use && !run2use
+        , c->bool_val(false)
+        , t == intType //Usage in one run but not the other. Force them to have same value
+          ? c->int_const((name + _run1).c_str()) == c->int_const((name + _run2).c_str())
+          : c->bool_const((name + _run1).c_str()) == c->bool_const((name + _run2).c_str())
+        )*/
+      );
+}
+
+
 bool symEngine::execute() {
     add_reads();
+    std::cout << constraintset.size() << std::endl;
     //z3::expr encoded = encoded_pis(&c, ccfg->pis_and_depth, {});
 
     //std::cout << "\n\n\n\n\nencoded:\n" << encoded.to_string() << std::endl;
@@ -88,7 +121,8 @@ bool symEngine::execute() {
     std::cout << inter.to_string() << std::endl;
     z3::expr exp = inter && conjunction(run2);
     //std::cout << exp.to_string() << std::endl;
-    s.add(exp);
+    constraintset.push_back(exp);
+    std::cout << constraintset.size() << std::endl;
 /*
     z3::goal g(c);
     g.add(get_run(&c, ccfg->exitNode->parents[0].lock().get(), ccfg->exitNode, ccfg->exitNode));
@@ -98,6 +132,7 @@ bool symEngine::execute() {
 
     */
 
+
     z3::expr_vector vec(c);
     for (const auto &p : ccfg->pis_and_depth) {
         //Don't want to add these pi-functions if used in an event,
@@ -105,33 +140,29 @@ bool symEngine::execute() {
         if (p.first->statements.back()->getNodeType() != Event) {
             for (const auto &stmt : p.first->statements) {
                 if (auto pi = dynamic_cast<piNode*>(stmt.get())) {
-                    z3::expr expr = pi->getType() == intType
-                        ? c.int_const((pi->getName() + _run1).c_str()) != c.int_const((pi->getName() + _run2).c_str())
-                        : c.bool_const((pi->getName() + _run1).c_str()) != c.bool_const((pi->getName() + _run2).c_str())
-                    ;
-                    expr = expr
-                        && encode_boolname(&c, pi->get_boolname(), true, _run1)
-                        && encode_boolname(&c, pi->get_boolname(), true, _run2);
-                    vec.push_back(expr);
+                    vec.push_back(encodepi(&c, pi->getType(), pi->get_boolname(), pi->getName(), &constraintset));
                 }
             }
         }
     }
-    s.add(disjunction(&c, vec));
+    z3::expr dis = disjunction(&c, vec);
+    std::cout << "debug:\n" << dis.to_string() << std::endl;
+    std::cout << constraintset.size() << std::endl;
+    constraintset.push_back(dis);
 
-    /*
-    z3::expr_vector assumptions(c);
 
-    for(int i = 1; i < boolname_counter; ++i) {
+    std::cout << constraintset.size() << std::endl;
+
+    for (int i = 1; i < boolname_counter; ++i) {
         std::string name = "-b_" + std::to_string(i);
-        assumptions.push_back(c.bool_const((name + _run1).c_str()));
-        assumptions.push_back(c.bool_const((name + _run2).c_str()));
+        constraintset.emplace_back(c.bool_const((name + _run1).c_str()) == c.bool_const((name + _run2).c_str()));
     }
-    */
+    for (const auto &expr : constraintset) s.add(expr);
+
     if (s.check() == z3::sat) {
         auto model = s.get_model();
         std::cout << "sat\n";
-        std::cout << model << "\n" << std::endl;
+        //std::cout << model << "\n" << std::endl;
         return true;
     } else {
         std::cout << "unsat\nProbably no race-conditions" << std::endl;
@@ -377,7 +408,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                             expressions.push_back(z3::ite
                               ( c.bool_const((conflict.second + run).c_str())
                               , name == c.bool_const((conflict.first + run).c_str())
-                              , name == c.bool_val(false) && name == c.bool_val(true) //unsatisfiable. Won't ever pick this option
+                              , name == c.bool_val(true) && name == c.bool_val(false) //unsatisfiable. Won't ever pick this option
                               ));
                         }
                         break;
@@ -755,7 +786,7 @@ std::pair<std::map<std::string, std::shared_ptr<VariableValue>>, std::map<std::s
     std::map<std::string, std::shared_ptr<VariableValue>> values;
     std::map<std::string, bool> paths;
     z3::model m = s.get_model();
-
+    std::cout << m << std::endl;
     for (unsigned i = 0; i < m.size(); i++) {
         z3::func_decl v = m[i];
         // this problem contains only constants
@@ -779,14 +810,17 @@ std::pair<std::map<std::string, std::shared_ptr<VariableValue>>, std::map<std::s
         }
         //std::cout << v.name().str() << " = " << value << std::endl;
     }
+    //std::cout << m << std::endl;
     return {values, paths};
 }
 
 bool symEngine::updateModel(const std::vector<std::pair<std::string, Type>>& conflicts) {
     for (const auto &p : conflicts) {
         p.second == intType
-        ? s.add(c.int_const((p.first + _run1).c_str()) == c.int_const((p.first + _run2).c_str()))
-        : s.add(c.bool_const((p.first + _run1).c_str()) == c.bool_const((p.first + _run2).c_str()));
+        ? constraintset.emplace_back(c.int_const((p.first + _run1).c_str()) == c.int_const((p.first + _run2).c_str()))
+        : constraintset.emplace_back(c.bool_const((p.first + _run1).c_str()) == c.bool_const((p.first + _run2).c_str()));
     }
+    s.reset();
+    for (const auto &expr : constraintset) s.add(expr);
     return s.check() == z3::sat;
 }

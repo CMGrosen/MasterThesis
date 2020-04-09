@@ -105,6 +105,8 @@ void interpreter::update() {
                 //no need for else clause.
                 // Else-clause will either have reached the else-if branch of the first if-statement
                 // or will later through the iteration
+                auto inserted = variableValues.insert({val.second->value, {val.second}});
+                if (!inserted.second) inserted.first->second.insert(val.second);
             }
         }
     }
@@ -144,36 +146,14 @@ std::map<std::shared_ptr<basicblock>, std::set<basicblock*>> interpreter::get_th
 bool interpreter::reach_potential_raceConditions(const std::vector<std::pair<std::shared_ptr<basicblock>, std::string>>& blks, std::vector<std::string> *foundConditions) {
     bool foundrace = false;
     for (const auto &blk : blks) {
-        if (reachable(blk, blk.first->defmapping.find(blk.second)->second)) {
+        std::string origname = blk.first->defmapping.find(blk.second)->second;
+        std::string conflictvar = blk.first->defsite.find(blk.second)->second->getNodeType() == Pi ? blk.second : origname;
+        if (reachable(blk, origname, conflictvar)) {
             foundConditions->push_back(blk.second);
             foundrace = true;
         }
     }
     return foundrace;
-}
-
-std::pair<bool, std::vector<edge>> interpreter::edges_to_take(std::shared_ptr<basicblock> current, std::shared_ptr<basicblock> conflict, const std::string& origname) {
-    std::vector<edge> edges;
-    if (current->depth > conflict->depth) {
-        current.swap(conflict);
-    }
-    std::pair<bool, std::vector<edge>> res;
-    for (const auto& blk : conflict->parents) {
-        if (blk.lock() == current) return {true, {edge(blk.lock(), conflict)}};
-        //if block wasn't visited during an execution, then we don't want to consider it
-        if (valuesFromModel.find(blk.lock()->statements.front()->get_boolname() + _run1)->second->value == "false") {
-            continue;
-        }
-        auto inter = edges_to_take(current, blk.lock(), origname);
-        if (inter.first) {
-            inter.second.emplace_back(blk.lock(), conflict);
-            if (edges.empty() || inter.second.size() < edges.size()) {
-                edges = std::move(inter.second);
-            }
-        }
-    }
-    if (edges.empty()) return {false, {}};
-    else return {true, edges};
 }
 
 static std::string btos(bool val) {
@@ -424,7 +404,9 @@ bool interpreter::recursive_read(const std::shared_ptr<basicblock>& current, sta
             if(!s.updateConflict()) {
                 std::cout << "value of conflict node is not from either run\n";
                 return false;
-            }
+            }/* else {
+                s.updateVisited(current, {});
+            }*/
         }
         // We previously encountered the conflicting node.
         // Check if current is a possible other value for the conflict
@@ -459,7 +441,7 @@ bool interpreter::recursive_read(const std::shared_ptr<basicblock>& current, sta
     return false;
 }
 
-bool interpreter::reachable(const std::pair<std::shared_ptr<basicblock>, std::string> &blk, const std::string& origname) {
+bool interpreter::reachable(const std::pair<std::shared_ptr<basicblock>, std::string> &blk, const std::string& origname, const std::string& conflictvar) {
     std::set<std::shared_ptr<basicblock>> conflictsForRun1;
     std::set<std::shared_ptr<basicblock>> conflictsForRun2;
     std::shared_ptr<basicblock> conflictNode = blk.first;
@@ -486,6 +468,7 @@ bool interpreter::reachable(const std::pair<std::shared_ptr<basicblock>, std::st
             , valForRun2
             );
     s.origname = origname;
+    s.conflictvar = conflictvar;
     s.currents = {engine.ccfg->startNode};
     return recursive_read(engine.ccfg->startNode, std::move(s));
 }

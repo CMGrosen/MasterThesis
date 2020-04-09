@@ -29,6 +29,7 @@ struct state {
 
     bool updateConflict();
     bool isConflicting(const std::shared_ptr<basicblock>&);
+    static std::string conflictvar;
     static std::string origname;
     void updateVisited(const std::shared_ptr<basicblock>&, const std::vector<std::shared_ptr<basicblock>>&);
     bool updateVal(const std::shared_ptr<basicblock>&);

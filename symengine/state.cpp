@@ -28,10 +28,11 @@ std::set<std::shared_ptr<basicblock>> state::conflictsForRun2 = {};
 std::shared_ptr<basicblock> state::conflictNode = {};
 std::string state::valForRun1 = {};
 std::string state::valForRun2 = {};
+std::string state::conflictvar = {};
 std::string state::origname = {};
 
 bool state::updateConflict() {
-    auto res = current_values.find(origname);
+    auto res = current_values.find(conflictvar);
     if (res != current_values.end()) {
         if (res->second.first == valForRun1) {
             for (const auto &blk : conflictsForRun1) {
