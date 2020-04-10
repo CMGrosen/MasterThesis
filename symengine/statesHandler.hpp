@@ -24,16 +24,7 @@ struct statesHandler {
 
     void static update_conflict(bool first, const std::shared_ptr<statementNode>&);
 
-    std::string static report_racecondition(const std::shared_ptr<statementNode>& def1, const std::shared_ptr<statementNode>& def2) {
-        std::shared_ptr<statementNode> stmtUsage = conflictNode->statements.back();
-        std::string raceconditionStr =
-                "Use of variable '" + origname + "' in statement: '" + stmtUsage->strOnSourceForm() + "' line " + std::to_string(stmtUsage->get_linenum()) + " can have two different values\n"
-                + valForRun1 + " defined in statement: '" + def1->strOnSourceForm() + "' on line " + std::to_string(def1->get_linenum()) + "\n"
-                                                                                                                                           "and\n"
-                + valForRun2 + " defined in statement: '" + def2->strOnSourceForm() + "' on line " + std::to_string(def2->get_linenum()) + "\n";
-
-        return raceconditionStr;
-    }
+    std::string static report_racecondition(const std::shared_ptr<statementNode>& def1, const std::shared_ptr<statementNode>& def2);
 };
 
 

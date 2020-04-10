@@ -17,9 +17,10 @@ public:
         set_linenum(-1);
         setType(okType);
     }
-    endConcNode(int number_of_threads, std::shared_ptr<basicblock> concurrent_node)
+    endConcNode(int number_of_threads, std::shared_ptr<basicblock> concurrent_node, int linenum)
         : threadCount{number_of_threads}, concNode{std::move(concurrent_node)} {
         setNodeType(EndConcurrent);
+        set_linenum(linenum);
         setType(okType);
     }
 
@@ -31,10 +32,10 @@ public:
         return "end conc-node of " + std::to_string(threadCount) + " threads";
     }
     std::string strOnSourceForm() const override {
-        return to_string();
+        return "fork on line " + std::to_string(get_linenum());
     }
     std::shared_ptr<statementNode> copy_statement() const override {
-        std::shared_ptr<statementNode> _this = std::make_shared<endConcNode>(endConcNode(threadCount, concNode));
+        std::shared_ptr<statementNode> _this = std::make_shared<endConcNode>(endConcNode(threadCount, concNode, get_linenum()));
         _this->setSSA(onSSA);
         _this->set_boolname(get_boolname());
         return _this;

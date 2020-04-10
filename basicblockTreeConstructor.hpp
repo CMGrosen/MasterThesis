@@ -446,9 +446,8 @@ public:
                 //inters.reserve(conNode->threads.size());
 
                 auto endConc = std::make_shared<basicblock>(
-                        basicblock(std::make_shared<endConcNode>(endConcNode(conNode->threads.size(), block)), nxt));
+                        basicblock(std::make_shared<endConcNode>(endConcNode(conNode->threads.size(), block, conNode->get_linenum())), nxt));
                 endConc->type = Coend;
-
                 //for (auto i = 0; i < inters.capacity(); ++i) {
                 //    std::shared_ptr<statementNode> stmt = std::make_shared<skipNode>(skipNode());
                 //    inters.push_back(std::make_shared<basicblock>(basicblock(stmt, endConc)));
