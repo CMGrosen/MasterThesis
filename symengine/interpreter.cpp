@@ -82,9 +82,10 @@ void interpreter::update() {
             ));
 
     for (const auto &val : valuesFromModel) {
+        auto inserted = variableValues.insert({val.second->value, {val.second}});
+        if (!inserted.second) inserted.first->second.insert(val.second);
         if (val.first[0] == '-' && val.first[1] == 'r') { //this is a -readVal
-            auto res = variableValues.insert({val.second->value, {val.second}});
-            if (!res.second) res.first->second.insert(val.second);
+
         } else {
             size_t len = val.first.size() - 5;
             std::string var = val.first.substr(0, len);
@@ -96,8 +97,6 @@ void interpreter::update() {
                 } else if (val.second->value != res->second->value) {
                     differences.insert({var, Difference(val.second, res->second)});
                 }
-                auto inserted = variableValues.insert({val.second->value, {val.second}});
-                if (!inserted.second) inserted.first->second.insert(val.second);
             } else {
                 auto res = valuesFromModel.find(var + _run1);
                 if (res == valuesFromModel.end())
@@ -105,8 +104,6 @@ void interpreter::update() {
                 //no need for else clause.
                 // Else-clause will either have reached the else-if branch of the first if-statement
                 // or will later through the iteration
-                auto inserted = variableValues.insert({val.second->value, {val.second}});
-                if (!inserted.second) inserted.first->second.insert(val.second);
             }
         }
     }
@@ -268,7 +265,7 @@ std::string interpreter::exec_expr(expressionNode* expr, const std::map<std::str
     return val;
 }
 
-std::pair<bool, bool> interpreter::exec_stmt(const std::shared_ptr<statementNode> &stmt, std::map<std::string, std::pair<std::string, Type>> *current_values) {
+std::pair<bool, bool> interpreter::exec_stmt(const std::shared_ptr<statementNode> &stmt, std::map<std::string, std::pair<std::string, Type>> *current_values, bool conflictIsCoend) {
     switch (stmt->getNodeType()) {
         case Assign: {
             auto assNode = dynamic_cast<assignNode *>(stmt.get());
@@ -315,11 +312,16 @@ std::pair<bool, bool> interpreter::exec_stmt(const std::shared_ptr<statementNode
             auto res = current_values->find(pi->getName());
             if (res != current_values->end()) return {true, true};
 
-            if (valuesFromModel.find(pi->getName() + _run1)->second->value == val || valuesFromModel.find(pi->getName() + _run2)->second->value == val) {
+            if (conflictIsCoend) {
                 current_values->insert({pi->getName(), current_values->find(pi->getVar())->second});
             } else {
-                std::cout << "unexpected value for pi\n";
-                return {true, false};
+                if (valuesFromModel.find(pi->getName() + _run1)->second->value == val ||
+                    valuesFromModel.find(pi->getName() + _run2)->second->value == val) {
+                    current_values->insert({pi->getName(), current_values->find(pi->getVar())->second});
+                } else {
+                    std::cout << "unexpected value for pi, adding anyway\n";
+                    return {true, false};
+                }
             }
             break;
         } case Assert: {
@@ -351,7 +353,7 @@ bool interpreter::execute(const std::shared_ptr<basicblock>& blk, state *s) {
     std::vector<std::shared_ptr<basicblock>> blksToInsert;
     bool piSuccessfullyExecuted = false;
     for (const auto &stmt : blk->statements) {
-        std::pair<bool, bool> res = exec_stmt(stmt, &s->current_values);
+        std::pair<bool, bool> res = exec_stmt(stmt, &s->current_values, s->conflictIsCoend);
         if (stmt->getNodeType() == Pi && res.second) {
             piSuccessfullyExecuted = true;
         }
@@ -395,7 +397,7 @@ bool interpreter::execute(const std::shared_ptr<basicblock>& blk, state *s) {
 }
 
 bool interpreter::recursive_read(const std::shared_ptr<basicblock>& current, state s) {
-    if (current == s.conflictNode) { //if we're on the block with the conflicting values
+    if (current == s.conflictNode && !s.conflicts.first && !s.conflicts.second) { //if we're on the block with the conflicting values
         if(!execute(current, &s)) { //This couldn't be executed. Values aren't the expected, so another attempted execution should run
             std::cout << "something went wrong\n";
             return false;
@@ -410,7 +412,7 @@ bool interpreter::recursive_read(const std::shared_ptr<basicblock>& current, sta
         }
         // We previously encountered the conflicting node.
         // Check if current is a possible other value for the conflict
-    } else if (s.onconflictnode && s.isConflicting(current)) {
+    } else if ((!s.conflictIsCoend && s.onconflictnode && s.isConflicting(current)) || (s.conflictIsCoend && current == s.conflictNode)) {
         if (!execute(current, &s)) { //This couldn't be executed. Values aren't the expected, so another attempted execution should run
             std::cout << "something went wrong\n";
             return false;
@@ -466,6 +468,7 @@ bool interpreter::reachable(const std::pair<std::shared_ptr<basicblock>, std::st
             , get_current_values()
             , valForRun1
             , valForRun2
+            , engine.ccfg.get()
             );
     s.origname = origname;
     s.conflictvar = conflictvar;

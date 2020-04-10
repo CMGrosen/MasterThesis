@@ -67,7 +67,7 @@ static z3::expr conjunction(z3::context *c, const std::vector<std::string> &vec,
     return final;
 }
 
-static z3::expr disjunction(z3::context *c, const z3::expr_vector& vec) {
+static z3::expr disjunction(z3::context *c, const std::vector<z3::expr>& vec) {
     if (vec.empty()) return c->bool_val(true);
     z3::expr final = *vec.begin();
     for (auto it = ++vec.begin(); it != vec.end(); ++it) final = final || *it;
@@ -133,7 +133,7 @@ bool symEngine::execute() {
     */
 
 
-    z3::expr_vector vec(c);
+    std::vector<z3::expr> vec;
     for (const auto &p : ccfg->pis_and_depth) {
         //Don't want to add these pi-functions if used in an event,
         // as race-conditions cannot occur here
@@ -389,7 +389,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
             case Pi: {
                 auto pi = dynamic_cast<piNode *>(stmt.get());
                 auto vars = pi->get_variables();
-                z3::expr_vector expressions(c);
+                std::vector<z3::expr> expressions;
                 switch (pi->getType()) {
                     case intType: {
                         z3::expr name = c.int_const((pi->getName() + run).c_str());
@@ -786,7 +786,7 @@ std::pair<std::map<std::string, std::shared_ptr<VariableValue>>, std::map<std::s
     std::map<std::string, std::shared_ptr<VariableValue>> values;
     std::map<std::string, bool> paths;
     z3::model m = s.get_model();
-    std::cout << m << std::endl;
+    //std::cout << m << std::endl;
     for (unsigned i = 0; i < m.size(); i++) {
         z3::func_decl v = m[i];
         // this problem contains only constants
