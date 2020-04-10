@@ -112,9 +112,9 @@ bool state::updateVal(const std::shared_ptr<basicblock> &blk) {
     } else { //This is a coend block, so blk == conflictNode. Another visit here is saved on statesHandler
         updateConflict();
         if (conflict1 && valForRun2 != val) {
-            update_conflict(true, conflictingDefs.first->defsite[*conflictingDefs.first->defines[origname].begin()]);
+            return update_conflict(true, conflictingDefs.first->defsite[*conflictingDefs.first->defines[origname].begin()]);
         } else if (conflict2 && valForRun1 != val) {
-            update_conflict(false, conflictingDefs.second->defsite[*conflictingDefs.second->defines[origname].begin()]);
+            return update_conflict(false, conflictingDefs.second->defsite[*conflictingDefs.second->defines[origname].begin()]);
         } else {
             return false;
         }

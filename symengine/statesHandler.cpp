@@ -15,9 +15,15 @@ bool statesHandler::conflictIsCoend = false;
 CCFG* statesHandler::ccfg = nullptr;
 std::pair<std::shared_ptr<statementNode>, std::shared_ptr<statementNode>> statesHandler::conflicts = {nullptr, nullptr};
 
-void statesHandler::update_conflict(bool first, const std::shared_ptr<statementNode>& stmt) {
-    if (first && !conflicts.first) conflicts.first = stmt;
-    else if (!first && !conflicts.second) conflicts.second = stmt;
+bool statesHandler::update_conflict(bool first, const std::shared_ptr<statementNode>& stmt) {
+    if (first && !conflicts.first) {
+        conflicts.first = stmt;
+        return true;
+    } else if (!first && !conflicts.second) {
+        conflicts.second = stmt;
+        return true;
+    }
+    return false;
 }
 
 std::string statesHandler::report_racecondition(const std::shared_ptr<statementNode>& def1, const std::shared_ptr<statementNode>& def2) {
