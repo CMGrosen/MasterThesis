@@ -9,15 +9,16 @@
 class fiNode : virtual public statementNode {
     std::set<std::shared_ptr<basicblock>> parents;
 
-    fiNode(std::set<std::shared_ptr<basicblock>> blks) : parents{std::move(blks)} {
+    fiNode(std::set<std::shared_ptr<basicblock>> blks, std::shared_ptr<basicblock> blk) : parents{std::move(blks)}, first_parent{std::move(blk)} {
         nodetype = EndFi;
         type = okType;
         set_linenum(-1);
     }
 
 public:
+    std::shared_ptr<basicblock> first_parent;
     fiNode(const std::shared_ptr<basicblock>& parent) {
-        if (parent) parents = {parent};
+        if (parent) { parents = {parent}; first_parent = parent; }
         nodetype = EndFi;
         type = okType;
     }
@@ -31,7 +32,7 @@ public:
         return to_string();
     }
     std::shared_ptr<statementNode> copy_statement() const override {
-        std::shared_ptr<statementNode> stmt = std::make_shared<fiNode>(fiNode(parents));
+        std::shared_ptr<statementNode> stmt = std::make_shared<fiNode>(fiNode(parents, first_parent));
         stmt->set_boolname(get_boolname());
         return stmt;
     }

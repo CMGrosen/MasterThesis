@@ -74,6 +74,28 @@ static z3::expr disjunction(z3::context *c, const std::vector<z3::expr>& vec) {
     return final;
 }
 
+void encode_boolnames_from_block(z3::context *c, const std::shared_ptr<basicblock>& blk, const std::shared_ptr<basicblock>& end, const bool val, const std::string &run, std::set<std::shared_ptr<basicblock>> *set, z3::expr_vector *res) {
+    if (set->insert(blk).second) {
+        for (const auto &stmt : blk->statements) {
+            res->push_back(encode_boolname(c, stmt->get_boolname(), val, run));
+        }
+        if (blk != end) {
+            for (const auto &nxt : blk->nexts) {
+                encode_boolnames_from_block(c, nxt, end, val, run, set, res);
+            }
+        }
+    }
+}
+
+z3::expr encode_boolnames_from_block(z3::context *c, const std::shared_ptr<basicblock>& blk, const std::shared_ptr<basicblock>& end, const bool val, const std::string &run) {
+    std::set<std::shared_ptr<basicblock>> set;
+    z3::expr_vector vec(*c);
+    for(const auto &nxt : blk->nexts) {
+        encode_boolnames_from_block(c, nxt, end, val, run, &set, &vec);
+    }
+    return conjunction(vec);
+}
+
 static z3::expr encodepi(z3::context *c, Type t, const std::string& boolname, const std::string& name, std::vector<z3::expr> *constraintset) {
     z3::expr run1use = encode_boolname(c, boolname, true, _run1);
     z3::expr run2use = encode_boolname(c, boolname, true, _run2);
@@ -103,6 +125,23 @@ static z3::expr encodepi(z3::context *c, Type t, const std::string& boolname, co
       );
 }
 
+void find_events_between_blocks(const std::shared_ptr<basicblock> &first, const std::shared_ptr<basicblock> &last, std::set<std::shared_ptr<basicblock>> *encountered, std::vector<std::shared_ptr<statementNode>> *res) {
+    if (first != last) {
+        if (encountered->insert(first).second) {
+            if (first->statements.back()->getNodeType() == Event) {
+                res->push_back(first->statements.back());
+            }
+            for (const auto &nxt : first->nexts) find_events_between_blocks(nxt, last, encountered, res);
+        }
+    }
+}
+
+std::vector<std::shared_ptr<statementNode>> find_events_between_blocks(const std::shared_ptr<basicblock> &first, const std::shared_ptr<basicblock> &last) {
+    std::vector<std::shared_ptr<statementNode>> vec;
+    std::set<std::shared_ptr<basicblock>> set;
+    for (const auto &nxt : first->nexts) find_events_between_blocks(nxt, last, &set, &vec);
+    return vec;
+}
 
 bool symEngine::execute() {
     add_reads();
@@ -235,103 +274,80 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                 z3::expr_vector vec(c);
                 //std::stack<z3::expr> expressions;
                 int i = 0;
-                bool changed_event = false;
                 for (const auto &nxt : node->nexts) {
-                    if (event_encountered) {
-                        event_encountered = false;
-                        changed_event = true;
-                    }
                     vec.push_back(conjunction(get_run(node, nxt, endConc->parents[i++].lock(), run)));
                 }
                 constraints.push_back(conjunction(vec) && encode_boolname(&c, stmt->get_boolname(), true, run));
 
-                if (changed_event) {
-                    event_encountered = true;
-                    return constraints;
+                //if we encounter an event, we need to encode the remaining part of the program
+                // if exitNode == end, then after the encoding of endConc, we're back to being sequential
+                if (event_encountered) {
+                    event_encountered = false;
+                    std::cout << "implement handling of all event nodes if encountered some in a fork-statement\n";
+                    z3::expr condition = encode_event_conditions_between_blocks(&c, node, endConc, run);
+                    constraints.push_back(z3::ite( condition
+                                                 , conjunction(get_run(endConc->parents[0].lock(), endConc, end, run))
+                                                 , c.bool_val(false)
+                                                 ));
+                    node = end;
+                } else {
+                    node = endConc->parents[0].lock();
                 }
-                node = endConc->parents[0].lock();
                 break;
             }
             case If: {
                 std::shared_ptr<basicblock> firstCommonChild = find_common_child(node);
-                bool changed_event = false;
                 auto *ifNode = dynamic_cast<ifElseNode*>(stmt.get());
-                if (event_encountered) {
-                    event_encountered = false;
-                    changed_event = true;
-                }
                 z3::expr truebranch = conjunction(get_run(node, node->nexts[0], firstCommonChild, run))
                         && conjunction(&c, ifNode->boolnamesForFalseBranch, false, run);
-                if (event_encountered) {
-                    event_encountered = false;
-                    changed_event = true;
-                }
                 z3::expr falsebranch = conjunction(get_run(node, node->nexts[1], firstCommonChild, run))
                         && conjunction(&c, ifNode->boolnamesForTrueBranch, false, run);
-                if (event_encountered) {
-                    changed_event = true;
-                }
+
+
                 z3::expr final = (z3::ite(
                         evaluate_expression(&c, ifNode->getCondition(), run, &constraints),
                         truebranch, falsebranch)) && encode_boolname(&c, stmt->get_boolname(), true, run);
 
                 constraints.push_back(final);
-                if (changed_event) return constraints;
 
-                while (firstCommonChild && firstCommonChild->type == Condition) {
-                    if (firstCommonChild->statements.back()->getNodeType() == If) {
-                        firstCommonChild = find_common_child(firstCommonChild);
-                    } else { //Event
-                        return constraints;
-                    }
+                //if we've encountered an event, then we encode the program until end with all the events conditions
+                if (event_encountered && dynamic_cast<fiNode*>(firstCommonChild->statements.back().get())->first_parent == node) {
+                    event_encountered = false;
+                    std::cout << "implement handling of all event nodes if encountered some in an if-statement outside of fork\n";
+                    z3::expr condition = encode_event_conditions_between_blocks(&c, node, firstCommonChild, run);
+                    constraints.push_back(z3::ite( condition
+                                                 , conjunction(get_run(firstCommonChild, firstCommonChild->nexts[0], end, run))
+                                                 , c.bool_val(false)
+                                                 ));
+                    node = end;
+                } else {
+                    node = firstCommonChild;
                 }
-                if (firstCommonChild && !firstCommonChild->nexts.empty() && firstCommonChild != end) {
-                    constraints.push_back(conjunction(get_run(firstCommonChild, firstCommonChild->nexts[0], end, run)));
-                }
-                return constraints;
+                break;
             }
             case Event: {
-                z3::expr condition = evaluate_expression(&c, dynamic_cast<eventNode*>(stmt.get())->getCondition(), run, &constraints);
-                bool changed_event = false;
-                if (event_encountered) {
-                    changed_event = true;
-                    event_encountered = false;
-                }
+                auto event = dynamic_cast<eventNode*>(stmt.get());
+                z3::expr condition = evaluate_expression(&c, event->getCondition(), run, &constraints);
                 z3::expr truebranch = conjunction(get_run( node, node->nexts[0], end, run));
 
-                if (changed_event) event_encountered = true;
-                if (end != ccfg->exitNode) {
-                    auto res = ccfg->concurrent_events.find(node.get());
-                    if (res != ccfg->concurrent_events.end()) {
-                        if (!event_encountered) {
-                            z3::expr_vector finalCond(c);
-                            for (const auto &event : res->second) {
-                                finalCond.push_back(c.bool_const((event->statements.back()->get_boolname() + run).c_str()));
-                            }
-                            constraints.push_back(z3::ite(condition, truebranch, c.bool_val(false)) && encode_boolname(&c, stmt->get_boolname(), true, run));
-
-                            z3::expr finalConstraint =
-                                z3::ite(conjunction(finalCond)
-                                       , conjunction(constraints) && conjunction(get_run(end, end->nexts[0], ccfg->exitNode, run))
-                                       , c.bool_val(true)
+                constraints.push_back(z3::ite( condition
+                                             , truebranch
+                                             , encode_boolnames_from_block(&c, node, ccfg->exitNode, false, run)
+                                             )
+                                       && encode_boolname(&c, stmt->get_boolname(), true, run)
                                        );
-                            event_encountered = true;
-                            z3::expr_vector v(c);
-                            v.push_back(finalConstraint);
-                            return v;
-                        } else {
-                            z3::expr_vector v(c);
-                            v.push_back(z3::ite(condition, truebranch, c.bool_val(false)) && encode_boolname(&c, stmt->get_boolname(), true, run));
-                            return v;
-                        }
-                    }
-                    for (const auto &nxt : end->nexts) {
-                        truebranch = truebranch && get_run(end, nxt, ccfg->exitNode, run);
-                    }
-                }
+                /* ite:
+                 *   condition: conjunction:
+                       ite:
+                         condition:      event-tracking-var
+                         truebranch:     event's condition
+                         falsebranch:    true
+                 *   truebranch:  rest of the program following the Coend
+                 *   falsebranch: false
+                 */
                 event_encountered = true;
-                constraints.push_back(z3::ite(condition, truebranch, c.bool_val(false)) && encode_boolname(&c, stmt->get_boolname(), true, run));
-                return constraints;
+                node = end;
+                break;
             }
             case EndConcurrent:
             case AssignArrField:
@@ -427,7 +443,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
             }
         }
     }
-    if (node == end || node->nexts.empty() || event_encountered) {
+    if (node == end || node->nexts.empty()) {
         return constraints;
     } else {
         constraints.push_back(conjunction(get_run(node, node->nexts[0], end, run)));
@@ -820,7 +836,20 @@ bool symEngine::updateModel(const std::vector<std::pair<std::string, Type>>& con
         ? constraintset.emplace_back(c.int_const((p.first + _run1).c_str()) == c.int_const((p.first + _run2).c_str()))
         : constraintset.emplace_back(c.bool_const((p.first + _run1).c_str()) == c.bool_const((p.first + _run2).c_str()));
     }
+
     s.reset();
     for (const auto &expr : constraintset) s.add(expr);
     return s.check() == z3::sat;
+}
+
+z3::expr symEngine::encode_event_conditions_between_blocks(z3::context *c, const std::shared_ptr<basicblock> &first, const std::shared_ptr<basicblock> &last, const std::string &run) {
+    std::vector<std::shared_ptr<statementNode>> events = find_events_between_blocks(first, last);
+    z3::expr_vector vec(*c);
+    for (const auto &event : events) {
+        vec.push_back(z3::ite( encode_boolname(c, event->get_boolname(), true, run)
+                             , evaluate_expression(c, dynamic_cast<eventNode*>(event.get())->getCondition(), run, &vec)
+                             , c->bool_val(true)
+                             ));
+    }
+    return conjunction(vec);
 }

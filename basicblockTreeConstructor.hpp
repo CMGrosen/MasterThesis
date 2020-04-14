@@ -182,6 +182,7 @@ private:
                 std::set<std::shared_ptr<basicblock>> parents;
                 for (const auto &p : *finode->get_parents()) parents.insert(oldMapsTo[p.get()]);
                 finode->set_parents(std::move(parents));
+                finode->first_parent = oldMapsTo[finode->first_parent.get()];
                 fiNodes.push_back(oldMapsTo[n.get()]);
             }
         }
@@ -519,7 +520,9 @@ public:
                 auto nxts = std::vector<std::shared_ptr<basicblock>>{trueBranch, falseBranch};
                 block = std::make_shared<basicblock>(basicblock(std::vector<std::shared_ptr<statementNode>>{startTree}, nxts));
                 block->type = Condition;
-                dynamic_cast<fiNode*>(joinnode->statements.back().get())->add_parent(block);
+                auto fi = dynamic_cast<fiNode*>(joinnode->statements.back().get());
+                fi->add_parent(block);
+                if (!fi->first_parent) fi->first_parent = block;
 
                 break;
             }
