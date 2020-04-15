@@ -452,10 +452,14 @@ bool interpreter::reachable(const std::pair<std::shared_ptr<basicblock>, std::st
     std::string valForRun2 = differences.find(blk.second)->second.run2;
 
     for (const auto &value : variableValues.find(valForRun1)->second) {
-        conflictsForRun1.insert(engine.ccfg->defs.find(value->name)->second);
+        if (origname == value->origName) {
+            conflictsForRun1.insert(engine.ccfg->defs.find(value->name)->second);
+        }
     }
     for (const auto &value : variableValues.find(valForRun2)->second) {
-        conflictsForRun2.insert(engine.ccfg->defs.find(value->name)->second);
+        if (origname == value->origName) {
+            conflictsForRun2.insert(engine.ccfg->defs.find(value->name)->second);
+        }
     }
 
     std::set<std::shared_ptr<basicblock>> currents = {engine.ccfg->startNode};
