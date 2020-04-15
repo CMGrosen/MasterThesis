@@ -6,7 +6,7 @@
 #include "interpreter.hpp"
 
 interpreter::interpreter(symEngine e) : engine{std::move(e)} {
-
+    data.ccfg = engine.ccfg.get();
 }
 
 bool interpreter::run() {

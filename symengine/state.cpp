@@ -3,6 +3,7 @@
 //
 
 #include "state.hpp"
+#include "symEngine.hpp"
 
 state::state() {
     conflict1 = conflict2 = onconflictnode = found = false;
@@ -26,24 +27,63 @@ state::state(std::set<std::shared_ptr<basicblock>> cr1, std::set<std::shared_ptr
           interdata = _interdata;
         }
 
-bool state::updateConflict(const std::shared_ptr<basicblock> &b) {
-    auto res = current_values.find(conflictvar);
-    /*std::set<std::shared_ptr<statementNode>> conflicts;
-    auto defsite = b->defsite.find(conflictvar);
-    if (defsite != b->defsite.end()) {
-        if (defsite->second->getNodeType() == Pi) {
-            auto pipossibilities = *dynamic_cast<piNode*>(defsite->second.get())->get_variables();
-            for (const auto &v : pipossibilities) {
-                if (statementsE)
+void state::findassignedconflicts(const std::string &val, const std::pair<std::shared_ptr<basicblock>, std::shared_ptr<statementNode>> &def, std::set<std::pair<std::shared_ptr<basicblock>, std::shared_ptr<statementNode>>> *conflicts) {
+    std::vector<std::pair<std::string, std::string>> *possibilities;
+    if (def.second->getNodeType() == Pi) {
+        possibilities = dynamic_cast<piNode*>(def.second.get())->get_variables();
+
+    } else if (def.second->getNodeType() == Phi) {
+        possibilities = dynamic_cast<phiNode*>(def.second.get())->get_variables();
+
+    } else {
+        conflicts->insert(def);
+        return;
+    }
+    for (const auto &v : *possibilities) {
+        if (interdata->statementsExecuted.find(v.second)->second) { //this statement was executed
+            if (interdata->valuesFromModel.find(v.first + _run1)->second->value == val
+                || interdata->valuesFromModel.find(v.first + _run2)->second->value == val)
+            {
+                if (visited.find(interdata->ccfg->defs[v.first]) != visited.end()) { //This block has been visited
+                    findassignedconflicts(val, {interdata->ccfg->defs[v.first], interdata->ccfg->boolnameStatements[v.second]}, conflicts);
+                }
             }
-        } else if (defsite->second->getNodeType() == Phi) {
-
-        } else {
-
         }
     }
-    if (dynamic_cast<piNode*>(b->defsite[con])
-    */if (res != current_values.end()) {
+
+}
+
+bool state::updateConflict(const std::shared_ptr<basicblock> &b) {
+    auto res = current_values.find(conflictvar);
+
+
+    //if (dynamic_cast<piNode*>(b->defsite[con])
+
+
+    if (res != current_values.end()) {
+        std::set<std::pair<std::shared_ptr<basicblock>, std::shared_ptr<statementNode>>> conflicts;
+        auto defsite = b->defsite.find(conflictvar);
+        if (defsite != b->defsite.end()) {
+            findassignedconflicts(res->second.first, {b, defsite->second}, &conflicts);
+        }
+
+        if (res->second.first == valForRun1) {
+            if (conflictIsCoend) {
+                update_conflict(true, conflicts.begin()->second);
+            }
+            conflictingDefs.first = conflicts.begin()->first;
+            onconflictnode = conflict1 = true;
+            return true;
+        } else if (res->second.first == valForRun2) {
+            if (conflictIsCoend) {
+                update_conflict(false, conflicts.begin()->second);
+            }
+            conflictingDefs.second = conflicts.begin()->first;
+            onconflictnode = conflict2 = true;
+            return true;
+        }
+
+        /*
         if (res->second.first == valForRun1) {
             for (const auto &blk : conflictsForRun1) {
                 if (visited.find(blk) != visited.end() && blk->defsite[*blk->defines[origname].rbegin()]->getNodeType() != Pi) {
@@ -66,7 +106,7 @@ bool state::updateConflict(const std::shared_ptr<basicblock> &b) {
                     return true;
                 }
             }
-        }
+        }*/
     }
     return false;
 }
@@ -118,10 +158,14 @@ bool state::updateVal(const std::shared_ptr<basicblock> &blk) {
         //std::cout << "here";
     }
     if (!conflictIsCoend) {
+        std::set<std::pair<std::shared_ptr<basicblock>, std::shared_ptr<statementNode>>> conflicts;
+
         if (conflict1 && valForRun1 != val) {
+            findassignedconflicts(val, {blk, blk->defsite[*blk->defines[origname].begin()]}, &conflicts);
             conflictingDefs.second = blk;
             valForRun2 = val;
         } else if (conflict2 && valForRun2 != val) {
+            findassignedconflicts(val, {blk, blk->defsite[*blk->defines[origname].begin()]}, &conflicts);
             conflictingDefs.first = blk;
             valForRun1 = val;
         } else {

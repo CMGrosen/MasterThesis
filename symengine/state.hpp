@@ -29,6 +29,9 @@ struct state : public statesHandler {
     void updateVisited(const std::shared_ptr<basicblock>&, const std::vector<std::shared_ptr<basicblock>>&);
     bool updateVal(const std::shared_ptr<basicblock>&);
     std::string report_racecondition();
+
+private:
+    void findassignedconflicts(const std::string &, const std::pair<std::shared_ptr<basicblock>, std::shared_ptr<statementNode>> &, std::set<std::pair<std::shared_ptr<basicblock>, std::shared_ptr<statementNode>>> *);
 };
 
 

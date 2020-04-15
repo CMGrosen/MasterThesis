@@ -1,0 +1,21 @@
+a = read(1);
+b = 0;
+fork {
+  write (1, a);
+  a = 10;
+} and {
+  b = 10;
+  fork {
+    b = b+2;
+  } and {
+    skip;
+  };
+  a = 0;
+  fork {
+    b = 0;
+  } and {
+    skip;
+  };
+};
+write (1,a);
+write (2,b);

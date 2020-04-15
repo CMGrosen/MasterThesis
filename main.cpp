@@ -27,7 +27,6 @@ static std::map< const char *, const char * > files = {
         {"testAssign", "../code_examples/testAssign.small"},
         {"coffee_maker", "../code_examples/coffee_maker.small"},
         {"idom_test", "../code_examples/idomTest.small"},
-        {"reportExample", "../code_examples/report_example.small"},
         {"constraint_test", "../code_examples/constraint_test.small"},
         {"tripple_maker", "../code_examples/tripple_maker.small"},
         {"if_test", "../code_examples/if_test.small"},
@@ -50,7 +49,13 @@ static std::map< const char *, const char * > test_files = {
         {"unreachable", "../code_examples/test_programs/unreachable.small"},
         {"multiple_uses", "../code_examples/test_programs/multiple_uses_in_concnode.small"},
         {"while", "../code_examples/test_programs/while_unroll_test.small"},
-        {"if-false", "../code_examples/test_programs/if-false-not-possible.small"}
+        {"if-false", "../code_examples/test_programs/if-false-not-possible.small"},
+        {"nestedforks", "../code_examples/test_programs/nested_forks.small"}
+};
+
+static std::map<const char *, const char *> rapport_files ={
+    {"reportExample", "../code_examples/rapport/report_example.small"},
+    {"if", "../code_examples/rapport/if.small"}
 };
 
 std::pair<const std::shared_ptr<statementNode>, std::unordered_map<std::string, std::shared_ptr<expressionNode>>>
@@ -145,11 +150,13 @@ void run(const std::string& path) {
 }
 
 int main(int argc, const char* argv[]) {
-
-    run(test_files["while"]);
-    //run(files["reportExample"]);
+    //run(test_files["while"]);
+    run(rapport_files["reportExample"]);
+    //run(test_files["nestedforks"]);
 
     std::cout << "done: " << std::to_string(basicblock::get_number_of_blocks()) << "\n";
+
+
 
     return 0;
 }
