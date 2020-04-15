@@ -380,7 +380,7 @@ private:
                                     auto it = vars_to_ssa->find(piN->getVar());
                                     piN->updateVariablesAtIndex
                                       ( i
-                                      , {it->second, findboolname(ccfg->defs[varname], varname)}
+                                      , {it->second, findboolname(ccfg->defs[it->second], it->second)}
                                       );
                                     it->second = piN->getName();
                                     break;
