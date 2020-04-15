@@ -22,9 +22,9 @@ struct state : public statesHandler {
           std::shared_ptr<basicblock> cn,
           std::map<std::shared_ptr<basicblock>, std::set<basicblock*>> _threadsToFinish,
           std::map<std::string, std::pair<std::string, Type>> cv,
-          std::string v1, std::string v2, CCFG*);
+          std::string v1, std::string v2, interpreterData* _interdata);
 
-    bool updateConflict();
+    bool updateConflict(const std::shared_ptr<basicblock>&);
     bool isConflicting(const std::shared_ptr<basicblock>&);
     void updateVisited(const std::shared_ptr<basicblock>&, const std::vector<std::shared_ptr<basicblock>>&);
     bool updateVal(const std::shared_ptr<basicblock>&);

@@ -293,28 +293,28 @@ private:
 
     static bool concurrent(std::shared_ptr<basicblock> &a, std::shared_ptr<basicblock> &b) {
         if (a == b) return false; //same nodes aren't concurrent
-        if (a->concurrentBlock.second == b->concurrentBlock.second) { //If they're in the same thread, they're not concurrent
+        if (!a->concurrentBlock.first || !b->concurrentBlock.first) return false; //one of them aren't concurrent, thus they aren't concurrent
+        if (a->concurrentBlock.first == b->concurrentBlock.first && a->concurrentBlock.second == b->concurrentBlock.second) {
+            //If they're in the same thread, they're not concurrent
             return false;
         }
-        std::vector<basicblock*> concurrentNodesForA;
-        basicblock *tmp = a->concurrentBlock.first;
-        while (tmp) {
-            concurrentNodesForA.push_back(tmp);
-            tmp = tmp->concurrentBlock.first;
+        std::unordered_map<basicblock*, int> concurrentNodesForA;
+        auto concblock = a->concurrentBlock;
+        do {
+            concurrentNodesForA.insert(concblock);
+            concblock = concblock.first->concurrentBlock;
+        } while(concblock.first);
+
+        concblock = b->concurrentBlock;
+        while (concblock.first && concurrentNodesForA.find(concblock.first) == concurrentNodesForA.end()) {
+            concblock = concblock.first->concurrentBlock;
         }
-        tmp = b->concurrentBlock.first;
-        while (tmp) {
-            for (const auto &n : concurrentNodesForA) {
-                /*if(tmp->concurrentBlock.second == n->concurrentBlock.second) {
-                    return false;
-                }*/
-                if (tmp == n && !(a->type == Coend || b->type == Coend)) {
-                    // common fork ancestor between nodes, making them concurrent.
-                    // Doesn't work for nested forks
-                    return (!is_sequential(a, b));
-                }
+        if (!concblock.first) {
+            if (concurrentNodesForA.find(concblock.first)->second != concblock.second) {
+                //We have found a common ancestor fork node, and the immediate fork statements for block a and b
+                // are not within the same thread
+                return true;
             }
-            tmp = tmp->concurrentBlock.first;
         }
         return false; //if we get here, no conditions were met, thus not concurrent
     }

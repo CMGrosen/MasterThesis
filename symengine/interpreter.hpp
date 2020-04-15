@@ -7,15 +7,12 @@
 
 
 #include "symEngine.hpp"
-#include "Difference.hpp"
 #include "state.hpp"
+#include "intepreterData.hpp"
 
 class interpreter {
     symEngine engine;
-    std::map<std::string, std::set<std::shared_ptr<VariableValue>>> variableValues;
-    std::map<std::string, std::shared_ptr<VariableValue>> valuesFromModel;
-    std::map<std::string, bool> statementsExecuted;
-    std::map<std::string, Difference> differences;
+    interpreterData data;
     void update();
     void refresh();
     std::map<std::string, std::pair<std::string, Type>> get_current_values();

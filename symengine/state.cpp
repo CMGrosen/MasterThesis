@@ -11,7 +11,7 @@ state::state(std::set<std::shared_ptr<basicblock>> cr1, std::set<std::shared_ptr
         std::shared_ptr<basicblock> cn,
         std::map<std::shared_ptr<basicblock>, std::set<basicblock*>> _threadsToFinish,
         std::map<std::string, std::pair<std::string, Type>> cv,
-        std::string v1, std::string v2, CCFG* _ccfg)
+        std::string v1, std::string v2, interpreterData* _interdata)
         : conflictingDefs{}, threadsToFinish{std::move(_threadsToFinish)}, current_values{std::move(cv)}, currents{}
         { conflictsForRun1 = std::move(cr1);
           conflictsForRun2 = std::move(cr2);
@@ -23,12 +23,27 @@ state::state(std::set<std::shared_ptr<basicblock>> cr1, std::set<std::shared_ptr
           conflict1 = conflict2 = onconflictnode = found = false;
           conflictIsCoend = conflictNode->type == Coend;
           conflicts = {nullptr, nullptr};
-          ccfg = _ccfg;
+          interdata = _interdata;
         }
 
-bool state::updateConflict() {
+bool state::updateConflict(const std::shared_ptr<basicblock> &b) {
     auto res = current_values.find(conflictvar);
-    if (res != current_values.end()) {
+    /*std::set<std::shared_ptr<statementNode>> conflicts;
+    auto defsite = b->defsite.find(conflictvar);
+    if (defsite != b->defsite.end()) {
+        if (defsite->second->getNodeType() == Pi) {
+            auto pipossibilities = *dynamic_cast<piNode*>(defsite->second.get())->get_variables();
+            for (const auto &v : pipossibilities) {
+                if (statementsE)
+            }
+        } else if (defsite->second->getNodeType() == Phi) {
+
+        } else {
+
+        }
+    }
+    if (dynamic_cast<piNode*>(b->defsite[con])
+    */if (res != current_values.end()) {
         if (res->second.first == valForRun1) {
             for (const auto &blk : conflictsForRun1) {
                 if (visited.find(blk) != visited.end() && blk->defsite[*blk->defines[origname].rbegin()]->getNodeType() != Pi) {
@@ -99,6 +114,9 @@ void state::updateVisited(const std::shared_ptr<basicblock> &blk, const std::vec
 
 bool state::updateVal(const std::shared_ptr<basicblock> &blk) {
     std::string val = current_values[origname].first;
+    if (val == "0") {
+        //std::cout << "here";
+    }
     if (!conflictIsCoend) {
         if (conflict1 && valForRun1 != val) {
             conflictingDefs.second = blk;
@@ -110,14 +128,14 @@ bool state::updateVal(const std::shared_ptr<basicblock> &blk) {
             return false;
         }
     } else { //This is a coend block, so blk == conflictNode. Another visit here is saved on statesHandler
-        updateConflict();
-        if (conflict1 && valForRun2 != val) {
+        updateConflict(blk);
+        return conflicts.first && conflicts.second;/* {
             return update_conflict(true, conflictingDefs.first->defsite[*conflictingDefs.first->defines[origname].begin()]);
         } else if (conflict2 && valForRun1 != val) {
             return update_conflict(false, conflictingDefs.second->defsite[*conflictingDefs.second->defines[origname].begin()]);
         } else {
             return false;
-        }
+        }*/
     }
     return true;
 }

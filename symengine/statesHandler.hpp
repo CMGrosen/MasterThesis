@@ -9,10 +9,10 @@
 #include <memory>
 #include <string>
 #include <nodes/basicblock.hpp>
-#include <basicblockTreeConstructor.hpp>
+#include "intepreterData.hpp"
 
 struct statesHandler {
-    static CCFG* ccfg;
+    static interpreterData* interdata;
     static std::set<std::shared_ptr<basicblock>> conflictsForRun1, conflictsForRun2;
     static std::shared_ptr<basicblock> conflictNode;
     static bool conflictIsCoend;

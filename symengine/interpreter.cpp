@@ -19,7 +19,7 @@ bool interpreter::run() {
     while (satisfiable) {
         std::vector<std::pair<std::shared_ptr<basicblock>, std::string>> blks_and_names;
         refresh();
-        for (const auto &dif : differences) {
+        for (const auto &dif : data.differences) {
             //Don't add difference if pi-function is used in an event
             std::shared_ptr<basicblock> blk = engine.ccfg->defs[dif.first];
             if (blk->defsite[dif.first]->getNodeType() == Pi && blk->statements.back()->getNodeType() != Event) {
@@ -28,11 +28,11 @@ bool interpreter::run() {
         }
         if (blks_and_names.empty()) {
             std::cout << "both runs identical. No potential race-conditions found\n";
-            auto firstEarlyExit = valuesFromModel.find(std::string("0_early_exit_1") + _run1);
-            if (firstEarlyExit == valuesFromModel.end()) {
+            auto firstEarlyExit = data.valuesFromModel.find(std::string("0_early_exit_1") + _run1);
+            if (firstEarlyExit == data.valuesFromModel.end()) {
                 std::cout << "no early exits found. Program has no race-conditions\n";
             } else {
-                while (firstEarlyExit != valuesFromModel.end() && firstEarlyExit->first.front() >= '0' &&
+                while (firstEarlyExit != data.valuesFromModel.end() && firstEarlyExit->first.front() >= '0' &&
                        firstEarlyExit->first.front() <= '9') {
                     //Still have values in model. Current iterator points to an early_exit variable
                     //This is a map, so keys are sorted lexiographically. Only early exists starts with a number
@@ -47,7 +47,7 @@ bool interpreter::run() {
             return returnval;
         } else {
             std::vector<std::string> races;
-            races.reserve(differences.size());
+            races.reserve(data.differences.size());
             std::sort(blks_and_names.begin(), blks_and_names.end(),
                       [&](const auto &a, const auto &b) { return a.first->depth < b.first->depth; });
             returnval = reach_potential_raceConditions(blks_and_names, &races);
@@ -71,8 +71,8 @@ bool interpreter::run() {
 
 void interpreter::update() {
     auto res = engine.getModel();
-    valuesFromModel = std::move(res.first);
-    statementsExecuted = std::move(res.second);
+    data.valuesFromModel = std::move(res.first);
+    data.statementsExecuted = std::move(res.second);
 
     std::shared_ptr<VariableValue> undef = std::make_shared<VariableValue>(VariableValue
             ( errorType
@@ -81,8 +81,8 @@ void interpreter::update() {
             , "undef"
             ));
 
-    for (const auto &val : valuesFromModel) {
-        auto inserted = variableValues.insert({val.second->value, {val.second}});
+    for (const auto &val : data.valuesFromModel) {
+        auto inserted = data.variableValues.insert({val.second->value, {val.second}});
         if (!inserted.second) inserted.first->second.insert(val.second);
         if (val.first[0] == '-' && val.first[1] == 'r') { //this is a -readVal
 
@@ -91,16 +91,16 @@ void interpreter::update() {
             std::string var = val.first.substr(0, len);
 
             if (*val.first.rbegin() == '-' && *(val.first.rbegin()+1) == '1') { //this value ends with run1-
-                auto res = valuesFromModel.find(var + _run2);
-                if (res == valuesFromModel.end()) {
-                    differences.insert({var, Difference(val.second, undef)});
+                auto res = data.valuesFromModel.find(var + _run2);
+                if (res == data.valuesFromModel.end()) {
+                    data.differences.insert({var, Difference(val.second, undef)});
                 } else if (val.second->value != res->second->value) {
-                    differences.insert({var, Difference(val.second, res->second)});
+                    data.differences.insert({var, Difference(val.second, res->second)});
                 }
             } else {
-                auto res = valuesFromModel.find(var + _run1);
-                if (res == valuesFromModel.end())
-                    differences.insert({var, Difference(undef, val.second)});
+                auto res = data.valuesFromModel.find(var + _run1);
+                if (res == data.valuesFromModel.end())
+                    data.differences.insert({var, Difference(undef, val.second)});
                 //no need for else clause.
                 // Else-clause will either have reached the else-if branch of the first if-statement
                 // or will later through the iteration
@@ -110,9 +110,9 @@ void interpreter::update() {
 }
 
 void interpreter::refresh() {
-    variableValues.clear();
-    valuesFromModel.clear();
-    differences.clear();
+    data.variableValues.clear();
+    data.valuesFromModel.clear();
+    data.differences.clear();
     update();
 }
 
@@ -232,7 +232,7 @@ std::string interpreter::exec_expr(expressionNode* expr, const std::map<std::str
             break;
 
         case Read:
-            val = valuesFromModel.find(dynamic_cast<readNode*>(expr)->getName())->second->value;
+            val = data.valuesFromModel.find(dynamic_cast<readNode*>(expr)->getName())->second->value;
             break;
         case Literal:
             val = dynamic_cast<literalNode*>(expr)->value;
@@ -315,8 +315,8 @@ std::pair<bool, bool> interpreter::exec_stmt(const std::shared_ptr<statementNode
             if (conflictIsCoend) {
                 current_values->insert({pi->getName(), current_values->find(pi->getVar())->second});
             } else {
-                if (valuesFromModel.find(pi->getName() + _run1)->second->value == val ||
-                    valuesFromModel.find(pi->getName() + _run2)->second->value == val) {
+                if (data.valuesFromModel.find(pi->getName() + _run1)->second->value == val ||
+                    data.valuesFromModel.find(pi->getName() + _run2)->second->value == val) {
                     current_values->insert({pi->getName(), current_values->find(pi->getVar())->second});
                 } else {
                     std::cout << "unexpected value for pi, adding anyway\n";
@@ -362,15 +362,15 @@ bool interpreter::execute(const std::shared_ptr<basicblock>& blk, state *s) {
         }
         if (stmt->getNodeType() == Event && !res.first) {
             std::cout << "event is false, cannot continue to next block\n";
-            if (statementsExecuted.find(blk->nexts[0]->statements.front()->get_boolname())->second) {
+            if (data.statementsExecuted.find(blk->nexts[0]->statements.front()->get_boolname())->second) {
                 std::cout << "This event should have been true!\n";
             }
             return false;
         }
         else if (stmt->getNodeType() == If) {
-            if (res.first && statementsExecuted.find(blk->nexts[1]->statements.front()->get_boolname())->second) {
+            if (res.first && data.statementsExecuted.find(blk->nexts[1]->statements.front()->get_boolname())->second) {
                 std::cout << "error occured. If statement should have been false\n";
-            } else if (!res.first && statementsExecuted.find(blk->nexts[0]->statements.front()->get_boolname())->second) {
+            } else if (!res.first && data.statementsExecuted.find(blk->nexts[0]->statements.front()->get_boolname())->second) {
                 std::cout << "error occured. If statement should have been true\n";
             } else {
                 res.first ? blksToInsert.push_back(blk->nexts[0]) : blksToInsert.push_back(blk->nexts[1]);
@@ -403,7 +403,7 @@ bool interpreter::recursive_read(const std::shared_ptr<basicblock>& current, sta
             return false;
         } else {
             for (const auto &nxt : current->nexts) s.currents.erase(nxt); //remove nexts, as we don't want to visit coming blocks
-            if(!s.updateConflict()) {
+            if(!s.updateConflict(current)) {
                 std::cout << "value of conflict node is not from either run\n";
                 return false;
             }/* else {
@@ -448,15 +448,15 @@ bool interpreter::reachable(const std::pair<std::shared_ptr<basicblock>, std::st
     std::set<std::shared_ptr<basicblock>> conflictsForRun2;
     std::shared_ptr<basicblock> conflictNode = blk.first;
     std::pair<std::shared_ptr<basicblock>, std::shared_ptr<basicblock>> conflictingDefs;
-    std::string valForRun1 = differences.find(blk.second)->second.run1;
-    std::string valForRun2 = differences.find(blk.second)->second.run2;
+    std::string valForRun1 = data.differences.find(blk.second)->second.run1;
+    std::string valForRun2 = data.differences.find(blk.second)->second.run2;
 
-    for (const auto &value : variableValues.find(valForRun1)->second) {
+    for (const auto &value : data.variableValues.find(valForRun1)->second) {
         if (origname == value->origName) {
             conflictsForRun1.insert(engine.ccfg->defs.find(value->name)->second);
         }
     }
-    for (const auto &value : variableValues.find(valForRun2)->second) {
+    for (const auto &value : data.variableValues.find(valForRun2)->second) {
         if (origname == value->origName) {
             conflictsForRun2.insert(engine.ccfg->defs.find(value->name)->second);
         }
@@ -472,7 +472,7 @@ bool interpreter::reachable(const std::pair<std::shared_ptr<basicblock>, std::st
             , get_current_values()
             , valForRun1
             , valForRun2
-            , engine.ccfg.get()
+            , &data
             );
     s.origname = origname;
     s.conflictvar = conflictvar;

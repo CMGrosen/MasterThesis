@@ -12,7 +12,7 @@ std::string statesHandler::valForRun2 = {};
 std::string statesHandler::conflictvar = {};
 std::string statesHandler::origname = {};
 bool statesHandler::conflictIsCoend = false;
-CCFG* statesHandler::ccfg = nullptr;
+interpreterData* statesHandler::interdata = nullptr;
 std::pair<std::shared_ptr<statementNode>, std::shared_ptr<statementNode>> statesHandler::conflicts = {nullptr, nullptr};
 
 bool statesHandler::update_conflict(bool first, const std::shared_ptr<statementNode>& stmt) {
