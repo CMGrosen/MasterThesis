@@ -8,11 +8,12 @@
 #include <map>
 #include <nodes/basicblock.hpp>
 #include "statesHandler.hpp"
+#include "value.hpp"
 
 struct state : public statesHandler {
-    std::pair<std::shared_ptr<basicblock>, std::shared_ptr<basicblock>> conflictingDefs;
+    std::pair<std::shared_ptr<statementNode>, std::shared_ptr<statementNode>> conflictingDefs;
     std::map<std::shared_ptr<basicblock>, std::set<basicblock*>> threadsToFinish;
-    std::map<std::string, std::pair<std::string, Type>> current_values;
+    std::map<std::string, Value> current_values;
     bool conflict1, conflict2, onconflictnode, found;
     std::set<std::shared_ptr<basicblock>> currents;
     std::set<std::shared_ptr<basicblock>> visited;
@@ -21,7 +22,7 @@ struct state : public statesHandler {
     state(std::set<std::shared_ptr<basicblock>> cr1, std::set<std::shared_ptr<basicblock>> cr2,
           std::shared_ptr<basicblock> cn,
           std::map<std::shared_ptr<basicblock>, std::set<basicblock*>> _threadsToFinish,
-          std::map<std::string, std::pair<std::string, Type>> cv,
+          std::map<std::string, Value> cv,
           std::string v1, std::string v2, interpreterData* _interdata);
 
     bool updateConflict(const std::shared_ptr<basicblock>&);

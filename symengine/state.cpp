@@ -11,7 +11,7 @@ state::state() {
 state::state(std::set<std::shared_ptr<basicblock>> cr1, std::set<std::shared_ptr<basicblock>> cr2,
         std::shared_ptr<basicblock> cn,
         std::map<std::shared_ptr<basicblock>, std::set<basicblock*>> _threadsToFinish,
-        std::map<std::string, std::pair<std::string, Type>> cv,
+        std::map<std::string, Value> cv,
         std::string v1, std::string v2, interpreterData* _interdata)
         : conflictingDefs{}, threadsToFinish{std::move(_threadsToFinish)}, current_values{std::move(cv)}, currents{}
         { conflictsForRun1 = std::move(cr1);
@@ -64,21 +64,21 @@ bool state::updateConflict(const std::shared_ptr<basicblock> &b) {
         std::set<std::pair<std::shared_ptr<basicblock>, std::shared_ptr<statementNode>>> conflicts;
         auto defsite = b->defsite.find(conflictvar);
         if (defsite != b->defsite.end()) {
-            findassignedconflicts(res->second.first, {b, defsite->second}, &conflicts);
+            findassignedconflicts(res->second.val, {b, defsite->second}, &conflicts);
         }
 
-        if (res->second.first == valForRun1) {
+        if (res->second.val == valForRun1) {
             if (conflictIsCoend) {
                 update_conflict(true, conflicts.begin()->second);
             }
-            conflictingDefs.first = conflicts.begin()->first;
+            conflictingDefs.first = res->second.statement;
             onconflictnode = conflict1 = true;
             return true;
-        } else if (res->second.first == valForRun2) {
+        } else if (res->second.val == valForRun2) {
             if (conflictIsCoend) {
                 update_conflict(false, conflicts.begin()->second);
             }
-            conflictingDefs.second = conflicts.begin()->first;
+            conflictingDefs.second = res->second.statement;
             onconflictnode = conflict2 = true;
             return true;
         }
@@ -128,8 +128,8 @@ std::string state::report_racecondition() {
         def1 = conflicts.first;
         def2 = conflicts.second;
     } else {
-        def1 = conflictingDefs.first->defsite[*conflictingDefs.first->defines[origname].begin()];
-        def2 = conflictingDefs.second->defsite[*conflictingDefs.second->defines[origname].begin()];
+        def1 = conflictingDefs.first;
+        def2 = conflictingDefs.second;
     }
     if (conflictIsCoend) return statesHandler::report_racecondition(def1, def2);
     else {
@@ -153,21 +153,19 @@ void state::updateVisited(const std::shared_ptr<basicblock> &blk, const std::vec
 }
 
 bool state::updateVal(const std::shared_ptr<basicblock> &blk) {
-    std::string val = current_values[origname].first;
-    if (val == "0") {
+    auto value = current_values.find(origname)->second;
+    if (value.val == "0") {
         //std::cout << "here";
     }
     if (!conflictIsCoend) {
         std::set<std::pair<std::shared_ptr<basicblock>, std::shared_ptr<statementNode>>> conflicts;
 
-        if (conflict1 && valForRun1 != val) {
-            findassignedconflicts(val, {blk, blk->defsite[*blk->defines[origname].begin()]}, &conflicts);
-            conflictingDefs.second = blk;
-            valForRun2 = val;
-        } else if (conflict2 && valForRun2 != val) {
-            findassignedconflicts(val, {blk, blk->defsite[*blk->defines[origname].begin()]}, &conflicts);
-            conflictingDefs.first = blk;
-            valForRun1 = val;
+        if (conflict1 && valForRun1 != value.val) {
+            conflictingDefs.second = value.statement;
+            valForRun2 = value.val;
+        } else if (conflict2 && valForRun2 != value.val) {
+            conflictingDefs.first = value.statement;
+            valForRun1 = value.val;
         } else {
             return false;
         }

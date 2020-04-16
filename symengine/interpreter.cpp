@@ -149,10 +149,10 @@ static std::set<basicblock*> vecToSet(std::vector<std::weak_ptr<basicblock>> *ve
     return res;
 }
 
-std::map<std::string, std::pair<std::string, Type>> interpreter::get_current_values() {
-    std::map<std::string, std::pair<std::string, Type>> current_values;
+std::map<std::string, Value> interpreter::get_current_values() {
+    std::map<std::string, Value> current_values;
     for (const auto &var : engine.symboltable) {
-        current_values.insert({var.first, {"undef", var.second->getType()}});
+        current_values.insert({var.first, Value{"undef", nullptr, var.second->getType()}});
     }
     return current_values;
 }
@@ -234,7 +234,7 @@ std::string interpreter::compute_operator(const std::string &left, const std::st
     return val;
 }
 
-std::string interpreter::exec_expr(expressionNode* expr, const std::map<std::string, std::pair<std::string, Type>> *current_values) {
+std::string interpreter::exec_expr(expressionNode* expr, const std::map<std::string, Value> *current_values) {
     std::string val;
     switch (expr->getNodeType()) {
         case Assign:
@@ -264,7 +264,7 @@ std::string interpreter::exec_expr(expressionNode* expr, const std::map<std::str
             break;
         case ArrayAccess: {
             auto arracc = dynamic_cast<arrayAccessNode*>(expr);
-            val = current_values->find(arracc->getVar()->origName + "[" + exec_expr(arracc->getAccessor(), current_values) + "]")->second.first;
+            val = current_values->find(arracc->getVar()->origName + "[" + exec_expr(arracc->getAccessor(), current_values) + "]")->second.val;
             break;
         } case ArrayLiteral:
             //don't handle array, this is good enough for now
@@ -272,9 +272,9 @@ std::string interpreter::exec_expr(expressionNode* expr, const std::map<std::str
         case Variable: {
             auto var = dynamic_cast<variableNode*>(expr);
             if (engine.ccfg->defs.find(var->name)->second->defsite.find(var->name)->second->getNodeType() == Pi) {//pi-node
-                val = current_values->find(var->name)->second.first;
+                val = current_values->find(var->name)->second.val;
             } else {
-                val = current_values->find(var->origName)->second.first;
+                val = current_values->find(var->origName)->second.val;
             }
             break;
         } case BinaryExpression: {
@@ -290,19 +290,23 @@ std::string interpreter::exec_expr(expressionNode* expr, const std::map<std::str
     return val;
 }
 
-std::pair<bool, bool> interpreter::exec_stmt(const std::shared_ptr<statementNode> &stmt, std::map<std::string, std::pair<std::string, Type>> *current_values, bool conflictIsCoend) {
+std::pair<bool, bool> interpreter::exec_stmt(const std::shared_ptr<statementNode> &stmt, std::map<std::string, Value> *current_values, bool conflictIsCoend) {
     switch (stmt->getNodeType()) {
         case Assign: {
             auto assNode = dynamic_cast<assignNode *>(stmt.get());
             std::string value = exec_expr(assNode->getExpr(), current_values);
-            current_values->find(assNode->getOriginalName())->second.first = value;
+            auto val = current_values->find(assNode->getOriginalName());
+            val->second.val = value;
+            val->second.statement = stmt;
             break;
         }
         case AssignArrField: {
             auto assArrF = dynamic_cast<arrayFieldAssignNode *>(stmt.get());
             std::string name = exec_expr(assArrF->getField(), current_values);
             std::string value = exec_expr(assArrF->getExpr(), current_values);
-            current_values->find(assArrF->getOriginalName() + "[" + name + "]")->second.first = value;
+            auto val = current_values->find(assArrF->getOriginalName() + "[" + name + "]");
+            val->second.val = value;
+            val->second.statement = stmt;
             break;
         } case Concurrent: {
             break;
@@ -333,7 +337,7 @@ std::pair<bool, bool> interpreter::exec_stmt(const std::shared_ptr<statementNode
             //value already assigned, since the value that should be assigned, is the one already stored
             //maybe check to see if model value is the one already stored
             auto pi = dynamic_cast<piNode *>(stmt.get());
-            std::string val = current_values->find(pi->getVar())->second.first;
+            std::string val = current_values->find(pi->getVar())->second.val;
             auto res = current_values->find(pi->getName());
             if (res != current_values->end()) return {true, true};
 
