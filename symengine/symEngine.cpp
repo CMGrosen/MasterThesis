@@ -99,15 +99,15 @@ z3::expr encode_boolnames_from_block(z3::context *c, const std::shared_ptr<basic
 static z3::expr encodepi(z3::context *c, Type t, const std::string& boolname, const std::string& name, std::vector<z3::expr> *constraintset) {
     z3::expr run1use = encode_boolname(c, boolname, true, _run1);
     z3::expr run2use = encode_boolname(c, boolname, true, _run2);
-    constraintset->emplace_back(z3::ite
+    /*constraintset->emplace_back(z3::ite
       ( !run1use
       , t == intType //If both are assigned, make this constraint
             ? c->int_const((name + _run1).c_str()) == c->int_const((name + _run2).c_str())
             : c->bool_const((name + _run1).c_str()) == c->bool_const((name + _run2).c_str())
       , c->bool_val(true)
-      ));
+      ));*/
     return z3::ite
-      ( run1use
+      ( run1use || run2use
       , t == intType //If both are assigned, make this constraint
           ? c->int_const((name + _run1).c_str()) != c->int_const((name + _run2).c_str())
           : c->bool_const((name + _run1).c_str()) != c->bool_const((name + _run2).c_str())
@@ -179,7 +179,8 @@ bool symEngine::execute() {
         if (p.first->statements.back()->getNodeType() != Event) {
             for (const auto &stmt : p.first->statements) {
                 if (auto pi = dynamic_cast<piNode*>(stmt.get())) {
-                    vec.push_back(encodepi(&c, pi->getType(), pi->get_boolname(), pi->getName(), &constraintset));
+                    if (pi->getName().front() == '-') //don't encode endconc pis this way
+                        vec.push_back(encodepi(&c, pi->getType(), pi->get_boolname(), pi->getName(), &constraintset));
                 }
             }
         }
@@ -191,11 +192,11 @@ bool symEngine::execute() {
 
 
     std::cout << constraintset.size() << std::endl;
-
+/*
     for (int i = 1; i < boolname_counter; ++i) {
         std::string name = "-b_" + std::to_string(i);
         constraintset.emplace_back(c.bool_const((name + _run1).c_str()) == c.bool_const((name + _run2).c_str()));
-    }
+    }*/
     for (const auto &expr : constraintset) s.add(expr);
 
     if (s.check() == z3::sat) {
@@ -801,8 +802,16 @@ z3::expr symEngine::encoded_pis(const std::vector<std::pair<std::shared_ptr<basi
 std::pair<std::map<std::string, std::shared_ptr<VariableValue>>, std::map<std::string, bool>> symEngine::getModel() {
     std::map<std::string, std::shared_ptr<VariableValue>> values;
     std::map<std::string, bool> paths;
+    std::map<std::string, bool> booltrackconstants;
     z3::model m = s.get_model();
     //std::cout << m << std::endl;
+    for (unsigned i = 0; i < m.size(); i++) {
+        z3::func_decl v = m[i];
+        std::string value = m.get_const_interp(v).to_string();
+        if (v.name().str().front() == '-' && v.name().str()[1] == 'b') {
+            booltrackconstants.insert({v.name().str(), value == "true"});
+        }
+    }
     for (unsigned i = 0; i < m.size(); i++) {
         z3::func_decl v = m[i];
         // this problem contains only constants
@@ -814,11 +823,17 @@ std::pair<std::map<std::string, std::shared_ptr<VariableValue>>, std::map<std::s
             if (value.front() == '(') //the number is negative. Remove z3 formatting ( "(- 2)" => "-2" )
                 value = "-" + value.substr(3, value.size() - 4); //remove "(- " from the front and ")" from the back
 
+            bool defined;
+            std::string run;
             std::string name; //remove run1 and run2 from names
-            if (*v.name().str().rbegin() != '-') name = v.name().str();
-            else name = v.name().str().substr(0, v.name().str().size()-5);
+            if (*v.name().str().rbegin() != '-') { name = v.name().str(); run = "";} //readVal
+            else { name = v.name().str().substr(0, v.name().str().size()-5); run = v.name().str().substr(name.size());}
             std::string origname = ccfg->defs[name]->defmapping[name];
-            values.insert({v.name().str(), std::make_shared<VariableValue>(VariableValue(t, name, origname, value))});
+
+            if (run.empty()) defined = true; //readVal
+            else defined = booltrackconstants.find(ccfg->defs[name]->defsite[name]->get_boolname() + run)->second;
+
+            values.insert({v.name().str(), std::make_shared<VariableValue>(VariableValue(t, name, origname, value, defined))});
             //std::cout << v.name() << " = " << value << "\n";
         } else if (*(v.name().str().rbegin()+1) == '1') { //boolean tracking constant for run1-
             std::string name = v.name().str().substr(0, v.name().str().size()-5);
@@ -830,16 +845,31 @@ std::pair<std::map<std::string, std::shared_ptr<VariableValue>>, std::map<std::s
     return {values, paths};
 }
 
-bool symEngine::updateModel(const std::vector<std::pair<std::string, Type>>& conflicts) {
-    for (const auto &p : conflicts) {
-        p.second == intType
-        ? constraintset.emplace_back(c.int_const((p.first + _run1).c_str()) == c.int_const((p.first + _run2).c_str()))
-        : constraintset.emplace_back(c.bool_const((p.first + _run1).c_str()) == c.bool_const((p.first + _run2).c_str()));
-    }
-
+bool symEngine::updateModel(const std::vector<std::pair<std::string, Type>>& conflicts, const std::vector<std::string>& boolnames) {
     s.reset();
     for (const auto &expr : constraintset) s.add(expr);
-    return s.check() == z3::sat;
+    for (const auto &p : conflicts) {
+        p.second == intType
+        ? s.add(c.int_const((p.first + _run1).c_str()) == c.int_const((p.first + _run2).c_str()))
+        : s.add(c.bool_const((p.first + _run1).c_str()) == c.bool_const((p.first + _run2).c_str()));
+    }
+    for (const auto &b : boolnames) {
+        s.add(c.bool_const((b + _run1).c_str()) == c.bool_const((b + _run2).c_str()));
+    }
+
+    bool satisfiable;
+    switch (s.check()) {
+        case z3::unsat:
+            satisfiable = false;
+            break;
+        case z3::sat:
+            satisfiable = true;
+            break;
+        case z3::unknown:
+            satisfiable = false;
+            break;
+    }
+    return satisfiable;
 }
 
 z3::expr symEngine::encode_event_conditions_between_blocks(z3::context *c, const std::shared_ptr<basicblock> &first, const std::shared_ptr<basicblock> &last, const std::string &run) {

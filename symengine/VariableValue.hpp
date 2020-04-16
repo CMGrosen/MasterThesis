@@ -11,9 +11,10 @@
 
 struct VariableValue : virtual public variableNode {
     std::string value;
+    bool defined;
 
-    VariableValue(Type type, std::string name, std::string variableName, std::string val)
-        : variableNode(type, std::move(name), std::move(variableName)), value{std::move(val)} {}
+    VariableValue(Type type, std::string name, std::string variableName, std::string val, bool defined)
+        : variableNode(type, std::move(name), std::move(variableName)), value{std::move(val)}, defined{defined} {}
 };
 
 #endif //ANTLR_CPP_TUTORIAL_VARIABLEVALUE_HPP

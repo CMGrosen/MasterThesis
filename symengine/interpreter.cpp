@@ -11,6 +11,8 @@ interpreter::interpreter(symEngine e) : engine{std::move(e)} {
 
 bool interpreter::run() {
     bool returnval = true;
+    std::set<std::string> checklater;
+    std::set<std::string> races;
     bool satisfiable = engine.execute();
     if (!satisfiable) {
         std::cout << "model unsatisfiable\n";
@@ -18,11 +20,23 @@ bool interpreter::run() {
     }
     while (satisfiable) {
         std::vector<std::pair<std::shared_ptr<basicblock>, std::string>> blks_and_names;
+        bool modified = false;
         refresh();
         for (const auto &dif : data.differences) {
+            //Don't add if not visited in both runs
+            if (!dif.second.executedRun1 || !dif.second.executedRun2) {
+                if (*dif.first.begin() == '-') {//Pi
+                    checklater.insert(dif.first);
+                    modified = true;
+                }
+                continue;
+            }
+
             //Don't add difference if pi-function is used in an event
+            //Also only include those pi-functions which aren't on Coend blocks
             std::shared_ptr<basicblock> blk = engine.ccfg->defs[dif.first];
-            if (blk->defsite[dif.first]->getNodeType() == Pi && blk->statements.back()->getNodeType() != Event) {
+            std::shared_ptr<statementNode> def = blk->defsite[dif.first];
+            if (def->getNodeType() == Pi && blk->statements.back()->getNodeType() != Event && dynamic_cast<piNode*>(def.get())->getName().front() == '-') {
                 blks_and_names.emplace_back(engine.ccfg->defs.find(dif.first)->second, dif.first);
             }
         }
@@ -46,24 +60,34 @@ bool interpreter::run() {
             }
             return returnval;
         } else {
-            std::vector<std::string> races;
-            races.reserve(data.differences.size());
+            std::vector<std::string> foundraces;
+            foundraces.reserve(blks_and_names.size());
             std::sort(blks_and_names.begin(), blks_and_names.end(),
                       [&](const auto &a, const auto &b) { return a.first->depth < b.first->depth; });
-            returnval = reach_potential_raceConditions(blks_and_names, &races);
+            if (modified) returnval = reach_potential_raceConditions({blks_and_names.front()}, &foundraces);
+            else returnval = reach_potential_raceConditions(blks_and_names, &foundraces);
+            std::vector<std::pair<std::string, Type>> varstoupdate;
             if (!returnval) {
                 std::cout << "didn't find race-condition: updating constraints: ...\n";
-                auto conflict = blks_and_names.front();
-                Type t = engine.symboltable[conflict.first->defmapping[conflict.second]]->getType();
-                satisfiable = engine.updateModel({{conflict.second, t}}); //Tell engine to make this variable equal between runs, and get new model
+                races.insert(blks_and_names.front().second);
             } else {
                 //Still probably satisfiable. Update model to not include found race-conditions
-                std::vector<std::pair<std::string, Type>> varstoupdate;
-                for (const auto &conflict : races) {
-                    varstoupdate.emplace_back(conflict, engine.symboltable[engine.ccfg->defs[conflict]->defmapping[conflict]]->getType());
+                for (const auto &race : foundraces) {
+                    races.insert(race);
                 }
-                satisfiable = engine.updateModel(varstoupdate);
             }
+            for (const auto &conflict : races) {
+                varstoupdate.emplace_back(conflict, engine.symboltable[engine.ccfg->defs[conflict]->defmapping[conflict]]->getType());
+            }
+            std::vector<std::string> bools;
+            bools.reserve(1);
+            if (!checklater.empty()) {
+                auto first = checklater.begin();
+                bools.push_back(data.ccfg->defs[*first]->defsite[*first]->get_boolname());
+                checklater.erase(first);
+            }
+
+            satisfiable = engine.updateModel(varstoupdate, bools);
         }
     }
     return returnval;
@@ -79,6 +103,7 @@ void interpreter::update() {
             , "undef"
             , "undef"
             , "undef"
+            , false
             ));
 
     for (const auto &val : data.valuesFromModel) {
@@ -93,14 +118,14 @@ void interpreter::update() {
             if (*val.first.rbegin() == '-' && *(val.first.rbegin()+1) == '1') { //this value ends with run1-
                 auto res = data.valuesFromModel.find(var + _run2);
                 if (res == data.valuesFromModel.end()) {
-                    data.differences.insert({var, Difference(val.second, undef)});
+                    data.differences.insert({var, Difference(val.second, undef, val.second->defined, false)});
                 } else if (val.second->value != res->second->value) {
-                    data.differences.insert({var, Difference(val.second, res->second)});
+                    data.differences.insert({var, Difference(val.second, res->second, val.second->defined, res->second->defined)});
                 }
             } else {
                 auto res = data.valuesFromModel.find(var + _run1);
                 if (res == data.valuesFromModel.end())
-                    data.differences.insert({var, Difference(undef, val.second)});
+                    data.differences.insert({var, Difference(undef, val.second, false, val.second->defined)});
                 //no need for else clause.
                 // Else-clause will either have reached the else-if branch of the first if-statement
                 // or will later through the iteration
@@ -319,7 +344,7 @@ std::pair<bool, bool> interpreter::exec_stmt(const std::shared_ptr<statementNode
                     data.valuesFromModel.find(pi->getName() + _run2)->second->value == val) {
                     current_values->insert({pi->getName(), current_values->find(pi->getVar())->second});
                 } else {
-                    std::cout << "unexpected value for pi, adding anyway\n";
+                    //std::cout << "unexpected value for pi, adding anyway\n";
                     return {true, false};
                 }
             }
@@ -399,12 +424,12 @@ bool interpreter::execute(const std::shared_ptr<basicblock>& blk, state *s) {
 bool interpreter::recursive_read(const std::shared_ptr<basicblock>& current, state s) {
     if (current == s.conflictNode && !s.conflicts.first && !s.conflicts.second) { //if we're on the block with the conflicting values
         if(!execute(current, &s)) { //This couldn't be executed. Values aren't the expected, so another attempted execution should run
-            std::cout << "something went wrong\n";
+            //std::cout << "something went wrong\n";
             return false;
         } else {
             for (const auto &nxt : current->nexts) s.currents.erase(nxt); //remove nexts, as we don't want to visit coming blocks
             if(!s.updateConflict(current)) {
-                std::cout << "value of conflict node is not from either run\n";
+                //std::cout << "value of conflict node is not from either run\n";
                 return false;
             }/* else {
                 s.updateVisited(current, {});
@@ -414,14 +439,14 @@ bool interpreter::recursive_read(const std::shared_ptr<basicblock>& current, sta
         // Check if current is a possible other value for the conflict
     } else if ((!s.conflictIsCoend && s.onconflictnode && s.isConflicting(current)) || (s.conflictIsCoend && current == s.conflictNode)) {
         if (!execute(current, &s)) { //This couldn't be executed. Values aren't the expected, so another attempted execution should run
-            std::cout << "something went wrong\n";
+            //std::cout << "something went wrong\n";
             return false;
         } else { //Everything fine. Report found race-condition
             if (s.updateVal(current)) {
                 std::cout << s.report_racecondition() << std::endl;
                 return true;
             } else {
-                std::cout << "values are identical. Disregard\n";
+                //std::cout << "values are identical. Disregard\n";
                 return false;
             }
         }
