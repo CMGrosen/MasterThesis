@@ -145,6 +145,7 @@ SSA_CCFG do_stuff(const std::shared_ptr<statementNode> &tree, std::unordered_map
 
 void run(const std::string& path) {
     auto treeAndSymbolTable = parse_program(path);
+    if (!treeAndSymbolTable.first) return;
     auto ccfg = std::make_shared<SSA_CCFG>(do_stuff(treeAndSymbolTable.first, std::move(treeAndSymbolTable.second)));
     std::cout << "done with run: " << std::to_string(basicblock::get_number_of_blocks()) << "\n";
 }
