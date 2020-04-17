@@ -46,6 +46,8 @@ public:
 
     bool execute();
     bool updateModel(const std::vector<std::pair<std::string, Type>>&, const std::vector<std::string>&);
+    bool updateModel(const z3::expr&);
+    std::map<std::string, z3::expr> possible_raceconditions;
 };
 
 #endif //ANTLR_CPP_TUTORIAL_SYMENGINE_HPP

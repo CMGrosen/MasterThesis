@@ -93,6 +93,33 @@ bool interpreter::run() {
     return returnval;
 }
 
+
+bool interpreter::run2() {
+    if(engine.execute()) {
+        for (const auto &pair : engine.possible_raceconditions) {
+            if(engine.updateModel(pair.second)) {
+                refresh();
+                std::pair<std::shared_ptr<basicblock>, std::string> blk_and_name = {nullptr, ""};
+                for (const auto &dif : data.differences) {
+                    if (dif.first == pair.first) {
+                        blk_and_name = {engine.ccfg->defs.find(dif.first)->second, dif.first};
+                        break;
+                    }
+                }
+                if (blk_and_name.first) {
+                    std::vector<std::string> foundraces;
+                    reach_potential_raceConditions({blk_and_name}, &foundraces);
+                }
+            }
+        }
+        return true;
+    } else {
+        return false;
+    }
+}
+
+
+
 void interpreter::update() {
     auto res = engine.getModel();
     data.valuesFromModel = std::move(res.first);

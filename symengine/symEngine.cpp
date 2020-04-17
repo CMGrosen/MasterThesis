@@ -123,6 +123,28 @@ static z3::expr encodepi(z3::context *c, Type t, const std::string& boolname, co
       );
 }
 
+static z3::expr encodepi2(z3::context *c, Type t, const std::string& boolname, const std::string& name) {
+    z3::expr run1use = encode_boolname(c, boolname, true, _run1);
+    z3::expr run2use = encode_boolname(c, boolname, true, _run2);
+    z3::expr res = run1use && run2use;
+
+    /*constraintset->emplace_back(z3::ite
+      ( !run1use
+      , t == intType //If both are assigned, make this constraint
+            ? c->int_const((name + _run1).c_str()) == c->int_const((name + _run2).c_str())
+            : c->bool_const((name + _run1).c_str()) == c->bool_const((name + _run2).c_str())
+      , c->bool_val(true)
+      ));*/
+    z3::expr constraint(*c);
+
+    if (t == intType) {
+        constraint = c->int_const((name + _run1).c_str()) != c->int_const((name + _run2).c_str());
+    } else {
+        constraint = c->bool_const((name + _run1).c_str()) != c->bool_const((name + _run2).c_str());
+    }
+    return res && constraint;
+}
+
 void find_events_between_blocks(const std::shared_ptr<basicblock> &first, const std::shared_ptr<basicblock> &last, std::set<std::shared_ptr<basicblock>> *encountered, std::vector<std::shared_ptr<statementNode>> *res) {
     if (first != last) {
         if (encountered->insert(first).second) {
@@ -187,10 +209,25 @@ bool symEngine::execute() {
     z3::expr dis = disjunction(&c, vec);
     std::cout << "debug:\n" << dis.to_string() << std::endl;
     std::cout << constraintset.size() << std::endl;
-    constraintset.push_back(dis);
+    //constraintset.push_back(dis);
 
 
     std::cout << constraintset.size() << std::endl;
+
+    for (const auto &p : ccfg->pis_and_depth) {
+        //Don't want to add these pi-functions if used in an event,
+        // as race-conditions cannot occur here
+        if (p.first->statements.back()->getNodeType() != Event) {
+            for (const auto &stmt : p.first->statements) {
+                if (auto pi = dynamic_cast<piNode*>(stmt.get())) {
+                    if (pi->getName().front() == '-') //don't encode endconc pis this way
+                        possible_raceconditions.insert({pi->getName(), encodepi2(&c, pi->getType(), pi->get_boolname(), pi->getName())});
+                }
+            }
+        }
+    }
+
+
 /*
     for (int i = 1; i < boolname_counter; ++i) {
         std::string name = "-b_" + std::to_string(i);
@@ -882,6 +919,13 @@ bool symEngine::updateModel(const std::vector<std::pair<std::string, Type>>& con
             break;
     }
     return satisfiable;
+}
+
+bool symEngine::updateModel(const z3::expr& expr) {
+    s.reset();
+    for (const auto &e : constraintset) s.add(e);
+    s.add(expr);
+    return s.check() == z3::sat;
 }
 
 z3::expr symEngine::encode_event_conditions_between_blocks(z3::context *c, const std::shared_ptr<basicblock> &first, const std::shared_ptr<basicblock> &last, const std::string &run) {
