@@ -21,7 +21,7 @@ class symEngine {
     z3::solver s;
 
     void add_reads();
-    z3::expr_vector get_run(const std::shared_ptr<basicblock>&, const std::shared_ptr<basicblock>&, const std::shared_ptr<basicblock>&, const std::string&);
+    z3::expr_vector get_run(const std::shared_ptr<basicblock>&, const std::shared_ptr<basicblock>&, const std::shared_ptr<basicblock>&, const std::string&, bool *);
     std::shared_ptr<basicblock> find_common_child(const std::shared_ptr<basicblock>&);
     static z3::expr evaluate_operator(z3::context *, const z3::expr&, const z3::expr&, op, z3::expr_vector *);
     static z3::expr evaluate_expression(z3::context *, const expressionNode*, const std::string&, z3::expr_vector *);
@@ -29,7 +29,6 @@ class symEngine {
     std::shared_ptr<basicblock> get_end_of_concurrent_node(const std::shared_ptr<basicblock>&);
     z3::expr encoded_pis(const std::vector<std::pair<std::shared_ptr<basicblock>, int32_t>>&, const std::unordered_map<std::string, std::vector<std::string>>&);
     std::vector<std::string> includable_vars(const std::shared_ptr<statementNode>&, std::unordered_map<std::string, std::vector<std::string>>);
-    bool event_encountered;
     static z3::expr encode_event_conditions_between_blocks(z3::context *, const std::shared_ptr<basicblock>&, const std::shared_ptr<basicblock>&, const std::string &run);
     std::vector<z3::expr> constraintset;
 public:

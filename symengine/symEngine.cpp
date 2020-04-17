@@ -9,16 +9,15 @@
 
 symEngine::symEngine(const std::shared_ptr<CSSA_CFG>& ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table) :
     boolname_counter{ccfg->boolname_counter}, c{}, s{z3::solver(c)},
-    event_encountered{false}, constraintset{}, ccfg{ccfg->ccfg}, symboltable(std::move(table)) {}
+    constraintset{}, ccfg{ccfg->ccfg}, symboltable(std::move(table)) {}
 
 symEngine::symEngine(const symEngine &a) :
     boolname_counter{a.boolname_counter}, c{}, s{z3::solver(c)},
-    event_encountered{false}, constraintset{}, ccfg{a.ccfg}, symboltable{a.symboltable} {}
+    constraintset{}, ccfg{a.ccfg}, symboltable{a.symboltable} {}
 
 symEngine &symEngine::operator=(const symEngine &a) {
     boolname_counter = a.boolname_counter;
     s = z3::solver(c);
-    event_encountered = false;
     constraintset = a.constraintset;
     ccfg = a.ccfg;
     symboltable = a.symboltable;
@@ -27,12 +26,11 @@ symEngine &symEngine::operator=(const symEngine &a) {
 
 symEngine::symEngine(symEngine &&a) noexcept :
     boolname_counter{a.boolname_counter}, c{}, s{z3::solver(c)},
-    event_encountered{false}, constraintset{std::move(a.constraintset)}, ccfg{std::move(a.ccfg)}, symboltable{std::move(a.symboltable)} {}
+    constraintset{std::move(a.constraintset)}, ccfg{std::move(a.ccfg)}, symboltable{std::move(a.symboltable)} {}
 
 symEngine &symEngine::operator=(symEngine &&a) noexcept {
     boolname_counter = a.boolname_counter;
     s = z3::solver(c);
-    event_encountered = false;
     constraintset = std::move(a.constraintset);
     ccfg = std::move(a.ccfg);
     symboltable = std::move(a.symboltable);
@@ -150,9 +148,10 @@ bool symEngine::execute() {
 
     //std::cout << "\n\n\n\n\nencoded:\n" << encoded.to_string() << std::endl;
 
-    auto run1 = get_run(nullptr, ccfg->startNode, ccfg->exitNode, _run1);
+    bool event_encountered = false;
+    auto run1 = get_run(nullptr, ccfg->startNode, ccfg->exitNode, _run1, &event_encountered);
     event_encountered = false;
-    auto run2 = get_run(nullptr, ccfg->startNode, ccfg->exitNode, _run2);
+    auto run2 = get_run(nullptr, ccfg->startNode, ccfg->exitNode, _run2, &event_encountered);
 
     //std::cout << "\n" << t.to_string() << "\n\n" << std::endl;
 
@@ -210,7 +209,8 @@ bool symEngine::execute() {
         std::vector<std::pair<std::string, std::string>> names;
         s.reset();
         add_reads();
-        s.add(conjunction(get_run(nullptr, ccfg->startNode, ccfg->exitNode, _run1)));
+        event_encountered = false;
+        s.add(conjunction(get_run(nullptr, ccfg->startNode, ccfg->exitNode, _run1, &event_encountered)));
         for (const auto &blk : ccfg->fiNodes) {
             for (const auto &stmt : blk->statements) {
                 if (auto phi = dynamic_cast<phiNode*>(stmt.get())) {
@@ -252,7 +252,7 @@ bool symEngine::execute() {
 
 }
 
-z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, const std::shared_ptr<basicblock> &start, const std::shared_ptr<basicblock> &end, const std::string &run) {
+z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, const std::shared_ptr<basicblock> &start, const std::shared_ptr<basicblock> &end, const std::string &run, bool *encountered) {
     auto node = start;
     z3::expr_vector constraints(c);
 
@@ -275,19 +275,23 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                 z3::expr_vector vec(c);
                 //std::stack<z3::expr> expressions;
                 int i = 0;
+                bool event_encountered = false;
                 for (const auto &nxt : node->nexts) {
-                    vec.push_back(conjunction(get_run(node, nxt, endConc->parents[i++].lock(), run)));
+                    bool event_found = false;
+                    vec.push_back(conjunction(get_run(node, nxt, endConc->parents[i++].lock(), run, &event_found)));
+                    if (event_found) {
+                        event_encountered = true;
+                    }
                 }
                 constraints.push_back(conjunction(vec) && encode_boolname(&c, stmt->get_boolname(), true, run));
 
                 //if we encounter an event, we need to encode the remaining part of the program
                 // if exitNode == end, then after the encoding of endConc, we're back to being sequential
                 if (event_encountered) {
-                    event_encountered = false;
                     std::cout << "implement handling of all event nodes if encountered some in a fork-statement\n";
                     z3::expr condition = encode_event_conditions_between_blocks(&c, node, endConc, run);
                     constraints.push_back(z3::ite( condition
-                                                 , conjunction(get_run(endConc->parents[0].lock(), endConc, end, run))
+                                                 , conjunction(get_run(endConc->parents[0].lock(), endConc, end, run, encountered))
                                                  , c.bool_val(false)
                                                  ));
                     node = end;
@@ -299,9 +303,12 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
             case If: {
                 std::shared_ptr<basicblock> firstCommonChild = find_common_child(node);
                 auto *ifNode = dynamic_cast<ifElseNode*>(stmt.get());
-                z3::expr truebranch = conjunction(get_run(node, node->nexts[0], firstCommonChild, run))
+                bool event_found_for_true = false;
+                bool event_found_for_false = false;
+
+                z3::expr truebranch = conjunction(get_run(node, node->nexts[0], firstCommonChild, run, &event_found_for_true))
                         && conjunction(&c, ifNode->boolnamesForFalseBranch, false, run);
-                z3::expr falsebranch = conjunction(get_run(node, node->nexts[1], firstCommonChild, run))
+                z3::expr falsebranch = conjunction(get_run(node, node->nexts[1], firstCommonChild, run, &event_found_for_false))
                         && conjunction(&c, ifNode->boolnamesForTrueBranch, false, run);
 
 
@@ -311,16 +318,20 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
 
                 constraints.push_back(final);
 
-                //if we've encountered an event, then we encode the program until end with all the events conditions
-                if (event_encountered && dynamic_cast<fiNode*>(firstCommonChild->statements.back().get())->first_parent == node) {
-                    event_encountered = false;
+                //if any branch had an event, we need to encode the remaining program on the top-most if-statement
+                *encountered = (event_found_for_true || event_found_for_false);
+
+                //if we've encountered an event and this is the top-most if-statement: Encode the program until end with all the events conditions
+                if (*encountered && dynamic_cast<fiNode*>(firstCommonChild->statements.back().get())->first_parent == node) {
+                    *encountered = false;
                     std::cout << "implement handling of all event nodes if encountered some in an if-statement outside of fork\n";
                     z3::expr condition = encode_event_conditions_between_blocks(&c, node, firstCommonChild, run);
                     constraints.push_back(z3::ite( condition
-                                                 , conjunction(get_run(firstCommonChild, firstCommonChild->nexts[0], end, run))
+                                                 , conjunction(get_run(firstCommonChild, firstCommonChild->nexts[0], end, run, encountered))
                                                  , c.bool_val(false)
                                                  ));
                     node = end;
+                    *encountered = true;
                 } else {
                     node = firstCommonChild;
                 }
@@ -328,8 +339,9 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
             }
             case Event: {
                 auto event = dynamic_cast<eventNode*>(stmt.get());
+                bool event_encountered = false;
                 z3::expr condition = evaluate_expression(&c, event->getCondition(), run, &constraints);
-                z3::expr truebranch = conjunction(get_run( node, node->nexts[0], end, run));
+                z3::expr truebranch = conjunction(get_run( node, node->nexts[0], end, run, &event_encountered));
 
                 constraints.push_back(z3::ite( condition
                                              , truebranch
@@ -346,7 +358,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                  *   truebranch:  rest of the program following the Coend
                  *   falsebranch: false
                  */
-                event_encountered = true;
+                *encountered = true;
                 node = end;
                 break;
             }
@@ -447,7 +459,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
     if (node == end || node->nexts.empty()) {
         return constraints;
     } else {
-        constraints.push_back(conjunction(get_run(node, node->nexts[0], end, run)));
+        constraints.push_back(conjunction(get_run(node, node->nexts[0], end, run, encountered)));
         return constraints;
     }
 }
