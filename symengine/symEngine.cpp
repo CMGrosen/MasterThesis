@@ -163,7 +163,7 @@ std::vector<std::shared_ptr<statementNode>> find_events_between_blocks(const std
     return vec;
 }
 
-bool symEngine::execute() {
+bool symEngine::execute(std::string method) {
     add_reads();
     std::cout << constraintset.size() << std::endl;
     //z3::expr encoded = encoded_pis(&c, ccfg->pis_and_depth, {});
@@ -193,40 +193,39 @@ bool symEngine::execute() {
     */
 
 
-    std::vector<z3::expr> vec;
-    for (const auto &p : ccfg->pis_and_depth) {
-        //Don't want to add these pi-functions if used in an event,
-        // as race-conditions cannot occur here
-        if (p.first->statements.back()->getNodeType() != Event) {
-            for (const auto &stmt : p.first->statements) {
-                if (auto pi = dynamic_cast<piNode*>(stmt.get())) {
-                    if (pi->getName().front() == '-') //don't encode endconc pis this way
-                        vec.push_back(encodepi(&c, pi->getType(), pi->get_boolname(), pi->getName(), &constraintset));
+    if (method == "old") {
+        std::vector<z3::expr> vec;
+        for (const auto &p : ccfg->pis_and_depth) {
+            //Don't want to add these pi-functions if used in an event,
+            // as race-conditions cannot occur here
+            if (p.first->statements.back()->getNodeType() != Event) {
+                for (const auto &stmt : p.first->statements) {
+                    if (auto pi = dynamic_cast<piNode *>(stmt.get())) {
+                        if (pi->getName().front() == '-') //don't encode endconc pis this way
+                            vec.push_back(
+                                    encodepi(&c, pi->getType(), pi->get_boolname(), pi->getName(), &constraintset));
+                    }
+                }
+            }
+        }
+        z3::expr dis = disjunction(&c, vec);
+        std::cout << "debug:\n" << dis.to_string() << std::endl;
+        std::cout << constraintset.size() << std::endl;
+        constraintset.push_back(dis);
+    } else {
+        for (const auto &p : ccfg->pis_and_depth) {
+            //Don't want to add these pi-functions if used in an event,
+            // as race-conditions cannot occur here
+            if (p.first->statements.back()->getNodeType() != Event) {
+                for (const auto &stmt : p.first->statements) {
+                    if (auto pi = dynamic_cast<piNode*>(stmt.get())) {
+                        if (pi->getName().front() == '-') //don't encode endconc pis this way
+                            possible_raceconditions.insert({pi->getName(), encodepi2(&c, pi->getType(), pi->get_boolname(), pi->getName())});
+                    }
                 }
             }
         }
     }
-    z3::expr dis = disjunction(&c, vec);
-    std::cout << "debug:\n" << dis.to_string() << std::endl;
-    std::cout << constraintset.size() << std::endl;
-    //constraintset.push_back(dis);
-
-
-    std::cout << constraintset.size() << std::endl;
-
-    for (const auto &p : ccfg->pis_and_depth) {
-        //Don't want to add these pi-functions if used in an event,
-        // as race-conditions cannot occur here
-        if (p.first->statements.back()->getNodeType() != Event) {
-            for (const auto &stmt : p.first->statements) {
-                if (auto pi = dynamic_cast<piNode*>(stmt.get())) {
-                    if (pi->getName().front() == '-') //don't encode endconc pis this way
-                        possible_raceconditions.insert({pi->getName(), encodepi2(&c, pi->getType(), pi->get_boolname(), pi->getName())});
-                }
-            }
-        }
-    }
-
 
 /*
     for (int i = 1; i < boolname_counter; ++i) {

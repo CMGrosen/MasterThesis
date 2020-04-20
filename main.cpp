@@ -131,7 +131,7 @@ SSA_CCFG do_stuff(const std::shared_ptr<statementNode> &tree, std::unordered_map
     //symEngine engine = symEngine(cssaccfg, treeAndSymbolTable->second);
 
     interpreter checker = interpreter(engine);
-    if (checker.run()) {
+    if (checker.run2()) {
         std::cout << "all good\n";
     } else {
         std::cout << "error\n";
@@ -152,7 +152,7 @@ void run(const std::string& path) {
 
 int main(int argc, const char* argv[]) {
     //run(test_files["while"]);
-    run(rapport_files["reportExample"]);
+    run(rapport_files["if"]);
     //run(test_files["nestedforks"]);
 
     std::cout << "done: " << std::to_string(basicblock::get_number_of_blocks()) << "\n";

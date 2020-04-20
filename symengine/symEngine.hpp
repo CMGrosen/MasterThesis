@@ -44,7 +44,7 @@ public:
     std::unordered_map<std::string, std::shared_ptr<expressionNode>> symboltable;
     std::pair<std::map<std::string, std::shared_ptr<VariableValue>>, std::map<std::string, bool>> getModel();
 
-    bool execute();
+    bool execute(std::string method);
     bool updateModel(const std::vector<std::pair<std::string, Type>>&, const std::vector<std::string>&);
     bool updateModel(const z3::expr&);
     std::map<std::string, z3::expr> possible_raceconditions;

@@ -1,5 +1,7 @@
-if (read(1) < read(2)) {
+a = read(1);
+if (a < 10) {
   a = 1;
 } else {
   a = 2;
 };
+write (2,a);
