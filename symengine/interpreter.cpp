@@ -13,7 +13,7 @@ bool interpreter::run() {
     bool returnval = true;
     std::set<std::string> checklater;
     std::set<std::string> races;
-    bool satisfiable = engine.execute();
+    bool satisfiable = engine.execute("old");
     if (!satisfiable) {
         std::cout << "model unsatisfiable\n";
         returnval = false;
@@ -95,7 +95,7 @@ bool interpreter::run() {
 
 
 bool interpreter::run2() {
-    if(engine.execute()) {
+    if(engine.execute("new")) {
         for (const auto &pair : engine.possible_raceconditions) {
             if(engine.updateModel(pair.second)) {
                 refresh();

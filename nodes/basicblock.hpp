@@ -49,12 +49,12 @@ struct basicblock {
     std::string to_string();
     size_t get_stmt_length();
     size_t get_stmt_count();
-    size_t depth;
+    size_t depth; //Depth of this block in the tree
 
-    std::map<std::string, std::set<std::string>> uses;
-    std::map<std::string, std::set<std::string>> defines;
-    std::map<std::string, std::string> defmapping;
-    std::map<std::string, std::shared_ptr<statementNode>> defsite;
+    std::map<std::string, std::set<std::string>> uses; //Uses for a variable (Only one in each set if CFG is on SSA)
+    std::map<std::string, std::set<std::string>> defines; //definitions of variables (definition for variable a can be a_3, a_4 etc)
+    std::map<std::string, std::string> defmapping; //find the syntactic name of a variable on its SSA-form. ("a_3" -> "a")
+    std::map<std::string, std::shared_ptr<statementNode>> defsite; //Finds the statement where a variable is defined ("a_3" -> statement)
 
     std::pair<basicblock*, int> concurrentBlock;
     std::string get_name();

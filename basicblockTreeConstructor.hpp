@@ -13,19 +13,19 @@
 #include <iostream>
 
 struct CCFG {
-    std::set<std::shared_ptr<basicblock>> nodes;
-    std::unordered_set<edge> edges;
-    std::unordered_map<std::shared_ptr<basicblock>, std::vector<std::shared_ptr<basicblock>>> conflict_edges;
+    std::set<std::shared_ptr<basicblock>> nodes; //All basicblocks in the graph
+    std::unordered_set<edge> edges; //All edges in the graph, including conflict edges after updating
+    std::unordered_map<std::shared_ptr<basicblock>, std::vector<std::shared_ptr<basicblock>>> conflict_edges; //only the conflict edges. The usage maps to all definitions
     std::shared_ptr<basicblock> startNode;
     std::shared_ptr<basicblock> exitNode;
-    std::map<std::string, std::shared_ptr<basicblock>> defs;
-    std::map<basicblock *, std::set<basicblock *>> concurrent_events;
-    size_t readcount;
-    std::unordered_map<std::shared_ptr<basicblock>, std::unordered_set<std::shared_ptr<basicblock>>> prec;
-    std::vector<std::pair<std::shared_ptr<basicblock>, size_t>> pis_and_depth;
-    std::vector<std::shared_ptr<basicblock>> fiNodes;
-    std::vector<std::shared_ptr<basicblock>> endconcNodes;
-    std::map<std::string, std::shared_ptr<statementNode>> boolnameStatements;
+    std::map<std::string, std::shared_ptr<basicblock>> defs; //When the CFG is on SSA-form, find the block where a variable is defined
+    std::map<basicblock *, std::set<basicblock *>> concurrent_events; //unused
+    size_t readcount; //how many reads we have. Used in symengine to build constraints for all reads
+    std::unordered_map<std::shared_ptr<basicblock>, std::unordered_set<std::shared_ptr<basicblock>>> prec; //unused
+    std::vector<std::pair<std::shared_ptr<basicblock>, size_t>> pis_and_depth; //all pi-functions and the depth. Sorted by depth
+    std::vector<std::shared_ptr<basicblock>> fiNodes; //all blocks with endFi statements
+    std::vector<std::shared_ptr<basicblock>> endconcNodes; //all blocks with endConc statements
+    std::map<std::string, std::shared_ptr<statementNode>> boolnameStatements; //find the statement with the given bool tracking constant
 
 
     void updateConflictEdges() { add_conflict_edges(); };

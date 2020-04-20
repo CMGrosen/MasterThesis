@@ -19,7 +19,7 @@ public:
     std::string get_boolname() const {return boolname;}
     void set_linenum(int ln) {linenum = ln;}
     int get_linenum() const {return linenum;}
-    std::string boolname_as_tikz() const {return nameToTikzName(boolname, true);}
+    std::string boolname_as_tikz() const {return "\\textit{-" + nameToTikzName(boolname, true) + "}";}
 };
 
 #endif //ANTLR_CPP_TUTORIAL_STATEMENTNODE_HPP

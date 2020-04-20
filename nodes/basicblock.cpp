@@ -248,7 +248,7 @@ size_t basicblock::get_stmt_length() {
     int32_t longest_stmt = 0;
     for (const auto &stmt : statements) {
         std::string str = stmt->to_string();
-        int32_t stmtlen = str.length() + (stmt->get_boolname().size() + 1); //boolname + ": "
+        int32_t stmtlen = str.length() + (stmt->get_boolname().size() + 2); //boolname + ": "
         for (auto it = str.begin(); it != str.end(); ++it) {
             if (*it == '\\' || *it == '$' || *it == '{' || *it == '}' || (*it == '_' && *(it-1) != '\\')) {
                 --stmtlen;
