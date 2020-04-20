@@ -77,6 +77,7 @@ public:
         std::set<std::shared_ptr<CCFGNode>> placeddBlocks;
         std::string font_size = "{\\fontsize{" + std::to_string(symbol_width*2) + "pt}{0pt}\\selectfont\n";
         std::string result = font_size + std::string("\\usetikzlibrary{automata,positioning}\n") +
+                             "\\usetikzlibrary{arrows.meta}\n" + "\\tikzset{>={Latex[width=3mm,length=3mm]}}\n" +
                              std::string("\\begin{tikzpicture}[shorten >=1pt, node distance=2cm, on grid, auto]\n");
         resizeAll(&resizedBlocks, &placeddBlocks);
         result += draw_node(&drawnBlocks, ccfg);

@@ -331,6 +331,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                                                  , c.bool_val(false)
                                                  ));
                     node = end;
+                    *encountered = true;
                 } else {
                     node = endConc->parents[0].lock();
                 }
@@ -368,7 +369,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                                                  ));
                     node = end;
                     *encountered = true;
-                } else {
+                } else { //if *encountered is true, then firstCommonChild == end, and thus, encountered is propagated to the caller
                     node = firstCommonChild;
                 }
                 break;

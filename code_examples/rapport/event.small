@@ -1,0 +1,13 @@
+a = read(1);
+fork {
+  when(a == 10);
+  a = read(1);
+} and {
+  if (a < 0) {
+    when(a > 0);
+    a = 10;
+  } else {
+    a = 0;
+  };
+};
+write (2, a);

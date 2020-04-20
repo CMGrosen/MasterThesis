@@ -55,7 +55,8 @@ static std::map< const char *, const char * > test_files = {
 
 static std::map<const char *, const char *> rapport_files ={
     {"reportExample", "../code_examples/rapport/report_example.small"},
-    {"if", "../code_examples/rapport/if.small"}
+    {"if", "../code_examples/rapport/if.small"},
+    {"when", "../code_examples/rapport/event.small"}
 };
 
 std::pair<const std::shared_ptr<statementNode>, std::unordered_map<std::string, std::shared_ptr<expressionNode>>>
@@ -152,7 +153,7 @@ void run(const std::string& path) {
 
 int main(int argc, const char* argv[]) {
     //run(test_files["while"]);
-    run(rapport_files["if"]);
+    run(rapport_files["when"]);
     //run(test_files["nestedforks"]);
 
     std::cout << "done: " << std::to_string(basicblock::get_number_of_blocks()) << "\n";
