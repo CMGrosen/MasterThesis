@@ -61,9 +61,20 @@ static std::map<const char *, const char *> rapport_files ={
 };
 
 std::pair<const std::shared_ptr<statementNode>, std::unordered_map<std::string, std::shared_ptr<expressionNode>>>
-parse_program(const std::string& path) {
+parse_program(int num_args, const std::string& path) {
     std::ifstream stream;
     stream.open(path);
+
+    if (!stream.is_open()) {
+        std::cout << "no file at given path: '" << path << "' found\n";
+        if (num_args > 1) {
+            std::cout << "usage: <path/to/executable> <path/to/input_file.small>\n";
+        } else {
+            std::cout << "either provide input file argument, or ensure current working directory is the same directory as the location of this program\n";
+        }
+        return {};
+    }
+    std::cout << (stream.is_open() ? "true" : "false") << "\n";
 
     ANTLRInputStream input(stream);
     SmallLexer lexer(&input);
@@ -72,13 +83,13 @@ parse_program(const std::string& path) {
 
     SmallParser::FileContext* tree = parser.file();
     if (parser.getNumberOfSyntaxErrors())
-        return {nullptr, std::unordered_map<std::string, std::shared_ptr<expressionNode>>{}};
+        return {};
     DST visitor;
 
     auto treeAndSymbolTable = visitor.getTree(tree);
 
     if(visitor.getNumErrors() || treeAndSymbolTable.first->getType() == errorType) {
-        return {nullptr, std::unordered_map<std::string, std::shared_ptr<expressionNode>>{}};
+        return {};
     }
     return treeAndSymbolTable;
 }
@@ -145,8 +156,8 @@ SSA_CCFG do_stuff(const std::shared_ptr<statementNode> &tree, std::unordered_map
     return ssa_ccfg;
 }
 
-void run(const std::string& path) {
-    auto treeAndSymbolTable = parse_program(path);
+void run(int num_args, const std::string& path) {
+    auto treeAndSymbolTable = parse_program(num_args, path);
     if (!treeAndSymbolTable.first) return;
     auto ccfg = std::make_shared<SSA_CCFG>(do_stuff(treeAndSymbolTable.first, std::move(treeAndSymbolTable.second)));
     std::cout << "done with run: " << std::to_string(basicblock::get_number_of_blocks()) << "\n";
@@ -162,14 +173,16 @@ int main(int argc, const char* argv[]) {
             path = working_directory + "/" + argv[1];
         }
         std::cout << "checking program: '" << path << "' for data-races" << std::endl;
-        run(path);
+        run(argc, path);
     } else {
         std::string input = rapport_files["when"];
 
-        std::cout << "checking program: '" << input << "' for data-races" << std::endl;
-        run(input);
+        std::string path = working_directory + "/" + input;
+        std::cout << "checking program: '" << path << "' for data-races" << std::endl;
+        run(argc, path);
     }
-
+    std::cout << argv[0] << std::endl;
+    std::cout << working_directory << std::endl;
     std::cout << "done: " << std::to_string(basicblock::get_number_of_blocks()) << "\n";
 
 
