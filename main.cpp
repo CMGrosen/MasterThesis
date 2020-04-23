@@ -1,4 +1,5 @@
 #include <iostream>
+#include <filesystem>
 
 #include "antlr4-runtime.h"
 #include "SmallLexer.h"
@@ -152,9 +153,22 @@ void run(const std::string& path) {
 }
 
 int main(int argc, const char* argv[]) {
-    //run(test_files["while"]);
-    run(rapport_files["when"]);
-    //run(test_files["nestedforks"]);
+    std::string working_directory = std::filesystem::current_path();
+    if (argc > 1) {
+        std::string path;
+        if (argv[1][0] == '/') { //absolute path
+            path = argv[1];
+        } else { //relative path
+            path = working_directory + "/" + argv[1];
+        }
+        std::cout << "checking program: '" << path << "' for data-races" << std::endl;
+        run(path);
+    } else {
+        std::string input = rapport_files["when"];
+
+        std::cout << "checking program: '" << input << "' for data-races" << std::endl;
+        run(input);
+    }
 
     std::cout << "done: " << std::to_string(basicblock::get_number_of_blocks()) << "\n";
 
