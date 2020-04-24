@@ -14,8 +14,9 @@
 
 struct CCFG {
     std::set<std::shared_ptr<basicblock>> nodes; //All basicblocks in the graph
-    std::unordered_set<edge> edges; //All edges in the graph, including conflict edges after updating
-    std::unordered_map<std::shared_ptr<basicblock>, std::vector<std::shared_ptr<basicblock>>> conflict_edges; //only the conflict edges. The usage maps to all definitions
+    std::set<std::shared_ptr<edge>> edges; //All edges in the graph, including conflict edges after updating
+    std::unordered_map<std::shared_ptr<basicblock>, std::vector<std::shared_ptr<edge>>> conflict_edges_from; //only the conflict edges. The usage maps to all definitions
+    std::unordered_map<std::shared_ptr<basicblock>, std::vector<std::shared_ptr<edge>>> conflict_edges_to;
     std::shared_ptr<basicblock> startNode;
     std::shared_ptr<basicblock> exitNode;
     std::map<std::string, std::shared_ptr<basicblock>> defs; //When the CFG is on SSA-form, find the block where a variable is defined
@@ -32,12 +33,12 @@ struct CCFG {
 
     CCFG(std::set<std::shared_ptr<basicblock>> _nodes, std::unordered_set<edge> _edges,
          std::shared_ptr<basicblock> _start, std::shared_ptr<basicblock> _exit)
-            : nodes{std::move(_nodes)}, edges{std::move(_edges)}, startNode{std::move(_start)},
+            : nodes{std::move(_nodes)}, startNode{std::move(_start)},
               exitNode{std::move(_exit)} {
         assign_parents();
         if (exitNode->parents.size() == 1 && exitNode->parents[0].lock()->statements[0]->getNodeType() != While) {
             nodes.erase(exitNode);
-            edges.erase(edge(flow, exitNode->parents[0].lock(), exitNode));
+            _edges.erase(edge(flow, exitNode->parents[0].lock(), exitNode));
             std::vector<std::shared_ptr<basicblock>> _nexts;
             exitNode = exitNode->parents[0].lock();
             exitNode->nexts.clear();
@@ -77,7 +78,9 @@ struct CCFG {
             if (n->type == Coend) endconcNodes.push_back(n);
             else if (n->type == joinNode) fiNodes.push_back(n);
         }
-        build_partial_order_execution();
+        for (auto &e : _edges) {
+            edges.insert(std::make_shared<edge>(e));
+        }
     }
 
     CCFG(const CCFG& a) {
@@ -85,7 +88,8 @@ struct CCFG {
     }
 
     CCFG(CCFG&& o) noexcept
-            : nodes{std::move(o.nodes)}, edges{std::move(o.edges)}, conflict_edges{std::move(o.conflict_edges)},
+            : nodes{std::move(o.nodes)}, edges{std::move(o.edges)},
+            conflict_edges_from{std::move(o.conflict_edges_from)}, conflict_edges_to{std::move(o.conflict_edges_to)},
             startNode{std::move(o.startNode)}, exitNode{std::move(o.exitNode)},
             defs{std::move(o.defs)}, concurrent_events{std::move(o.concurrent_events)}, readcount{o.readcount},
             prec{std::move(o.prec)}, pis_and_depth(std::move(o.pis_and_depth)),
@@ -100,7 +104,8 @@ struct CCFG {
     CCFG& operator=(CCFG&& other) noexcept {
         nodes = std::move(other.nodes);
         edges = std::move(other.edges);
-        conflict_edges = std::move(other.conflict_edges);
+        conflict_edges_from = std::move(other.conflict_edges_from);
+        conflict_edges_to = std::move(other.conflict_edges_to);
         startNode = std::move(other.startNode);
         exitNode = std::move(other.exitNode);
         defs = std::move(other.defs);
@@ -187,10 +192,13 @@ private:
             }
         }
         for (const auto &ed : a.edges) {
-            edges.insert(edge(ed.type, oldMapsTo[ed.neighbours[0].get()], oldMapsTo[ed.neighbours[1].get()]));
-            if (ed.type == conflict) {
-                auto res = conflict_edges.insert({oldMapsTo[ed.neighbours[0].get()], {oldMapsTo[ed.neighbours[1].get()]}});
-                if (!res.second) res.first->second.push_back(oldMapsTo[ed.neighbours[1].get()]);
+            std::shared_ptr<edge> e = std::make_shared<edge>(edge(ed->type, oldMapsTo[ed->from().get()], oldMapsTo[ed->to().get()]));
+            edges.insert(e);
+            if (ed->type == conflict) {
+                auto res = conflict_edges_from.insert({e->from(), {e}});
+                if (!res.second) res.first->second.push_back(e);
+                res = conflict_edges_to.insert({e->to(), {e}});
+                if (!res.second) res.first->second.push_back(e);
             }
         }
         if (!a.defs.empty()) {
@@ -254,9 +262,12 @@ private:
                             //blocks are concurrent
                             // and have a variable in common,
                             // thus there's a conflict
-                            edges.insert(edge(conflict, blk, cmp));
-                            auto res = conflict_edges.insert({blk, {cmp}});
-                            if (!res.second) res.first->second.push_back(cmp);
+                            std::shared_ptr<edge> e = std::make_shared<edge>(edge(conflict, blk, cmp));
+                            edges.insert(e);
+                            auto res = conflict_edges_from.insert({blk, {e}});
+                            if (!res.second) res.first->second.push_back(e);
+                            res = conflict_edges_to.insert({cmp, {e}});
+                            if (!res.second) res.first->second.push_back(e);
                             break;
                         }
                     }
@@ -319,60 +330,6 @@ private:
         }
         return false; //if we get here, no conditions were met, thus not concurrent
     }
-
-    void build_partial_order_execution() {
-        std::unordered_map<std::shared_ptr<basicblock>, std::unordered_set<edge>> E;
-        for (const auto &n : nodes) prec.insert({n, {}});
-
-        for (const auto &ed : edges) {
-            auto res = E.insert({ed.neighbours[0], {ed}});
-            if (!res.second) res.first->second.insert(ed);
-            res = E.insert({ed.neighbours[1], {ed}});
-            if (!res.second) res.first->second.insert(ed);
-        }
-
-        std::queue<std::shared_ptr<basicblock>> Q;
-        for (const auto &nxt : startNode->nexts) Q.push(nxt);
-
-        while (!Q.empty()) {
-            std::shared_ptr<basicblock> n = Q.front();
-            Q.pop();
-            auto prec_old = prec.find(n)->second;
-            std::unordered_set<std::shared_ptr<basicblock>> prec_f;
-
-            if (n->type == Coend) { // union(m,n) in E prec(m) union n
-                /*
-                for (const auto &ed : E.find(n)->second) {
-                    if (ed.neighbours[0] != n) {
-                        for (const auto &m : prec.find(ed.neighbours[0])->second) {
-                            prec_f.insert(m);
-                        }
-                    }
-                }*/
-                for (const auto &m : nodes) {
-                    if (m != n) prec_f.insert(m);
-                }
-                prec_f.insert(n);
-            } else { //disjunction(m,n) in E prec(m) union n
-                for (const auto &ed : E.find(n)->second) {
-                    //if (ed.type == flow) {
-                        auto set = ed.neighbours[0] == n ? prec.find(ed.neighbours[1])->second : prec.find(
-                                ed.neighbours[0])->second;
-                        for (const auto &res : set) prec_f.insert(res);
-                    //}
-                }
-                prec_f.insert(n);
-            }
-            prec.find(n)->second = prec_f;
-
-            if (prec_old != prec_f) {
-                for (const auto &nxt : n->nexts) {
-                    Q.push(nxt);
-                }
-            }
-        }
-    }
-
 };
 
 class basicBlockTreeConstructor {

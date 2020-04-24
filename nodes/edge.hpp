@@ -16,9 +16,12 @@ class edge {
 public:
     edgeType type;
     std::vector<std::shared_ptr<basicblock>> neighbours;
+    std::string name;
     bool operator<(const edge& s) const;
     bool operator==(const edge& s) const;
     bool operator!=(const edge& s) const;
+    std::shared_ptr<basicblock> from();
+    std::shared_ptr<basicblock> to();
     edge();
     edge(std::shared_ptr<basicblock> lB, std::shared_ptr<basicblock> rB);
     edge(edgeType typeOfEdge, std::shared_ptr<basicblock> lB, std::shared_ptr<basicblock> rB);

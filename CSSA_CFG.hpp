@@ -51,6 +51,8 @@ struct CSSA_CFG {
         updatePiStatements(ccfg->startNode, &var_to_SSAvar);
 
         update_if_statements_boolname_branches();
+
+        update_conflict_edges_names();
     }
 
 private:
@@ -209,9 +211,11 @@ private:
     }
 
     void place_phi_functions() {
-        for (const auto &pair : ccfg->conflict_edges) {
+        for (const auto &pair : ccfg->conflict_edges_from) {
+            std::vector<std::shared_ptr<edge>> edges = pair.second;
             std::shared_ptr<basicblock> a = pair.first;
-            for (const std::shared_ptr<basicblock> &b : pair.second) { //Foreach conflict-edge (a, b) do
+            for (const auto &ed : edges) { //Foreach conflict-edge (a, b) do
+                std::shared_ptr<basicblock> b = ed->to();
                 for (const auto &v : a->defines) { //v variable defined in a
                     std::string varname = v.first;
                     if (b->uses.find(varname) != b->uses.end()) {
@@ -426,6 +430,17 @@ private:
 
         for (const auto &nxt : node->nexts) {
             update_if_statement_boolname_branches_helper(ifstatement, nxt, goal, branch);
+        }
+    }
+
+    void update_conflict_edges_names() {
+        for (auto &pair : ccfg->conflict_edges_from) {
+            std::string num_conflicts = std::to_string(pair.second.size());
+            std::string dcl = dynamic_cast<assignNode*>(pair.first->statements.back().get())->getName() + "-";
+            for (std::shared_ptr<edge> &ed : pair.second) {
+                std::string blkThreadName = ed->to()->concurrentBlock.first->get_name() + "_" + std::to_string(ed->to()->concurrentBlock.second) + "-";
+                ed->name.assign(blkThreadName + dcl + num_conflicts);
+            }
         }
     }
 };

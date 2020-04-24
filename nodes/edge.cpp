@@ -19,3 +19,13 @@ edge::edge(std::shared_ptr<basicblock> lB, std::shared_ptr<basicblock> rB) :
         type{flow}, neighbours{std::vector<std::shared_ptr<basicblock>>{std::move(lB), std::move(rB)}} {}
 edge::edge(edgeType typeOfEdge, std::shared_ptr<basicblock> lB, std::shared_ptr<basicblock> rB) :
         type{typeOfEdge}, neighbours{std::vector<std::shared_ptr<basicblock>>{std::move(lB), std::move(rB)}} {}
+
+std::shared_ptr<basicblock> edge::from() {
+    return neighbours[0];
+}
+
+std::shared_ptr<basicblock> edge::to() {
+    return neighbours[1];
+}
+
+

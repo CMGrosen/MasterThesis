@@ -71,7 +71,7 @@ public:
         }
     }
 
-    std::string to_string(const std::unordered_set<edge> *edges, const CCFG *ccfg){
+    std::string to_string(const std::set<std::shared_ptr<edge>> *edges, const CCFG *ccfg){
         std::set<CCFGNode *> drawnBlocks;
         std::set<std::shared_ptr<CCFGNode>> resizedBlocks;
         std::set<std::shared_ptr<CCFGNode>> placeddBlocks;
@@ -109,15 +109,15 @@ public:
         }
         return result;
     }
-    static std::string draw_edges(const std::unordered_set<edge> *edges){
+    static std::string draw_edges(const std::set<std::shared_ptr<edge>> *edges){
         std::string result;
         for(const auto& ed : *edges){
-            if(ed.type == conflict){
+            if(ed->type == conflict){
                 result += "\\path[->, red] (";
             } else {
                 result += "\\path[->] (" ;
             }
-            result += ed.neighbours[0]->get_name() + ") edge (" + ed.neighbours[1]->get_name() + ");\n";
+            result += ed->from()->get_name() + ") edge (" + ed->to()->get_name() + ");\n";
         }
         return result;
     }
