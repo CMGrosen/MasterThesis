@@ -30,6 +30,7 @@ basicblock::basicblock(const basicblock &o) {
     type = o.type;
     uses = o.uses;
     defines = o.defines;
+    name = o.name;
     type = o.type;
     depth = o.depth;
     /*
@@ -44,12 +45,13 @@ basicblock& basicblock::operator=(const basicblock &o) {
     depth = o.depth;
     uses = o.uses;
     defines = o.defines;
+    name = o.name;
     type = o.type;
     counterblocks++;
     return *this;
 }
 
-basicblock::basicblock(basicblock &&o) noexcept : statements{std::move(o.statements)}, parents{std::move(o.parents)}, nexts{std::move(o.nexts)}, depth{o.depth}, uses{std::move(o.uses)}, defines{std::move(o.defines)}, defsite{std::move(o.defsite)}, type{o.type} {
+basicblock::basicblock(basicblock &&o) noexcept : statements{std::move(o.statements)}, parents{std::move(o.parents)}, nexts{std::move(o.nexts)}, depth{o.depth}, uses{std::move(o.uses)}, defines{std::move(o.defines)}, defsite{std::move(o.defsite)}, type{o.type}, name{o.name} {
     counterblocks++;
 }
 
@@ -62,6 +64,7 @@ basicblock& basicblock::operator=(basicblock &&o) noexcept  {
     defines = std::move(o.defines);
     defsite = std::move(o.defsite);
     type = o.type;
+    name = o.name;
     counterblocks++;
     return *this;
 }
@@ -220,23 +223,14 @@ void basicblock::updateUsedVariables() {
 }
 
 std::string basicblock::get_name() {
-    return get_address();
+    return std::to_string(name);
 }
 
 int basicblock::counterblocks = 0;
 
-std::string basicblock::get_address() {
-    if (name.empty()) {
-        const void *address = static_cast<const void *>(this);
-        std::stringstream ss;
-        ss << address;
-        return ss.str();
-    } else return name;
-}
-
 
 std::string basicblock::to_string() {
-    std::string res;
+    std::string res;// = "name: " + get_name() + "\\\\";
     for (const auto &stmt : statements) {
         //res += stmt->to_string() + "\\\\";
         res += stmt->boolname_as_tikz() + ": " + stmt->to_string() + "\\\\";
@@ -288,4 +282,8 @@ void basicblock::copy_statements(const basicblock *o) {
     for (const auto &def : o->defsite) {
         defsite[def.first] = oldMapsTo[def.second];
     }
+}
+
+void basicblock::set_name(int32_t n) {
+    name = n;
 }

@@ -58,14 +58,15 @@ struct basicblock {
 
     std::pair<basicblock*, int> concurrentBlock;
     std::string get_name();
+    void set_name(int32_t);
 
     blocktype type;
 private:
     static int counterblocks;
 
-    std::string get_address();
 
-    std::string name;
+
+    int32_t name;
 
     static std::vector<const variableNode*> get_variables_from_expression(const expressionNode *expr) {
         std::vector<const variableNode*> vars{};

@@ -81,6 +81,7 @@ struct CCFG {
         for (auto &e : _edges) {
             edges.insert(std::make_shared<edge>(e));
         }
+        assign_blocknames(startNode);
     }
 
     CCFG(const CCFG& a) {
@@ -248,6 +249,28 @@ private:
         if (visited->insert(current).second) {
             for (const auto &nxt : current->nexts) {
                 assign_parents_helper(current, nxt, visited);
+            }
+        }
+    }
+
+    static void assign_blocknames(const std::shared_ptr<basicblock>& startnode) {
+        std::set<std::shared_ptr<basicblock>> visited;
+        int32_t name = 0;
+        assign_blocknames_helper(startnode, &visited, &name);
+    }
+
+    static void assign_blocknames_helper(const std::shared_ptr<basicblock>& node, std::set<std::shared_ptr<basicblock>> *visited, int32_t *name) {
+        if (node->type == joinNode || node->type == Coend) {
+            for (const auto &p : node->parents) {
+                if (visited->find(p.lock()) == visited->end()) { //Cannot name this block yet as all parents aren't yet named
+                    return;
+                }
+            }
+        }
+        if (visited->insert(node).second) { //Break cycles in case of whiles. Don't want to name the same block twice
+            node->set_name(++(*name));
+            for (const auto& n : node->nexts) {
+                assign_blocknames_helper(n, visited, name);
             }
         }
     }
