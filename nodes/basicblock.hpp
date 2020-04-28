@@ -58,6 +58,7 @@ struct basicblock {
 
     std::pair<basicblock*, int> concurrentBlock;
     std::string get_name();
+    std::map<std::string, std::vector<std::string>> pi_blocknames;
     void set_name(int32_t);
 
     blocktype type;

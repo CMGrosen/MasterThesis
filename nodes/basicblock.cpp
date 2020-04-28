@@ -31,8 +31,8 @@ basicblock::basicblock(const basicblock &o) {
     uses = o.uses;
     defines = o.defines;
     name = o.name;
-    type = o.type;
     depth = o.depth;
+    pi_blocknames = o.pi_blocknames;
     /*
     for (auto nxt : o.nexts) {
         nexts.push_back(std::make_shared<basicblock>(basicblock(*nxt)));
@@ -47,11 +47,12 @@ basicblock& basicblock::operator=(const basicblock &o) {
     defines = o.defines;
     name = o.name;
     type = o.type;
+    pi_blocknames = o.pi_blocknames;
     counterblocks++;
     return *this;
 }
 
-basicblock::basicblock(basicblock &&o) noexcept : statements{std::move(o.statements)}, parents{std::move(o.parents)}, nexts{std::move(o.nexts)}, depth{o.depth}, uses{std::move(o.uses)}, defines{std::move(o.defines)}, defsite{std::move(o.defsite)}, type{o.type}, name{o.name} {
+basicblock::basicblock(basicblock &&o) noexcept : statements{std::move(o.statements)}, parents{std::move(o.parents)}, nexts{std::move(o.nexts)}, depth{o.depth}, uses{std::move(o.uses)}, defines{std::move(o.defines)}, defsite{std::move(o.defsite)}, pi_blocknames{std::move(o.pi_blocknames)}, type{o.type}, name{o.name} {
     counterblocks++;
 }
 
@@ -63,6 +64,7 @@ basicblock& basicblock::operator=(basicblock &&o) noexcept  {
     uses = std::move(o.uses);
     defines = std::move(o.defines);
     defsite = std::move(o.defsite);
+    pi_blocknames = std::move(o.pi_blocknames);
     type = o.type;
     name = o.name;
     counterblocks++;

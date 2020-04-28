@@ -266,6 +266,14 @@ private:
                                 }
                             }
 
+                            for (const auto &stmt: vec) {
+                                if (auto pi = dynamic_cast<piNode*>(stmt.get())) {
+                                    auto res = b->pi_blocknames.insert({pi->getVar(), {pi->getName() + "-block"}});
+                                    if (!res.second) {
+                                        res.first->second.emplace_back(pi->getName() + "-block");
+                                    }
+                                }
+                            }
                             for (const auto &stmt: b->statements) {
                                 vec.push_back(stmt);
                             }

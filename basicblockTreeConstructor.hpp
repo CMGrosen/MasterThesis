@@ -261,10 +261,9 @@ private:
 
     static void assign_blocknames_helper(const std::shared_ptr<basicblock>& node, std::set<std::shared_ptr<basicblock>> *visited, int32_t *name) {
         if (node->type == joinNode || node->type == Coend) {
-            for (const auto &p : node->parents) {
-                if (visited->find(p.lock()) == visited->end()) { //Cannot name this block yet as all parents aren't yet named
-                    return;
-                }
+            if (visited->find(node->parents.back().lock()) == visited->end()) {
+                //Cannot name this block yet as right-most parent hasn't yet been visited
+                return;
             }
         }
         if (visited->insert(node).second) { //Break cycles in case of whiles. Don't want to name the same block twice
