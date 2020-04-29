@@ -28,7 +28,7 @@ state::state(std::set<std::shared_ptr<basicblock>> cr1, std::set<std::shared_ptr
         }
 
 void state::findassignedconflicts(const std::string &val, const std::pair<std::shared_ptr<basicblock>, std::shared_ptr<statementNode>> &def, std::set<std::pair<std::shared_ptr<basicblock>, std::shared_ptr<statementNode>>> *conflicts) {
-    std::vector<std::pair<std::string, std::string>> *possibilities;
+    std::vector<option> *possibilities;
     if (def.second->getNodeType() == Pi) {
         possibilities = dynamic_cast<piNode*>(def.second.get())->get_variables();
 
@@ -40,12 +40,12 @@ void state::findassignedconflicts(const std::string &val, const std::pair<std::s
         return;
     }
     for (const auto &v : *possibilities) {
-        if (interdata->statementsExecuted.find(v.second)->second) { //this statement was executed
-            if (interdata->valuesFromModel.find(v.first + _run1)->second->value == val
-                || interdata->valuesFromModel.find(v.first + _run2)->second->value == val)
+        if (interdata->statementsExecuted.find(v.var_boolname)->second) { //this statement was executed
+            if (interdata->valuesFromModel.find(v.var + _run1)->second->value == val
+                || interdata->valuesFromModel.find(v.var + _run2)->second->value == val)
             {
-                if (visited.find(interdata->ccfg->defs[v.first]) != visited.end()) { //This block has been visited
-                    findassignedconflicts(val, {interdata->ccfg->defs[v.first], interdata->ccfg->boolnameStatements[v.second]}, conflicts);
+                if (visited.find(interdata->ccfg->defs[v.var]) != visited.end()) { //This block has been visited
+                    findassignedconflicts(val, {interdata->ccfg->defs[v.var], interdata->ccfg->boolnameStatements[v.var_boolname]}, conflicts);
                 }
             }
         }

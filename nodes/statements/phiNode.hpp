@@ -5,16 +5,18 @@
 #ifndef ANTLR_CPP_TUTORIAL_PHINODE_HPP
 #define ANTLR_CPP_TUTORIAL_PHINODE_HPP
 
+#include <nodes/statements/option.hpp>
+
 class phiNode : virtual public statementNode {
     std::string _name;
     std::string origName;
-    std::vector<std::pair<std::string, std::string>> _variables;
+    std::vector<option> _variables;
 public:
 
     phiNode(Type t, std::string name, const std::vector<std::string> *variables) :
     _name{name}, origName{std::move(name)} {
         for (const auto &v : *variables) {
-            _variables.emplace_back(v, "0");
+            _variables.emplace_back(v, "0", "0");
         }
         setNodeType(Phi);
         set_linenum(-1);
@@ -22,14 +24,15 @@ public:
     }
 
     phiNode(Type t, std::string name, std::vector<std::pair<std::string, std::string>> variables) :
-    _name{name}, origName{std::move(name)}, _variables{std::move(variables)} {
+    _name{name}, origName{std::move(name)} {
+        for (const auto &p : variables) _variables.emplace_back(p.first, p.second, p.second);
         setNodeType(Phi);
         setType(t);
         set_linenum(-1);
         onSSA = true;
     }
 
-    phiNode(Type t, std::string name, std::string origname, std::vector<std::pair<std::string, std::string>> variables) :
+    phiNode(Type t, std::string name, std::string origname, std::vector<option> variables) :
             _name{std::move(name)}, origName{std::move(origname)}, _variables{std::move(variables)} {
         setNodeType(Phi);
         setType(t);
@@ -40,9 +43,9 @@ public:
     std::string to_string() const override {
         std::string res = nameToTikzName(_name, true) + " = $\\phi$(";
         if (!_variables.empty()) {
-            res += nameToTikzName(_variables[0].first, true);
+            res += nameToTikzName(_variables[0].var, true);
             for (size_t i = 1; i < _variables.size(); ++i)
-                res += (", " + nameToTikzName(_variables[i].first, true));
+                res += (", " + nameToTikzName(_variables[i].var, true));
         }
         res += ")";
         return res;
@@ -69,9 +72,9 @@ public:
     void setSSA(bool t) override {
         onSSA = t;
     }
-    std::vector<std::pair<std::string, std::string>> *get_variables() {return &_variables;}
-    void update_variableindex(int index, const std::pair<std::string, std::string>& p) {_variables[index] = p;}
-    void set_variables(std::vector<std::pair<std::string, std::string>> names) {_variables = std::move(names);}
+    std::vector<option> *get_variables() {return &_variables;}
+    void update_variableindex(int index, const std::pair<std::string, std::string>& p) {_variables[index].var = p.first; _variables[index].var_boolname = p.second;}
+    void set_variables(std::vector<option> names) {_variables = std::move(names);}
     /*std::shared_ptr<expressionNode> copy_expression() const override {
         std::vector<std::shared_ptr<variableNode>> _vars;
         for (auto v : _variables) {

@@ -163,7 +163,7 @@ private:
                 std::vector<std::string*> vec;
                 vec.reserve(phi->get_variables()->size());
                 for (auto & i : *phi->get_variables()) {
-                    vec.push_back(&i.first);
+                    vec.push_back(&i.var);
                 }
                 usages = {phi->get_variables()->size(), vec};
                 break;
@@ -374,7 +374,7 @@ private:
                         for (size_t i = 0; i < node->parents.size(); ++i) {
                             if (node->parents[i].lock() == parent) {
                                 std::string varname = vars_to_ssa->find(phiN->getOriginalName())->second;
-                                if (phiN->get_variables()->at(i).first != varname) {
+                                if (phiN->get_variables()->at(i).var != varname) {
                                     phiN->update_variableindex(i, {varname, findboolname(ccfg->defs[varname], varname)});
                                 }
                                 break;
@@ -387,7 +387,7 @@ private:
                         auto piN = dynamic_cast<piNode *>(stmt.get());
                         if (node->type != Coend) {
                             for (size_t i = 0; i < piN->get_variables()->size(); ++i) {
-                                std::string varname = piN->get_variables()->at(i).first;
+                                std::string varname = piN->get_variables()->at(i).var;
                                 if (varname == origvar_for_pis[piN->getName()]) {
                                     auto it = vars_to_ssa->find(piN->getVar());
                                     piN->updateVariablesAtIndex

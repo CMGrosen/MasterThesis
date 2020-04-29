@@ -259,7 +259,7 @@ private:
                 if (stmt->getNodeType() == Phi) {
                     // Suppose the j'th operand of the phi-function is 'a'
                     auto phi = dynamic_cast<phiNode*>(stmt.get());
-                    std::string a = phi->get_variables()->at(j).first;
+                    std::string a = phi->get_variables()->at(j).var;
                     std::string newname = a + "_" + std::to_string(Stack[a].top());
                     phi->update_variableindex(j, {newname, name_to_boolname[newname]});
                 }
@@ -310,10 +310,10 @@ private:
                 for (const auto &stmt : phiN.first->statements) {
                     if (auto phi = dynamic_cast<phiNode *>(stmt.get())) {
                         auto vars = *phi->get_variables();
-                        std::vector<std::pair<std::string, std::string>> res;
+                        std::vector<option> res;
                         for (const auto &var : vars) {
                             auto conc = phiN.first->concurrentBlock.first;
-                            basicblock *current_concnode = ccfg->defs[var.first].get();
+                            basicblock *current_concnode = ccfg->defs[var.var].get();
                             while (current_concnode) {
                                 if (current_concnode == conc) {
                                     res.push_back(var);

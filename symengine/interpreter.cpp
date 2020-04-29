@@ -535,4 +535,3 @@ bool interpreter::reachable(const std::pair<std::shared_ptr<basicblock>, std::st
     s.currents = {engine.ccfg->startNode};
     return recursive_read(engine.ccfg->startNode, std::move(s));
 }
-

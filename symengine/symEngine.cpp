@@ -425,7 +425,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                         z3::expr name = c.int_const((phi->getName() + run).c_str());
                         for (size_t i = 0; i < parents.size(); ++i) {
                             if (previous == parents[i].lock()) {
-                                constraints.push_back((name == c.int_const((phi->get_variables()->at(i).first + run).c_str())) && encode_boolname(&c, stmt->get_boolname(), true, run));
+                                constraints.push_back((name == c.int_const((phi->get_variables()->at(i).var + run).c_str())) && encode_boolname(&c, stmt->get_boolname(), true, run));
                                 break;
                             }
                         }
@@ -435,7 +435,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                         z3::expr name = c.bool_const((phi->getName() + run).c_str());
                         for (size_t i = 0; i < parents.size(); ++i) {
                             if (previous == parents[i].lock()) {
-                                constraints.push_back((name == c.bool_const((phi->get_variables()->at(i).first + run).c_str())) && encode_boolname(&c, stmt->get_boolname(), true, run));
+                                constraints.push_back((name == c.bool_const((phi->get_variables()->at(i).var + run).c_str())) && encode_boolname(&c, stmt->get_boolname(), true, run));
                                 break;
                             }
                         }
@@ -461,8 +461,8 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                         z3::expr name = c.int_const((pi->getName() + run).c_str());
                         for (const auto &conflict : *vars) {
                             expressions.push_back(z3::ite
-                              ( c.bool_const((conflict.second + run).c_str())
-                              , name == c.int_const((conflict.first + run).c_str())
+                              ( c.bool_const((conflict.var_boolname + run).c_str())
+                              , name == c.int_const((conflict.var + run).c_str())
                               , name == c.int_val(0) && name == c.int_val(1) //unsatisfiable
                               ));
                         }
@@ -472,8 +472,8 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                         z3::expr name = c.bool_const((pi->getName() + run).c_str());
                         for (const auto &conflict : *vars) {
                             expressions.push_back(z3::ite
-                              ( c.bool_const((conflict.second + run).c_str())
-                              , name == c.bool_const((conflict.first + run).c_str())
+                              ( c.bool_const((conflict.var_boolname + run).c_str())
+                              , name == c.bool_const((conflict.var + run).c_str())
                               , name == c.bool_val(true) && name == c.bool_val(false) //unsatisfiable. Won't ever pick this option
                               ));
                         }
@@ -625,12 +625,12 @@ std::vector<std::string> symEngine::includable_vars(const std::shared_ptr<statem
         std::string name = pin->getVar();
         for (const auto &var : *pin->get_variables()) {
             if (constraints.find(name) == constraints.end()) {
-                possiblevars.push_back(var.first);
+                possiblevars.push_back(var.var);
             } else {
-                auto blk = ccfg->defs.find(var.first)->second;
+                auto blk = ccfg->defs.find(var.var)->second;
                 auto vec = constraints.find(name)->second;
-                if (vec.back() != var.first
-                    && contains(vec, var.first)) {
+                if (vec.back() != var.var
+                    && contains(vec, var.var)) {
                     //This variable was previously defined and has since been replaced. Cannot use it
                 } else {
                     bool toinclude = true;
@@ -643,7 +643,7 @@ std::vector<std::string> symEngine::includable_vars(const std::shared_ptr<statem
                             break;
                         }
                     }
-                    if (toinclude) possiblevars.push_back(var.first);
+                    if (toinclude) possiblevars.push_back(var.var);
                 }
             }
         }
@@ -659,7 +659,7 @@ std::vector<std::string> symEngine::includable_vars(const std::shared_ptr<statem
                             std::vector<std::string> tmpvec;
                             tmpvec.reserve(phin->get_variables()->size());
                             for (const auto &vvv : *phin->get_variables()) {
-                                tmpvec.push_back(vvv.first);
+                                tmpvec.push_back(vvv.var);
                             }
                             if (contains(tmpvec, vv)) {
                                 possiblevarsContainsOptions = true;
@@ -689,7 +689,7 @@ std::vector<std::string> symEngine::includable_vars(const std::shared_ptr<statem
         std::vector<std::string> vars;
         vars.reserve(phi->get_variables()->size());
         for (const auto &vvv : *phi->get_variables()) {
-            vars.push_back(vvv.first);
+            vars.push_back(vvv.var);
         }
         if (constraints.find(name) == constraints.end()) {
             return vars;
