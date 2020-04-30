@@ -5,7 +5,7 @@
 #ifndef ANTLR_CPP_TUTORIAL_IFELSENODE_H
 #define ANTLR_CPP_TUTORIAL_IFELSENODE_H
 
-class ifElseNode : virtual public statementNode {
+class ifElseNode : public statementNode {
 public:
     ifElseNode(Type t, std::shared_ptr<expressionNode> c, std::shared_ptr<statementNode> tb, std::shared_ptr<statementNode> fb, int linenum)
         : condition{std::move(c)}, trueBranch{std::move(tb)}, falseBranch{std::move(fb)} {

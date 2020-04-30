@@ -30,7 +30,7 @@ struct CSSA_CFG {
             std::vector<std::shared_ptr<statementNode>> vec;
             vec.reserve(blk->statements.size());
             for (size_t i = 0; i < blk->statements.size()-1; ++i) {
-                vec.push_back(std::make_shared<piNode>(piNode(dynamic_cast<phiNode*>(blk->statements[i].get()))));
+                vec.push_back(std::make_shared<piNode>(piNode(reinterpret_cast<phiNode*>(blk->statements[i].get()))));
             }
             vec.push_back(blk->statements.back());
             blk->statements = std::move(vec);
@@ -91,7 +91,7 @@ private:
             case Literal:
                 break;
             case ArrayAccess: {
-                auto arrAcc = dynamic_cast<arrayAccessNode*>(expr);
+                auto arrAcc = reinterpret_cast<arrayAccessNode*>(expr);
 
                 if (arrAcc->getName() == var) {
                     usages = {1, {arrAcc->getNameAsRef()}};
@@ -105,27 +105,27 @@ private:
                 break;
             } case ArrayLiteral:
                 usages.first = 0;
-                for (const auto &t : dynamic_cast<const arrayLiteralNode*>(expr)->getArrLit()) {
+                for (const auto &t : reinterpret_cast<const arrayLiteralNode*>(expr)->getArrLit()) {
                     auto inter = find_usages_in_expression(t.get(), var);
                     usages.first += inter.first;
                     for (auto &i : inter.second) usages.second.push_back(i);
                 }
                 break;
             case Variable:
-                if (dynamic_cast<const variableNode*>(expr)->origName == var) {
+                if (reinterpret_cast<const variableNode*>(expr)->origName == var) {
                     usages.first = 1;
-                    usages.second.push_back(&dynamic_cast<variableNode*>(expr)->name);
+                    usages.second.push_back(&reinterpret_cast<variableNode*>(expr)->name);
                 }
                 break;
             case BinaryExpression: {
-                auto binexpr = dynamic_cast<const binaryExpressionNode*>(expr);
+                auto binexpr = reinterpret_cast<const binaryExpressionNode*>(expr);
                 usages = find_usages_in_expression(binexpr->getLeft(), var);
                 auto inter = find_usages_in_expression(binexpr->getRight(), var);
                 for (auto &i : inter.second) usages.second.push_back(i);
                 usages.first += inter.first;
                 break;
             } case UnaryExpression:
-                usages = find_usages_in_expression(dynamic_cast<const unaryExpressionNode*>(expr)->getExpr(), var);
+                usages = find_usages_in_expression(reinterpret_cast<const unaryExpressionNode*>(expr)->getExpr(), var);
                 break;
         }
         return usages;
@@ -136,30 +136,30 @@ private:
         bool event = false;
         switch (stmt->getNodeType()) {
             case Assign: {
-                usages = find_usages_in_expression(dynamic_cast<assignNode*>(stmt.get())->getExpr(), var);
+                usages = find_usages_in_expression(reinterpret_cast<assignNode*>(stmt.get())->getExpr(), var);
                 break;
             } case AssignArrField: {
-                auto assignmentArrayF = dynamic_cast<arrayFieldAssignNode*>(stmt.get());
+                auto assignmentArrayF = reinterpret_cast<arrayFieldAssignNode*>(stmt.get());
                 auto inter = find_usages_in_expression(assignmentArrayF->getExpr(), var);
                 usages = find_usages_in_expression(assignmentArrayF->getField(), var);
                 usages.first += inter.first;
                 for (auto &i : inter.second) usages.second.push_back(i);
                 break;
             } case While: {
-                usages = find_usages_in_expression(dynamic_cast<whileNode*>(stmt.get())->getCondition(), var);
+                usages = find_usages_in_expression(reinterpret_cast<whileNode*>(stmt.get())->getCondition(), var);
                 break;
             } case If: {
-                usages = find_usages_in_expression(dynamic_cast<ifElseNode*>(stmt.get())->getCondition(), var);
+                usages = find_usages_in_expression(reinterpret_cast<ifElseNode*>(stmt.get())->getCondition(), var);
                 break;
             } case Write: {
-                usages = find_usages_in_expression(dynamic_cast<writeNode*>(stmt.get())->getExpr(), var);
+                usages = find_usages_in_expression(reinterpret_cast<writeNode*>(stmt.get())->getExpr(), var);
                 break;
             } case Event: {
                 event = true;
-                usages = find_usages_in_expression(dynamic_cast<eventNode*>(stmt.get())->getCondition(), var);
+                usages = find_usages_in_expression(reinterpret_cast<eventNode*>(stmt.get())->getCondition(), var);
                 break;
             } case Phi: {
-                auto phi = dynamic_cast<phiNode*>(stmt.get());
+                auto phi = reinterpret_cast<phiNode*>(stmt.get());
                 std::vector<std::string*> vec;
                 vec.reserve(phi->get_variables()->size());
                 for (auto & i : *phi->get_variables()) {
@@ -221,7 +221,7 @@ private:
                     if (b->uses.find(varname) != b->uses.end()) {
                         bool hasPiFunction = false;
                         for (const auto &stmt : b->statements) {
-                            if (stmt->getNodeType() == Pi && dynamic_cast<piNode *>(stmt.get())->getVar() == varname) {
+                            if (stmt->getNodeType() == Pi && reinterpret_cast<piNode *>(stmt.get())->getVar() == varname) {
                                 hasPiFunction = true;
                                 break;
                             }
@@ -320,12 +320,12 @@ private:
             for (const auto &stmt : node->statements) {
                 switch (stmt->getNodeType()) {
                     case Assign: {
-                        auto assStmt = dynamic_cast<assignNode *>(stmt.get());
+                        auto assStmt = reinterpret_cast<assignNode *>(stmt.get());
                         vars_to_ssa->find(assStmt->getOriginalName())->second = assStmt->getName();
                         break;
                     }
                     case AssignArrField: {
-                        auto assArrF = dynamic_cast<arrayFieldAssignNode *>(stmt.get());
+                        auto assArrF = reinterpret_cast<arrayFieldAssignNode *>(stmt.get());
                         vars_to_ssa->find(assArrF->getOriginalName())->second = assArrF->getName();
                         break;
                     }
@@ -370,7 +370,7 @@ private:
                     case BasicBlock:
                         break;
                     case Phi: {
-                        auto phiN = dynamic_cast<phiNode *>(stmt.get());
+                        auto phiN = reinterpret_cast<phiNode *>(stmt.get());
                         for (size_t i = 0; i < node->parents.size(); ++i) {
                             if (node->parents[i].lock() == parent) {
                                 std::string varname = vars_to_ssa->find(phiN->getOriginalName())->second;
@@ -384,7 +384,7 @@ private:
                         break;
                     }
                     case Pi: {
-                        auto piN = dynamic_cast<piNode *>(stmt.get());
+                        auto piN = reinterpret_cast<piNode *>(stmt.get());
                         if (node->type != Coend) {
                             for (size_t i = 0; i < piN->get_variables()->size(); ++i) {
                                 std::string varname = piN->get_variables()->at(i).var;
@@ -413,9 +413,9 @@ private:
 
     void update_if_statements_boolname_branches() {
         for (const auto &n : ccfg->fiNodes) {
-            auto parents = dynamic_cast<fiNode*>(n->statements.back().get())->get_parents();
+            auto parents = reinterpret_cast<fiNode*>(n->statements.back().get())->get_parents();
             for (const auto &p : *parents) {
-                auto ifN = dynamic_cast<ifElseNode*>(p->statements.back().get());
+                auto ifN = reinterpret_cast<ifElseNode*>(p->statements.back().get());
                 update_if_statement_boolname_branches(ifN, p, n);
             }
         }
@@ -444,7 +444,7 @@ private:
     void update_conflict_edges_names() {
         for (auto &pair : ccfg->conflict_edges_from) {
             std::string num_conflicts = std::to_string(pair.second.size());
-            std::string dcl = dynamic_cast<assignNode*>(pair.first->statements.back().get())->getName() + "-";
+            std::string dcl = reinterpret_cast<assignNode*>(pair.first->statements.back().get())->getName() + "-";
             for (std::shared_ptr<edge> &ed : pair.second) {
                 std::string blkThreadName = ed->to()->concurrentBlock.first->get_name() + "_" + std::to_string(ed->to()->concurrentBlock.second) + "-";
                 ed->name.assign(blkThreadName + dcl + num_conflicts);

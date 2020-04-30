@@ -8,7 +8,7 @@
 #include <nodes/node.hpp>
 #include <string>
 
-class statementNode : virtual public node {
+class statementNode : public node {
 private:
     std::string boolname;
     int linenum;

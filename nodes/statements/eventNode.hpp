@@ -5,7 +5,7 @@
 #ifndef ANTLR_CPP_TUTORIAL_EVENTNODE_HPP
 #define ANTLR_CPP_TUTORIAL_EVENTNODE_HPP
 
-class eventNode : virtual public statementNode {
+class eventNode : public statementNode {
 public:
     eventNode(Type t, std::shared_ptr<expressionNode> condition, int linenum) : _condition{std::move(condition)} {
         setType(t);

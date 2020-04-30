@@ -1,7 +1,7 @@
 #ifndef ANTLR_CPP_TUTORIAL_ASSERTNODE_HPP
 #define ANTLR_CPP_TUTORIAL_ASSERTNODE_HPP
 
-class assertNode : virtual public statementNode{
+class assertNode : public statementNode{
 public:
     assertNode(Type t, std::shared_ptr<expressionNode> condition, int linenum) : _condition{std::move(condition)} {
         setType(t);

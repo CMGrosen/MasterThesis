@@ -7,7 +7,7 @@
 #include <nodes/statements/statementNode.hpp>
 #include <string>
 
-class assignNode : virtual public statementNode {
+class assignNode : public statementNode {
 public:
     assignNode (Type t, std::string _name, std::shared_ptr<expressionNode> n, int linenum) : name{std::move(_name)}, expr{std::move(n)} {
         origName = name;

@@ -5,7 +5,7 @@
 #ifndef ANTLR_CPP_TUTORIAL_LITERALNODE_HPP
 #define ANTLR_CPP_TUTORIAL_LITERALNODE_HPP
 
-class literalNode : virtual public expressionNode {
+class literalNode : public expressionNode {
 public:
     literalNode(std::string a) : value{std::move(a)} {
         if (value == "true" || value == "false") {

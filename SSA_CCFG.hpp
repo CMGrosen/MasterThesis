@@ -170,7 +170,7 @@ private:
     void update_uses_exprNode(std::shared_ptr<basicblock> &blk, expressionNode *expr) {
         switch (expr->getNodeType()) {
             case ArrayAccess: {
-                auto node = dynamic_cast<arrayAccessNode*>(expr);
+                auto node = reinterpret_cast<arrayAccessNode*>(expr);
                 std::string oldName = node->getName();
                 std::string name = oldName + ("_" + std::to_string(Stack[node->getName()].top()));
                 node->setName(name);
@@ -178,29 +178,29 @@ private:
                 update_uses_exprNode(blk, node->getAccessor());
                 break;
             } case ArrayLiteral: {
-                auto node = dynamic_cast<arrayLiteralNode*>(expr);
+                auto node = reinterpret_cast<arrayLiteralNode*>(expr);
                 for (auto &e : node->getArrLit()) {
                     update_uses_exprNode(blk, e.get());
                 }
                 break;
             } case Variable: {
-                auto node = dynamic_cast<variableNode*>(expr);
+                auto node = reinterpret_cast<variableNode*>(expr);
                 std::string oldName = node->name;
                 std::string name = oldName + ("_" + std::to_string(Stack[node->name].top()));
                 node->name = name;
                 //blk->uses.find(oldName)->second.insert(name);
                 break;
             } case BinaryExpression: {
-                auto binExpr = dynamic_cast<binaryExpressionNode*>(expr);
+                auto binExpr = reinterpret_cast<binaryExpressionNode*>(expr);
                 update_uses_exprNode(blk, binExpr->getLeft());
                 update_uses_exprNode(blk, binExpr->getRight());
                 break;
             } case UnaryExpression: {
-                auto unExpr = dynamic_cast<unaryExpressionNode*>(expr);
+                auto unExpr = reinterpret_cast<unaryExpressionNode*>(expr);
                 update_uses_exprNode(blk, unExpr->getExpr());
                 break;
             } case Read: {
-                auto readExpr = dynamic_cast<readNode*>(expr);
+                auto readExpr = reinterpret_cast<readNode*>(expr);
                 std::string name = "-readVal_" + std::to_string(++Count["-readVal"]);
                 readExpr->setName(name);
                 ccfg->defs.insert({name, blk});
@@ -212,28 +212,28 @@ private:
     void update_uses_stmtNode(std::shared_ptr<basicblock> &blk, const std::shared_ptr<statementNode> &stmt) {
         switch (stmt->getNodeType()) { // for each use
             case Assign: {
-                auto node = dynamic_cast<assignNode*>(stmt.get());
+                auto node = reinterpret_cast<assignNode*>(stmt.get());
                 update_uses_exprNode(blk, node->getExpr());
                 break;
             } case AssignArrField: {
-                auto node = dynamic_cast<arrayFieldAssignNode*>(stmt.get());
+                auto node = reinterpret_cast<arrayFieldAssignNode*>(stmt.get());
                 update_uses_exprNode(blk, node->getField());
                 update_uses_exprNode(blk, node->getExpr());
                 break;
             } case While: {
-                auto node = dynamic_cast<whileNode*>(stmt.get());
+                auto node = reinterpret_cast<whileNode*>(stmt.get());
                 update_uses_exprNode(blk, node->getCondition());
                 break;
             } case If: {
-                auto node = dynamic_cast<ifElseNode*>(stmt.get());
+                auto node = reinterpret_cast<ifElseNode*>(stmt.get());
                 update_uses_exprNode(blk, node->getCondition());
                 break;
             } case Write: {
-                auto node = dynamic_cast<writeNode*>(stmt.get());
+                auto node = reinterpret_cast<writeNode*>(stmt.get());
                 update_uses_exprNode(blk, node->getExpr());
                 break;
             } case Event: {
-                auto node = dynamic_cast<eventNode*>(stmt.get());
+                auto node = reinterpret_cast<eventNode*>(stmt.get());
                 update_uses_exprNode(blk, node->getCondition());
                 break;
             } default:
@@ -258,7 +258,7 @@ private:
             for (const auto &stmt : successor->statements) {
                 if (stmt->getNodeType() == Phi) {
                     // Suppose the j'th operand of the phi-function is 'a'
-                    auto phi = dynamic_cast<phiNode*>(stmt.get());
+                    auto phi = reinterpret_cast<phiNode*>(stmt.get());
                     std::string a = phi->get_variables()->at(j).var;
                     std::string newname = a + "_" + std::to_string(Stack[a].top());
                     phi->update_variableindex(j, {newname, name_to_boolname[newname]});

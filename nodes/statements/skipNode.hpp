@@ -5,7 +5,7 @@
 #ifndef ANTLR_CPP_TUTORIAL_SKIPNODE_HPP
 #define ANTLR_CPP_TUTORIAL_SKIPNODE_HPP
 
-class skipNode : virtual public statementNode {
+class skipNode : public statementNode {
 public:
     skipNode(int linenum) {setNodeType(Skip); setType(okType); set_linenum(linenum);}
 

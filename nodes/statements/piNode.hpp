@@ -7,7 +7,7 @@
 
 #include <nodes/statements/option.hpp>
 
-class piNode : virtual public statementNode {
+class piNode : public statementNode {
     std::string _variable;
     std::string name;
     int num;

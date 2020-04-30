@@ -6,7 +6,7 @@
 
 #include <string>
 
-class variableNode : virtual public expressionNode {
+class variableNode : public expressionNode {
 public:
     variableNode(Type _type, std::string n) : name{n}, origName{std::move(n)} {
         type = _type;

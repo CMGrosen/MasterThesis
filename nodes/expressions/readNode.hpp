@@ -7,7 +7,7 @@
 
 #include <nodes/expressions/expressionNode.hpp>
 
-class readNode : virtual public expressionNode {
+class readNode : public expressionNode {
 public:
     readNode(int16_t);
     int16_t getPin() const;

@@ -9,7 +9,7 @@
 #include <nodes/expressions/expressionNodes.hpp>
 #include <string>
 
-class arrayFieldAssignNode : virtual public statementNode {
+class arrayFieldAssignNode : public statementNode {
 public:
     arrayFieldAssignNode (Type t, std::string _name, std::shared_ptr<expressionNode> arrField, std::shared_ptr<expressionNode> n, int linenum) : name{std::move(_name)}, field{std::move(arrField)}, expr{std::move(n)} {
         setType(t);

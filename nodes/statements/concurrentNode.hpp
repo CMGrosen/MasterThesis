@@ -4,7 +4,7 @@
 #ifndef ANTLR_CPP_TUTORIAL_CONCURRENTNODE_HPP
 #define ANTLR_CPP_TUTORIAL_CONCURRENTNODE_HPP
 
-class concurrentNode : virtual public statementNode {
+class concurrentNode : public statementNode {
 public:
     concurrentNode(Type type, std::vector<std::shared_ptr<statementNode>> _threads, int linenum) :
         threads{std::move(_threads)} {

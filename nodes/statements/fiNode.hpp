@@ -6,7 +6,7 @@
 #define ANTLR_CPP_TUTORIAL_FINODE_HPP
 
 
-class fiNode : virtual public statementNode {
+class fiNode : public statementNode {
     std::set<std::shared_ptr<basicblock>> parents;
 
     fiNode(std::set<std::shared_ptr<basicblock>> blks, std::shared_ptr<basicblock> blk) : parents{std::move(blks)}, first_parent{std::move(blk)} {

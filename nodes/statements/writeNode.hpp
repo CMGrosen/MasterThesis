@@ -5,7 +5,7 @@
 #ifndef ANTLR_CPP_TUTORIAL_WRITENODE_HPP
 #define ANTLR_CPP_TUTORIAL_WRITENODE_HPP
 
-class writeNode : virtual public statementNode {
+class writeNode : public statementNode {
 public:
     writeNode(int16_t pin, std::shared_ptr<expressionNode> e, int linenum) : _e{std::move(e)}, _pin{pin} {
         type = (_e->getType() == intType) ? okType : errorType;

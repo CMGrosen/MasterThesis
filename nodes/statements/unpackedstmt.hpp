@@ -5,7 +5,7 @@
 #ifndef ANTLR_CPP_TUTORIAL_UNPACKEDSTMT_HPP
 #define ANTLR_CPP_TUTORIAL_UNPACKEDSTMT_HPP
 
-struct unpackedstmt : virtual public statementNode {
+struct unpackedstmt : public statementNode {
     std::shared_ptr<unpacked> _this;
     unpackedstmt(std::shared_ptr<unpacked> _this, int linenum) : _this{std::move(_this)} {set_linenum(linenum);}
 

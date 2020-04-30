@@ -295,7 +295,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
     for (const auto &stmt : node->statements) {
         switch (stmt->getNodeType()) {
             case Assign: {
-                auto assnode = dynamic_cast<assignNode *>(stmt.get());
+                auto assnode = reinterpret_cast<assignNode *>(stmt.get());
                 auto name = assnode->getExpr()->getType() == intType
                             ? c.int_const((assnode->getName() + run).c_str())
                             : c.bool_const((assnode->getName() + run).c_str());
@@ -339,7 +339,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
             }
             case If: {
                 std::shared_ptr<basicblock> firstCommonChild = find_common_child(node);
-                auto *ifNode = dynamic_cast<ifElseNode*>(stmt.get());
+                auto *ifNode = reinterpret_cast<ifElseNode*>(stmt.get());
                 bool event_found_for_true = false;
                 bool event_found_for_false = false;
 
@@ -359,7 +359,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                 *encountered = (event_found_for_true || event_found_for_false);
 
                 //if we've encountered an event and this is the top-most if-statement: Encode the program until end with all the events conditions
-                if (*encountered && dynamic_cast<fiNode*>(firstCommonChild->statements.back().get())->first_parent == node) {
+                if (*encountered && reinterpret_cast<fiNode*>(firstCommonChild->statements.back().get())->first_parent == node) {
                     *encountered = false;
                     std::cout << "implement handling of all event nodes if encountered some in an if-statement outside of fork\n";
                     z3::expr condition = encode_event_conditions_between_blocks(&c, node, firstCommonChild, run);
@@ -375,7 +375,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                 break;
             }
             case Event: {
-                auto event = dynamic_cast<eventNode*>(stmt.get());
+                auto event = reinterpret_cast<eventNode*>(stmt.get());
                 bool event_encountered = false;
                 z3::expr condition = evaluate_expression(&c, event->getCondition(), run, &constraints);
                 z3::expr truebranch = conjunction(get_run( node, node->nexts[0], end, run, &event_encountered));
@@ -417,7 +417,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                 constraints.push_back(encode_boolname(&c, stmt->get_boolname(), true, run));
                 break;
             case Phi: {
-                auto phi = dynamic_cast<phiNode *>(stmt.get());
+                auto phi = reinterpret_cast<phiNode *>(stmt.get());
                 auto parents = node->parents;
 
                 switch (phi->getType()) {
@@ -453,7 +453,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                 break;
             }
             case Pi: {
-                auto pi = dynamic_cast<piNode *>(stmt.get());
+                auto pi = reinterpret_cast<piNode *>(stmt.get());
                 auto vars = pi->get_variables();
                 std::vector<z3::expr> expressions;
                 switch (pi->getType()) {
@@ -516,9 +516,9 @@ z3::expr symEngine::evaluate_expression(z3::context *c, const expressionNode *ex
     switch (expr->getNodeType()) {
         case Read: {
             //don't use run here. That way, reads will be identical across runs
-            return c->int_const(dynamic_cast<const readNode*>(expr)->getName().c_str()); }
+            return c->int_const(reinterpret_cast<const readNode*>(expr)->getName().c_str()); }
         case Literal: {
-            auto lit = dynamic_cast<const literalNode*>(expr);
+            auto lit = reinterpret_cast<const literalNode*>(expr);
             return lit->getType() == intType
                 ? c->int_val(std::stoi(lit->value))
                 : c->bool_val(lit->value == "true")
@@ -530,12 +530,12 @@ z3::expr symEngine::evaluate_expression(z3::context *c, const expressionNode *ex
             break;
         case Variable: {
             return expr->getType() == intType
-                ? c->int_const((dynamic_cast<const variableNode*>(expr)->name + run).c_str())
-                : c->bool_const((dynamic_cast<const variableNode*>(expr)->name + run).c_str())
+                ? c->int_const((reinterpret_cast<const variableNode*>(expr)->name + run).c_str())
+                : c->bool_const((reinterpret_cast<const variableNode*>(expr)->name + run).c_str())
                 ;
         }
         case BinaryExpression: {
-            auto binexpr = dynamic_cast<const binaryExpressionNode*>(expr);
+            auto binexpr = reinterpret_cast<const binaryExpressionNode*>(expr);
             return evaluate_operator
                     ( c
                     , evaluate_expression(c, binexpr->getLeft(), run, constraints)
@@ -545,7 +545,7 @@ z3::expr symEngine::evaluate_expression(z3::context *c, const expressionNode *ex
                     );
         }
         case UnaryExpression: {
-            auto unexpr = dynamic_cast<const unaryExpressionNode*>(expr);
+            auto unexpr = reinterpret_cast<const unaryExpressionNode*>(expr);
             z3::expr exp = evaluate_expression(c, unexpr->getExpr(), run, constraints);
             return evaluate_operator(c, exp, exp, unexpr->getOperator(), constraints);
         }
@@ -652,7 +652,7 @@ std::vector<std::string> symEngine::includable_vars(const std::shared_ptr<statem
             auto blk = ccfg->defs.find(v)->second;
             for (const auto &s : blk->statements) {
                 if (s->getNodeType() == Phi) {
-                    auto phin = dynamic_cast<phiNode*>(s.get());
+                    auto phin = reinterpret_cast<phiNode*>(s.get());
                     if (phin->getName() == v) {
                         bool possiblevarsContainsOptions = false;
                         for (const auto &vv : possiblevars) {
@@ -719,7 +719,7 @@ std::vector<std::string> symEngine::includable_vars(const std::shared_ptr<statem
 }
 
 z3::expr symEngine::encoded_pis(const std::vector<std::pair<std::shared_ptr<basicblock>, int32_t>> &remaining, const std::unordered_map<std::string, std::vector<std::string>> &constraints) {
-    auto pin = dynamic_cast<piNode*>(remaining.front().first->statements.front().get());
+    auto pin = reinterpret_cast<piNode*>(remaining.front().first->statements.front().get());
 
     if (pin->getName() == "-T_a_2") {
         std::cout << "test";
@@ -738,7 +738,7 @@ z3::expr symEngine::encoded_pis(const std::vector<std::pair<std::shared_ptr<basi
         std::vector<std::string> possiblevars = includable_vars(remaining.front().first->statements.front(), constraints);
         std::shared_ptr<basicblock> endconc;
         for (const auto &blk : ccfg->nodes) {
-            if (blk->type == Coend && dynamic_cast<endConcNode*>(blk->statements.back().get())->getConcNode().get() == remaining.front().first->concurrentBlock.first) {
+            if (blk->type == Coend && reinterpret_cast<endConcNode*>(blk->statements.back().get())->getConcNode().get() == remaining.front().first->concurrentBlock.first) {
                 endconc = blk;
                 break;
             }
@@ -933,7 +933,7 @@ z3::expr symEngine::encode_event_conditions_between_blocks(z3::context *c, const
     z3::expr_vector vec(*c);
     for (const auto &event : events) {
         vec.push_back(z3::ite( encode_boolname(c, event->get_boolname(), true, run)
-                             , evaluate_expression(c, dynamic_cast<eventNode*>(event.get())->getCondition(), run, &vec)
+                             , evaluate_expression(c, reinterpret_cast<eventNode*>(event.get())->getCondition(), run, &vec)
                              , c->bool_val(true)
                              ));
     }

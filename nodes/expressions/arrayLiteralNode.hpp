@@ -5,7 +5,7 @@
 #ifndef ANTLR_CPP_TUTORIAL_ARRAYLITERALNODE_HPP
 #define ANTLR_CPP_TUTORIAL_ARRAYLITERALNODE_HPP
 
-class arrayLiteralNode : virtual public expressionNode {
+class arrayLiteralNode : public expressionNode {
 public:
     arrayLiteralNode(Type t, std::vector<std::shared_ptr<expressionNode>> a) : value{std::move(a)} {
         setType(t);

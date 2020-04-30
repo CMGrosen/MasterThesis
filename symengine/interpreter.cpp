@@ -36,7 +36,7 @@ bool interpreter::run() {
             //Also only include those pi-functions which aren't on Coend blocks
             std::shared_ptr<basicblock> blk = engine.ccfg->defs[dif.first];
             std::shared_ptr<statementNode> def = blk->defsite[dif.first];
-            if (def->getNodeType() == Pi && blk->statements.back()->getNodeType() != Event && dynamic_cast<piNode*>(def.get())->getName().front() == '-') {
+            if (def->getNodeType() == Pi && blk->statements.back()->getNodeType() != Event && reinterpret_cast<piNode*>(def.get())->getName().front() == '-') {
                 blks_and_names.emplace_back(engine.ccfg->defs.find(dif.first)->second, dif.first);
             }
         }
@@ -284,20 +284,20 @@ std::string interpreter::exec_expr(expressionNode* expr, const std::map<std::str
             break;
 
         case Read:
-            val = data.valuesFromModel.find(dynamic_cast<readNode*>(expr)->getName())->second->value;
+            val = data.valuesFromModel.find(reinterpret_cast<readNode*>(expr)->getName())->second->value;
             break;
         case Literal:
-            val = dynamic_cast<literalNode*>(expr)->value;
+            val = reinterpret_cast<literalNode*>(expr)->value;
             break;
         case ArrayAccess: {
-            auto arracc = dynamic_cast<arrayAccessNode*>(expr);
+            auto arracc = reinterpret_cast<arrayAccessNode*>(expr);
             val = current_values->find(arracc->getVar()->origName + "[" + exec_expr(arracc->getAccessor(), current_values) + "]")->second.val;
             break;
         } case ArrayLiteral:
             //don't handle array, this is good enough for now
             break;
         case Variable: {
-            auto var = dynamic_cast<variableNode*>(expr);
+            auto var = reinterpret_cast<variableNode*>(expr);
             if (engine.ccfg->defs.find(var->name)->second->defsite.find(var->name)->second->getNodeType() == Pi) {//pi-node
                 val = current_values->find(var->name)->second.val;
             } else {
@@ -305,11 +305,11 @@ std::string interpreter::exec_expr(expressionNode* expr, const std::map<std::str
             }
             break;
         } case BinaryExpression: {
-            auto binexpr = dynamic_cast<binaryExpressionNode*>(expr);
+            auto binexpr = reinterpret_cast<binaryExpressionNode*>(expr);
             val = compute_operator(exec_expr(binexpr->getLeft(), current_values), exec_expr(binexpr->getRight(), current_values), binexpr->getOperator());
             break;
         } case UnaryExpression:
-            auto unexpr = dynamic_cast<unaryExpressionNode*>(expr);
+            auto unexpr = reinterpret_cast<unaryExpressionNode*>(expr);
             std::string inter = exec_expr(unexpr->getExpr(), current_values);
             val = compute_operator(inter, inter, unexpr->getOperator());
             break;
@@ -320,7 +320,7 @@ std::string interpreter::exec_expr(expressionNode* expr, const std::map<std::str
 std::pair<bool, bool> interpreter::exec_stmt(const std::shared_ptr<statementNode> &stmt, std::map<std::string, Value> *current_values, bool conflictIsCoend) {
     switch (stmt->getNodeType()) {
         case Assign: {
-            auto assNode = dynamic_cast<assignNode *>(stmt.get());
+            auto assNode = reinterpret_cast<assignNode *>(stmt.get());
             std::string value = exec_expr(assNode->getExpr(), current_values);
             auto val = current_values->find(assNode->getOriginalName());
             val->second.val = value;
@@ -328,7 +328,7 @@ std::pair<bool, bool> interpreter::exec_stmt(const std::shared_ptr<statementNode
             break;
         }
         case AssignArrField: {
-            auto assArrF = dynamic_cast<arrayFieldAssignNode *>(stmt.get());
+            auto assArrF = reinterpret_cast<arrayFieldAssignNode *>(stmt.get());
             std::string name = exec_expr(assArrF->getField(), current_values);
             std::string value = exec_expr(assArrF->getExpr(), current_values);
             auto val = current_values->find(assArrF->getOriginalName() + "[" + name + "]");
@@ -344,7 +344,7 @@ std::pair<bool, bool> interpreter::exec_stmt(const std::shared_ptr<statementNode
         } case While: {
             break;
         } case If: {
-            auto ifnode = dynamic_cast<ifElseNode*>(stmt.get());
+            auto ifnode = reinterpret_cast<ifElseNode*>(stmt.get());
             if (exec_expr(ifnode->getCondition(), current_values) == "false") return {false, true};
             break;
         } case EndFi: {
@@ -352,7 +352,7 @@ std::pair<bool, bool> interpreter::exec_stmt(const std::shared_ptr<statementNode
         } case Write: {
             break;
         } case Event: {
-            auto event = dynamic_cast<eventNode *>(stmt.get());
+            auto event = reinterpret_cast<eventNode *>(stmt.get());
             if (exec_expr(event->getCondition(), current_values) == "false") return {false, true};
             break;
         } case Skip: {
@@ -363,7 +363,7 @@ std::pair<bool, bool> interpreter::exec_stmt(const std::shared_ptr<statementNode
         } case Pi: {
             //value already assigned, since the value that should be assigned, is the one already stored
             //maybe check to see if model value is the one already stored
-            auto pi = dynamic_cast<piNode *>(stmt.get());
+            auto pi = reinterpret_cast<piNode *>(stmt.get());
             std::string val = current_values->find(pi->getVar())->second.val;
             auto res = current_values->find(pi->getName());
             if (res != current_values->end()) return {true, true};
@@ -381,7 +381,7 @@ std::pair<bool, bool> interpreter::exec_stmt(const std::shared_ptr<statementNode
             }
             break;
         } case Assert: {
-            auto assertstmt = dynamic_cast<assertNode*>(stmt.get());
+            auto assertstmt = reinterpret_cast<assertNode*>(stmt.get());
             auto res = exec_expr(assertstmt->getCondition(), current_values);
             if (res != "true") {
                 std::cout << "assertion in code\nExpected (" << assertstmt->getCondition()->to_string() << ") to be true\nWas " << res;

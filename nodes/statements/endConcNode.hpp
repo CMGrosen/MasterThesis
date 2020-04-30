@@ -7,7 +7,7 @@
 
 #include <nodes/basicblock.hpp>
 
-class endConcNode : virtual public statementNode {
+class endConcNode : public statementNode {
     const int threadCount;
     std::shared_ptr<basicblock> concNode;
 

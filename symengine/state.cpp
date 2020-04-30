@@ -30,10 +30,10 @@ state::state(std::set<std::shared_ptr<basicblock>> cr1, std::set<std::shared_ptr
 void state::findassignedconflicts(const std::string &val, const std::pair<std::shared_ptr<basicblock>, std::shared_ptr<statementNode>> &def, std::set<std::pair<std::shared_ptr<basicblock>, std::shared_ptr<statementNode>>> *conflicts) {
     std::vector<option> *possibilities;
     if (def.second->getNodeType() == Pi) {
-        possibilities = dynamic_cast<piNode*>(def.second.get())->get_variables();
+        possibilities = reinterpret_cast<piNode*>(def.second.get())->get_variables();
 
     } else if (def.second->getNodeType() == Phi) {
-        possibilities = dynamic_cast<phiNode*>(def.second.get())->get_variables();
+        possibilities = reinterpret_cast<phiNode*>(def.second.get())->get_variables();
 
     } else {
         conflicts->insert(def);

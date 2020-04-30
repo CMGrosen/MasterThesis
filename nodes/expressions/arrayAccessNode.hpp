@@ -7,7 +7,7 @@
 
 #include <nodes/expressions/variableNode.hpp>
 
-class arrayAccessNode : virtual public expressionNode {
+class arrayAccessNode : public expressionNode {
 public:
     arrayAccessNode(Type t, std::shared_ptr<expressionNode> a, std::shared_ptr<variableNode> n) : value{std::move(a)}, var{std::move(n)} {type = t; setNodeType(ArrayAccess);};
 

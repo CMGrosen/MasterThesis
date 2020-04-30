@@ -179,12 +179,12 @@ private:
             }
 
             if (n->type == Coend) {
-                auto concnode = dynamic_cast<endConcNode*>(oldMapsTo[n.get()]->statements.back().get());
+                auto concnode = reinterpret_cast<endConcNode*>(oldMapsTo[n.get()]->statements.back().get());
                 auto prev_parent = concnode->getConcNode();
                 concnode->setConcNode(oldMapsTo[concnode->getConcNode().get()]);
                 endconcNodes.push_back(oldMapsTo[n.get()]);
             } else if (n->type == joinNode) {
-                auto finode = dynamic_cast<fiNode*>(oldMapsTo[n.get()]->statements.back().get());
+                auto finode = reinterpret_cast<fiNode*>(oldMapsTo[n.get()]->statements.back().get());
                 std::set<std::shared_ptr<basicblock>> parents;
                 for (const auto &p : *finode->get_parents()) parents.insert(oldMapsTo[p.get()]);
                 finode->set_parents(std::move(parents));
@@ -418,7 +418,7 @@ public:
                 block->type = Compute;
                 break;
             case Concurrent: {
-                auto conNode = dynamic_cast<concurrentNode *>(startTree.get());
+                auto conNode = reinterpret_cast<concurrentNode *>(startTree.get());
                 std::vector<std::shared_ptr<basicblock>> threads;
                 //auto concNode = std::make_shared<concurrentNode>(concurrentNode(okType, threads));
                 block = std::make_shared<basicblock>(basicblock(startTree));
@@ -444,7 +444,7 @@ public:
                 break;
             }
             case Sequential: {
-                auto seqNode = dynamic_cast<sequentialNode*>(startTree.get());
+                auto seqNode = reinterpret_cast<sequentialNode*>(startTree.get());
                 auto rest = get_tree(seqNode->getNext(), nxt, in_if);
                 block = get_tree(seqNode->getBody(), rest, in_if);
                 NodeType nType = seqNode->getBody()->getNodeType();
@@ -472,14 +472,14 @@ public:
                 break;
             }
             case While: {
-                auto wNode = dynamic_cast<whileNode*>(startTree.get());
+                auto wNode = reinterpret_cast<whileNode*>(startTree.get());
                 block = std::make_shared<basicblock>(basicblock(std::vector<std::shared_ptr<statementNode>>{startTree}, std::vector<std::shared_ptr<basicblock>>{nullptr, nxt}));
                 block->type = Loop;
                 block->nexts[0] = get_tree(wNode->getBody(), block, in_if);
                 break;
             }
             case If: {
-                auto ifNode = dynamic_cast<ifElseNode*>(startTree.get());
+                auto ifNode = reinterpret_cast<ifElseNode*>(startTree.get());
                 if (nxt->type == Loop) {
                     nxt = std::make_shared<basicblock>(basicblock(std::vector<std::shared_ptr<statementNode>>{}, nxt));
                 }
@@ -500,7 +500,7 @@ public:
                 auto nxts = std::vector<std::shared_ptr<basicblock>>{trueBranch, falseBranch};
                 block = std::make_shared<basicblock>(basicblock(std::vector<std::shared_ptr<statementNode>>{startTree}, nxts));
                 block->type = Condition;
-                auto fi = dynamic_cast<fiNode*>(joinnode->statements.back().get());
+                auto fi = reinterpret_cast<fiNode*>(joinnode->statements.back().get());
                 fi->add_parent(block);
                 if (!fi->first_parent) fi->first_parent = block;
 

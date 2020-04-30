@@ -7,7 +7,7 @@
 
 #include <nodes/statements/option.hpp>
 
-class phiNode : virtual public statementNode {
+class phiNode : public statementNode {
     std::string _name;
     std::string origName;
     std::vector<option> _variables;
