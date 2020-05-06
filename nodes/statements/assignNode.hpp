@@ -31,7 +31,6 @@ public:
         std::shared_ptr<statementNode> _this = std::make_shared<assignNode>(assignNode(type, origName, _expr, get_linenum()));
         _this->setSSA(onSSA);
         dynamic_cast<assignNode*>(_this.get())->setName(name);
-        _this->set_boolname(get_boolname());
         return _this;
     }
     void setSSA(bool t) override {

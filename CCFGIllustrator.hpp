@@ -22,7 +22,7 @@ public:
     std::shared_ptr<CCFGNode> parent;
     std::shared_ptr<basicblock> basicblockInfo;
 
-    CCFGNode(std::shared_ptr<CCFGNode> _parent, const std::shared_ptr<basicblock>& blk) : name{blk->get_name()}, parent{std::move(_parent)}, basicblockInfo{blk} {
+    CCFGNode(std::shared_ptr<CCFGNode> _parent, const std::shared_ptr<basicblock>& blk) : name{blk->get_name_as_tikz()}, parent{std::move(_parent)}, basicblockInfo{blk} {
         content = blk->to_string();
         node_width = blk->get_stmt_length() * symbol_width;
         left_width = node_width/2;
@@ -117,7 +117,7 @@ public:
             } else {
                 result += "\\path[->] (" ;
             }
-            result += ed->from()->get_name() + ") edge (" + ed->to()->get_name() + ");\n";
+            result += ed->from()->get_name_as_tikz() + ") edge (" + ed->to()->get_name_as_tikz() + ");\n";
         }
         return result;
     }

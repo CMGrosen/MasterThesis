@@ -34,7 +34,6 @@ public:
         int i = 0;
         for (const auto &v : *phi->get_variables()) _possible_variables.emplace_back(v.var, v.var_boolname, name + "b-" + std::to_string(++i));
         setType(phi->getType());
-        set_boolname(phi->get_boolname());
         set_linenum(-1);
         setNodeType(Pi);
         setSSA(true);
@@ -63,7 +62,6 @@ public:
         auto _this = std::make_shared<piNode>(piNode(type, _variable, num, std::move(_pos_vars)));
         _this->name = name;
         _this->setSSA(onSSA);
-        _this->set_boolname(get_boolname());
         return _this;
     }
 

@@ -225,26 +225,30 @@ void basicblock::updateUsedVariables() {
 }
 
 std::string basicblock::get_name() {
-    return std::to_string(name);
+    return name;
+}
+
+std::string basicblock::get_name_as_tikz() {
+    return statementNode::nameToTikzName(name, true);
 }
 
 int basicblock::counterblocks = 0;
 
 
 std::string basicblock::to_string() {
-    std::string res;// = "name: " + get_name() + "\\\\";
+    std::string res = "name: -" + statementNode::nameToTikzName(get_name(), true) + "\\\\";
     for (const auto &stmt : statements) {
         //res += stmt->to_string() + "\\\\";
-        res += stmt->boolname_as_tikz() + ": " + stmt->to_string() + "\\\\";
+        res += stmt->to_string() + "\\\\";
     }
     return res;
 }
 
 size_t basicblock::get_stmt_length() {
-    int32_t longest_stmt = 0;
+    int32_t longest_stmt = ("name: " + get_name()).size();
     for (const auto &stmt : statements) {
         std::string str = stmt->to_string();
-        int32_t stmtlen = str.length() + (stmt->get_boolname().size() + 2); //boolname + ": "
+        int32_t stmtlen = str.length(); //boolname + ": "
         for (auto it = str.begin(); it != str.end(); ++it) {
             if (*it == '\\' || *it == '$' || *it == '{' || *it == '}' || (*it == '_' && *(it-1) != '\\')) {
                 --stmtlen;
@@ -269,7 +273,7 @@ size_t basicblock::get_stmt_length() {
 
 }
 size_t basicblock::get_stmt_count() {
-    return statements.size();
+    return statements.size()+1;
 }
 
 std::string name = std::string{};
@@ -287,5 +291,5 @@ void basicblock::copy_statements(const basicblock *o) {
 }
 
 void basicblock::set_name(int32_t n) {
-    name = n;
+    name = "-b_" + std::to_string(n);
 }

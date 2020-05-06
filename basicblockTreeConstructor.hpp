@@ -26,7 +26,7 @@ struct CCFG {
     std::vector<std::pair<std::shared_ptr<basicblock>, size_t>> pis_and_depth; //all pi-functions and the depth. Sorted by depth
     std::vector<std::shared_ptr<basicblock>> fiNodes; //all blocks with endFi statements
     std::vector<std::shared_ptr<basicblock>> endconcNodes; //all blocks with endConc statements
-    std::map<std::string, std::shared_ptr<statementNode>> boolnameStatements; //find the statement with the given bool tracking constant
+    std::map<std::string, std::shared_ptr<basicblock>> boolnameBlocks; //find the statement with the given bool tracking constant
 
 
     void updateConflictEdges() { add_conflict_edges(); };
@@ -81,7 +81,7 @@ struct CCFG {
         for (auto &e : _edges) {
             edges.insert(std::make_shared<edge>(e));
         }
-        assign_blocknames(startNode);
+        assign_blocknames(startNode, this);
     }
 
     CCFG(const CCFG& a) {
@@ -94,7 +94,7 @@ struct CCFG {
             startNode{std::move(o.startNode)}, exitNode{std::move(o.exitNode)},
             defs{std::move(o.defs)}, concurrent_events{std::move(o.concurrent_events)}, readcount{o.readcount},
             prec{std::move(o.prec)}, pis_and_depth(std::move(o.pis_and_depth)),
-            fiNodes{std::move(o.fiNodes)}, endconcNodes{std::move(o.endconcNodes)}, boolnameStatements{std::move(o.boolnameStatements)}
+            fiNodes{std::move(o.fiNodes)}, endconcNodes{std::move(o.endconcNodes)}, boolnameBlocks{std::move(o.boolnameBlocks)}
     {}
 
     CCFG& operator=(const CCFG& a) {
@@ -116,7 +116,7 @@ struct CCFG {
         pis_and_depth = std::move(other.pis_and_depth);
         fiNodes = std::move(other.fiNodes);
         endconcNodes = std::move(other.endconcNodes);
-        boolnameStatements = std::move(other.boolnameStatements);
+        boolnameBlocks = std::move(other.boolnameBlocks);
         return *this;
     }
 
@@ -163,9 +163,11 @@ private:
             else if (a.exitNode == n) exitNode = newNode;
             nodes.insert(newNode);
             oldMapsTo.insert({n.get(), newNode});
-            if (!a.boolnameStatements.empty())
-                for (const auto &stmt : newNode->statements)
-                    boolnameStatements.insert({stmt->get_boolname(), stmt});
+        }
+        if (!a.boolnameBlocks.empty()) {
+            for (const auto &p : boolnameBlocks) {
+                boolnameBlocks.insert({p.first, oldMapsTo[p.second.get()]});
+            }
         }
         for (const auto &n : a.nodes) {
             oldMapsTo[n.get()]->concurrentBlock = std::make_pair(oldMapsTo[n->concurrentBlock.first].get(), n->concurrentBlock.second);
@@ -253,13 +255,13 @@ private:
         }
     }
 
-    static void assign_blocknames(const std::shared_ptr<basicblock>& startnode) {
+    static void assign_blocknames(const std::shared_ptr<basicblock>& startnode, CCFG *ccfg) {
         std::set<std::shared_ptr<basicblock>> visited;
         int32_t name = 0;
-        assign_blocknames_helper(startnode, &visited, &name);
+        assign_blocknames_helper(startnode, &visited, &name, ccfg);
     }
 
-    static void assign_blocknames_helper(const std::shared_ptr<basicblock>& node, std::set<std::shared_ptr<basicblock>> *visited, int32_t *name) {
+    static void assign_blocknames_helper(const std::shared_ptr<basicblock>& node, std::set<std::shared_ptr<basicblock>> *visited, int32_t *name, CCFG *ccfg) {
         if (node->type == joinNode || node->type == Coend) {
             if (visited->find(node->parents.back().lock()) == visited->end()) {
                 //Cannot name this block yet as right-most parent hasn't yet been visited
@@ -268,8 +270,9 @@ private:
         }
         if (visited->insert(node).second) { //Break cycles in case of whiles. Don't want to name the same block twice
             node->set_name(++(*name));
+            ccfg->boolnameBlocks.insert({node->get_name(), node});
             for (const auto& n : node->nexts) {
-                assign_blocknames_helper(n, visited, name);
+                assign_blocknames_helper(n, visited, name, ccfg);
             }
         }
     }

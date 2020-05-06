@@ -39,7 +39,6 @@ public:
         std::shared_ptr<statementNode> _this = std::make_shared<arrayFieldAssignNode>(arrayFieldAssignNode(type, origName, _field, _expr, get_linenum()));
         _this->setSSA(onSSA);
         dynamic_cast<arrayFieldAssignNode*>(_this.get())->setName(name);
-        _this->set_boolname(get_boolname());
         return _this;
     }
     void setSSA(bool t) override {

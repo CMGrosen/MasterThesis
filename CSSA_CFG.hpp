@@ -187,29 +187,6 @@ private:
         return {event, usages.first, std::move(usages.second)};
     }
 
-    static std::string findboolname(const std::shared_ptr<basicblock>& blk, const std::string& varname) {
-        for (const auto &stmt : blk->statements) {
-            if (auto ass = dynamic_cast<assignNode*>(stmt.get())) {
-                if (ass->getName() == varname) {
-                    return stmt->get_boolname();
-                }
-            } else if (auto assArrF = dynamic_cast<arrayFieldAssignNode*>(stmt.get())) {
-                if (assArrF->getName() == varname) {
-                    return stmt->get_boolname();
-                }
-            } else if (auto phiN = dynamic_cast<phiNode*>(stmt.get())) {
-                if (phiN->getName() == varname) {
-                    return stmt->get_boolname();
-                }
-            } else if (auto piN = dynamic_cast<piNode*>(stmt.get())) {
-                if (piN->getName() == varname) {
-                    return stmt->get_boolname();
-                }
-            }
-        }
-        assert(false);
-    }
-
     void place_phi_functions() {
         for (const auto &pair : ccfg->conflict_edges_from) {
             std::vector<std::shared_ptr<edge>> edges = pair.second;
@@ -238,7 +215,7 @@ private:
                             size_t iterations = event ? 1 : numUsages;
                             for (size_t i = 0; i < iterations; ++i) {
                                 std::string argname = *(b->uses.find(varname)->second.begin());
-                                std::string boolname = findboolname(ccfg->defs[argname], argname);
+                                std::string boolname = ccfg->defs[argname]->get_name();
 
                                 pinodes.emplace_back(std::make_shared<piNode>(piNode
                                     ( t
@@ -250,9 +227,9 @@ private:
                                 vec.push_back(pinodes.back());
                                 ccfg->defs.insert({pinodes.back()->getName(), b});
                                 pinodeblocks.push_back(b);
-                                pinodes.back()->set_boolname("-b_" + std::to_string(boolname_counter++));
+                                //pinodes.back()->set_boolname("-b_" + std::to_string(boolname_counter++));
                                 origvar_for_pis.insert({pinodes.back()->getName(), argname});
-                                ccfg->boolnameStatements.insert({vec.back()->get_boolname(), vec.back()});
+                                //ccfg->boolnameStatements.insert({vec.back()->get_boolname(), vec.back()});
                             }
 
                             if (!event) {
@@ -286,7 +263,7 @@ private:
                                 if (auto pi = dynamic_cast<piNode *>(stmt.get())) {
                                     std::string var = *(a->defines.find(varname)->second.begin());
                                     if (pi->getVar() == varname && !pi->contains(var)) {
-                                        std::string boolname = findboolname(ccfg->defs[var], var);
+                                        std::string boolname = ccfg->defs[var]->get_name();
                                         pi->addVariable({var, boolname});
                                     }
                                 }
@@ -375,7 +352,7 @@ private:
                             if (node->parents[i].lock() == parent) {
                                 std::string varname = vars_to_ssa->find(phiN->getOriginalName())->second;
                                 if (phiN->get_variables()->at(i).var != varname) {
-                                    phiN->update_variableindex(i, {varname, findboolname(ccfg->defs[varname], varname)});
+                                    phiN->update_variableindex(i, {varname, ccfg->defs[varname]->get_name()});
                                 }
                                 break;
                             }
@@ -392,7 +369,7 @@ private:
                                     auto it = vars_to_ssa->find(piN->getVar());
                                     piN->updateVariablesAtIndex
                                       ( i
-                                      , {it->second, findboolname(ccfg->defs[it->second], it->second)}
+                                      , {it->second, ccfg->defs[it->second]->get_name()}
                                       );
                                     it->second = piN->getName();
                                     break;
@@ -422,22 +399,22 @@ private:
     }
 
     static void update_if_statement_boolname_branches(ifElseNode *ifstatement, const std::shared_ptr<basicblock>& start, std::shared_ptr<basicblock> goal) {
-        update_if_statement_boolname_branches_helper(ifstatement, start->nexts[0], goal, true);
-        update_if_statement_boolname_branches_helper(ifstatement, start->nexts[1], goal, false);
+        std::unordered_set<std::shared_ptr<basicblock>> set;
+        update_if_statement_boolname_branches_helper(ifstatement, start->nexts[0], goal, true, &set);
+        set.clear();
+        update_if_statement_boolname_branches_helper(ifstatement, start->nexts[1], goal, false, &set);
     }
 
-    static void update_if_statement_boolname_branches_helper(ifElseNode *ifstatement, const std::shared_ptr<basicblock>& node, const std::shared_ptr<basicblock>& goal, bool branch) {
+    static void update_if_statement_boolname_branches_helper(ifElseNode *ifstatement, const std::shared_ptr<basicblock>& node, const std::shared_ptr<basicblock>& goal, bool branch, std::unordered_set<std::shared_ptr<basicblock>> *set) {
         if (node == goal) return;
-
-        for (const auto &stmt : node->statements) {
+        if (set->insert(node).second) {
             branch
-              ? ifstatement->boolnamesForTrueBranch.push_back(stmt->get_boolname())
-              : ifstatement->boolnamesForFalseBranch.push_back(stmt->get_boolname())
-              ;
-        }
+            ? ifstatement->boolnamesForTrueBranch.push_back(node->get_name())
+            : ifstatement->boolnamesForFalseBranch.push_back(node->get_name());
 
-        for (const auto &nxt : node->nexts) {
-            update_if_statement_boolname_branches_helper(ifstatement, nxt, goal, branch);
+            for (const auto &nxt : node->nexts) {
+                update_if_statement_boolname_branches_helper(ifstatement, nxt, goal, branch, set);
+            }
         }
     }
 

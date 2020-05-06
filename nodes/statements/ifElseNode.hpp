@@ -36,7 +36,6 @@ public:
         std::shared_ptr<statementNode> _falseBranch = falseBranch->copy_statement();
         std::shared_ptr<ifElseNode> _this = std::make_shared<ifElseNode>(ifElseNode(type, _condition, _trueBranch, _falseBranch, get_linenum()));
         _this->setSSA(onSSA);
-        _this->set_boolname(get_boolname());
         _this->boolnamesForTrueBranch = boolnamesForTrueBranch;
         _this->boolnamesForFalseBranch = boolnamesForFalseBranch;
 

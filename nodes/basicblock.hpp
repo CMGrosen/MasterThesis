@@ -58,6 +58,7 @@ struct basicblock {
 
     std::pair<basicblock*, int> concurrentBlock;
     std::string get_name();
+    std::string get_name_as_tikz();
     std::map<std::string, std::vector<std::string>> pi_blocknames;
     void set_name(int32_t);
 
@@ -67,7 +68,7 @@ private:
 
 
 
-    int32_t name;
+    std::string name;
 
     static std::vector<const variableNode*> get_variables_from_expression(const expressionNode *expr) {
         std::vector<const variableNode*> vars{};

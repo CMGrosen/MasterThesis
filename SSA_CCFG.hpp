@@ -47,7 +47,7 @@ private:
     std::unordered_map<std::string, std::list<std::shared_ptr<basicblock>>> defsites;
     std::unordered_map<std::shared_ptr<basicblock>, std::unordered_set<std::string>> Aorig; //variable definitions in block
     std::unordered_map<std::shared_ptr<basicblock>, std::unique_ptr<std::unordered_set<std::string>>> Aphi; //Does block have a phi function for variable
-    std::unordered_map<std::string, std::string> name_to_boolname; //useful later for symengine work for use with pinodes
+    //std::unordered_map<std::string, std::string> name_to_boolname; //useful later for symengine work for use with pinodes
 
 
     void initialise() {
@@ -127,11 +127,11 @@ private:
         }
     }
 
-    void update_def_stmtNode(const std::shared_ptr<statementNode> &stmt, std::map<std::string, uint32_t> *defcounts) {
+    void update_def_stmtNode(const std::shared_ptr<statementNode> &stmt, std::map<std::string, uint32_t> *defcounts, const std::shared_ptr<basicblock> &blk) {
         std::string name;
         std::string oldName;
-        stmt->set_boolname("-b_" + std::to_string(Count["-b"]));
-        ccfg->boolnameStatements.insert({stmt->get_boolname(), stmt});
+        //stmt->set_boolname("-b_" + std::to_string(Count["-b"]));
+        //ccfg->boolnameStatements.insert({stmt->get_boolname(), stmt});
         if (stmt->getNodeType() == Assign) {
             auto node = dynamic_cast<assignNode*>(stmt.get());
             int i = ++Count[node->getName()];
@@ -141,7 +141,7 @@ private:
             oldName = node->getName();
             name = oldName + "_" + std::to_string(i);
             node->setName(name);
-            name_to_boolname.insert({name, "-b_" + std::to_string(Count["-b"])});
+            ccfg->defs.insert({name, blk});
         } else if (stmt->getNodeType() == Phi) {
             auto node = dynamic_cast<phiNode*>(stmt.get());
             int i = ++Count[node->getName()];
@@ -151,7 +151,7 @@ private:
             oldName = node->getName();
             name = oldName + "_" + std::to_string(i);
             node->setName(name);
-            name_to_boolname.insert({name, "-b_" + std::to_string(Count["-b"])});
+            ccfg->defs.insert({name, blk});
         } else if (stmt->getNodeType() == AssignArrField) {
             auto node = dynamic_cast<arrayFieldAssignNode*>(stmt.get());
             int i = ++Count[node->getName()];
@@ -161,7 +161,7 @@ private:
             oldName = node->getName();
             name = oldName + "_" + std::to_string(i);
             node->setName(name);
-            name_to_boolname.insert({name, "-b_" + std::to_string(Count["-b"])});
+            ccfg->defs.insert({name, blk});
         }
         ++Count["-b"];
         //blk->defines.find(oldName)->second.insert(name);
@@ -247,7 +247,7 @@ private:
             if (stmt->getNodeType() != Phi) {
                 update_uses_stmtNode(n->basic_block, stmt);
             }
-            update_def_stmtNode(stmt, &defcounts);
+            update_def_stmtNode(stmt, &defcounts, n->basic_block);
         }
         for (const auto &successor : n->basic_block->nexts) {
             // Suppose n is the j'th predecessor of successor
@@ -261,7 +261,7 @@ private:
                     auto phi = reinterpret_cast<phiNode*>(stmt.get());
                     std::string a = phi->get_variables()->at(j).var;
                     std::string newname = a + "_" + std::to_string(Stack[a].top());
-                    phi->update_variableindex(j, {newname, name_to_boolname[newname]});
+                    phi->update_variableindex(j, {newname, ccfg->defs[newname]->get_name()});
                 }
             }
         }

@@ -45,7 +45,7 @@ void state::findassignedconflicts(const std::string &val, const std::pair<std::s
                 || interdata->valuesFromModel.find(v.var + _run2)->second->value == val)
             {
                 if (visited.find(interdata->ccfg->defs[v.var]) != visited.end()) { //This block has been visited
-                    findassignedconflicts(val, {interdata->ccfg->defs[v.var], interdata->ccfg->boolnameStatements[v.var_boolname]}, conflicts);
+                    findassignedconflicts(val, {interdata->ccfg->defs[v.var], interdata->ccfg->defs[v.var]->defsite[v.var]}, conflicts);
                 }
             }
         }

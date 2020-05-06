@@ -83,7 +83,7 @@ bool interpreter::run() {
             bools.reserve(1);
             if (!checklater.empty()) {
                 auto first = checklater.begin();
-                bools.push_back(data.ccfg->defs[*first]->defsite[*first]->get_boolname());
+                bools.push_back(data.ccfg->defs[*first]->get_name());
                 checklater.erase(first);
             }
 
@@ -418,15 +418,15 @@ bool interpreter::execute(const std::shared_ptr<basicblock>& blk, state *s) {
         }
         if (stmt->getNodeType() == Event && !res.first) {
             std::cout << "event is false, cannot continue to next block\n";
-            if (data.statementsExecuted.find(blk->nexts[0]->statements.front()->get_boolname())->second) {
+            if (data.statementsExecuted.find(blk->nexts[0]->get_name())->second) {
                 std::cout << "This event should have been true!\n";
             }
             return false;
         }
         else if (stmt->getNodeType() == If) {
-            if (res.first && data.statementsExecuted.find(blk->nexts[1]->statements.front()->get_boolname())->second) {
+            if (res.first && data.statementsExecuted.find(blk->nexts[1]->get_name())->second) {
                 std::cout << "error occured. If statement should have been false\n";
-            } else if (!res.first && data.statementsExecuted.find(blk->nexts[0]->statements.front()->get_boolname())->second) {
+            } else if (!res.first && data.statementsExecuted.find(blk->nexts[0]->get_name())->second) {
                 std::cout << "error occured. If statement should have been true\n";
             } else {
                 res.first ? blksToInsert.push_back(blk->nexts[0]) : blksToInsert.push_back(blk->nexts[1]);
