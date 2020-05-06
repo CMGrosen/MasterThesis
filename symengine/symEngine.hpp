@@ -31,6 +31,7 @@ class symEngine {
     std::vector<std::string> includable_vars(const std::shared_ptr<statementNode>&, std::unordered_map<std::string, std::vector<std::string>>);
     static z3::expr encode_event_conditions_between_blocks(z3::context *, const std::shared_ptr<basicblock>&, const std::shared_ptr<basicblock>&, const std::string &run);
     std::vector<z3::expr> constraintset;
+
 public:
     symEngine(const std::shared_ptr<CSSA_CFG>& ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table);
 

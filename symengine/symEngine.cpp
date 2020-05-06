@@ -324,12 +324,12 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                 //if we encounter an event, we need to encode the remaining part of the program
                 // if exitNode == end, then after the encoding of endConc, we're back to being sequential
                 if (event_encountered) {
-                    std::cout << "implement handling of all event nodes if encountered some in a fork-statement\n";
                     z3::expr condition = encode_event_conditions_between_blocks(&c, node, endConc, run);
-                    constraints.push_back(z3::ite( condition
-                                                 , conjunction(get_run(endConc->parents[0].lock(), endConc, end, run, encountered))
-                                                 , c.bool_val(false)
-                                                 ));
+                    constraints.push_back(
+                            z3::ite( condition
+                                   , conjunction(get_run(endConc->parents[0].lock(), endConc, end, run, encountered))
+                                   , encode_boolnames_from_block(&c, endConc->parents[0].lock(), endConc, false, run)
+                                   ));
                     node = end;
                     *encountered = true;
                 } else {
@@ -361,12 +361,12 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                 //if we've encountered an event and this is the top-most if-statement: Encode the program until end with all the events conditions
                 if (*encountered && reinterpret_cast<fiNode*>(firstCommonChild->statements.back().get())->first_parent == node) {
                     *encountered = false;
-                    std::cout << "implement handling of all event nodes if encountered some in an if-statement outside of fork\n";
                     z3::expr condition = encode_event_conditions_between_blocks(&c, node, firstCommonChild, run);
-                    constraints.push_back(z3::ite( condition
-                                                 , conjunction(get_run(firstCommonChild, firstCommonChild->nexts[0], end, run, encountered))
-                                                 , c.bool_val(false)
-                                                 ));
+                    constraints.push_back(
+                            z3::ite( condition
+                                   , conjunction(get_run(firstCommonChild, firstCommonChild->nexts[0], end, run, encountered))
+                                   , encode_boolnames_from_block(&c, firstCommonChild, end, false, run)
+                                   ));
                     node = end;
                     *encountered = true;
                 } else { //if *encountered is true, then firstCommonChild == end, and thus, encountered is propagated to the caller
@@ -382,7 +382,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
 
                 constraints.push_back(z3::ite( condition
                                              , truebranch
-                                             , encode_boolnames_from_block(&c, node, ccfg->exitNode, false, run)
+                                             , encode_boolnames_from_block(&c, node, end, false, run)
                                              )
                                        && encode_boolname(&c, stmt->get_boolname(), true, run)
                                        );
