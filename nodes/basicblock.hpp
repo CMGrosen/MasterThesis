@@ -61,11 +61,11 @@ struct basicblock {
     std::string get_name_as_tikz();
     std::map<std::string, std::vector<std::string>> pi_blocknames;
     void set_name(int32_t);
-
+    bool operator<(const std::shared_ptr<basicblock>&);
     blocktype type;
 private:
     static int counterblocks;
-
+    int32_t index;
 
 
     std::string name;

@@ -16,8 +16,8 @@ struct statesHandler {
     static std::set<std::shared_ptr<basicblock>> conflictsForRun1, conflictsForRun2;
     static std::shared_ptr<basicblock> conflictNode;
     static bool conflictIsCoend;
-    static std::string valForRun1;
-    static std::string valForRun2;
+    static std::set<std::string> valsForRun1;
+    static std::set<std::string> valsForRun2;
     static std::string conflictvar;
     static std::string origname;
     static std::pair<std::shared_ptr<statementNode>, std::shared_ptr<statementNode>> conflicts;

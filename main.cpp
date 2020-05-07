@@ -57,6 +57,7 @@ static std::map< const char *, const char * > test_files = {
 static std::map<const char *, const char *> rapport_files ={
     {"reportExample", "../code_examples/rapport/report_example.small"},
     {"if", "../code_examples/rapport/if.small"},
+    {"pi-problem", "../code_examples/rapport/pi-example-problem.small"},
     {"when", "../code_examples/rapport/event.small"}
 };
 
@@ -175,7 +176,7 @@ int main(int argc, const char* argv[]) {
         std::cout << "checking program: '" << path << "' for data-races" << std::endl;
         run(argc, path);
     } else {
-        std::string input = rapport_files["when"];
+        std::string input = rapport_files["pi-problem"];
 
         std::string path = working_directory + "/" + input;
         std::cout << "checking program: '" << path << "' for data-races" << std::endl;

@@ -165,7 +165,7 @@ private:
             oldMapsTo.insert({n.get(), newNode});
         }
         if (!a.boolnameBlocks.empty()) {
-            for (const auto &p : boolnameBlocks) {
+            for (const auto &p : a.boolnameBlocks) {
                 boolnameBlocks.insert({p.first, oldMapsTo[p.second.get()]});
             }
         }

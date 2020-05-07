@@ -1,0 +1,19 @@
+a = 0;
+reachable = false;
+fork {
+    a = a-10;
+	if(a == 10){
+        if(a == 20) {
+            if(a == 50){
+                reachable = true;
+            } else {skip;};
+        } else {skip;};
+    } else {skip;};
+} and {
+    a = 20;
+    if(a < 20){
+        a = a + read(1);
+    } else {
+        skip;
+    };
+};

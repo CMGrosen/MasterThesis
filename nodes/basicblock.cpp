@@ -6,23 +6,23 @@
 #include <cassert>
 #include <iostream>
 
-basicblock::basicblock() : statements{}, nexts{}, depth{0}, type{Compute} {counterblocks++;}
+basicblock::basicblock() : statements{}, nexts{}, depth{0}, type{Compute}, index{0} {counterblocks++;}
 basicblock::basicblock(std::shared_ptr<statementNode> stmt) :
         statements{std::vector<std::shared_ptr<statementNode>>{std::move(stmt)}},
-        nexts{}, depth{0}, type{Compute} {counterblocks++;}
+        nexts{}, depth{0}, type{Compute}, index{0} {counterblocks++;}
 basicblock::basicblock(std::vector<std::shared_ptr<statementNode>> stmts) :
         statements{std::move(stmts)},
-        nexts{}, depth{0}, type{Compute} {counterblocks++;}
+        nexts{}, depth{0}, type{Compute}, index{0} {counterblocks++;}
 basicblock::basicblock(std::shared_ptr<statementNode> stmt, std::shared_ptr<basicblock> next) :
         statements{std::vector<std::shared_ptr<statementNode>>{std::move(stmt)}},
         nexts{std::vector<std::shared_ptr<basicblock>>{std::move(next)}},
-        depth{0}, type{Compute} {counterblocks++;}
+        depth{0}, type{Compute}, index{0} {counterblocks++;}
 basicblock::basicblock(std::vector<std::shared_ptr<statementNode>> stmts, std::shared_ptr<basicblock> next) :
         statements{std::move(stmts)},
         nexts{std::vector<std::shared_ptr<basicblock>>{std::move(next)}},
-        depth{0}, type{Compute} {counterblocks++;}
+        depth{0}, type{Compute}, index{0} {counterblocks++;}
 basicblock::basicblock(std::vector<std::shared_ptr<statementNode>> stmts, std::vector<std::shared_ptr<basicblock>> nStmts) :
-        statements{std::move(stmts)}, nexts{std::move(nStmts)}, depth{0}, type{Compute} {counterblocks++;}
+        statements{std::move(stmts)}, nexts{std::move(nStmts)}, depth{0}, type{Compute}, index{0} {counterblocks++;}
 
 
 basicblock::basicblock(const basicblock &o) {
@@ -31,6 +31,7 @@ basicblock::basicblock(const basicblock &o) {
     uses = o.uses;
     defines = o.defines;
     name = o.name;
+    index = o.index;
     depth = o.depth;
     pi_blocknames = o.pi_blocknames;
     /*
@@ -46,13 +47,17 @@ basicblock& basicblock::operator=(const basicblock &o) {
     uses = o.uses;
     defines = o.defines;
     name = o.name;
+    index = o.index;
     type = o.type;
     pi_blocknames = o.pi_blocknames;
     counterblocks++;
     return *this;
 }
 
-basicblock::basicblock(basicblock &&o) noexcept : statements{std::move(o.statements)}, parents{std::move(o.parents)}, nexts{std::move(o.nexts)}, depth{o.depth}, uses{std::move(o.uses)}, defines{std::move(o.defines)}, defsite{std::move(o.defsite)}, pi_blocknames{std::move(o.pi_blocknames)}, type{o.type}, name{o.name} {
+basicblock::basicblock(basicblock &&o) noexcept :
+    statements{std::move(o.statements)}, parents{std::move(o.parents)}, nexts{std::move(o.nexts)},
+    depth{o.depth}, uses{std::move(o.uses)}, defines{std::move(o.defines)}, defsite{std::move(o.defsite)},
+    pi_blocknames{std::move(o.pi_blocknames)}, type{o.type}, index{o.index}, name{std::move(o.name)} {
     counterblocks++;
 }
 
@@ -66,7 +71,7 @@ basicblock& basicblock::operator=(basicblock &&o) noexcept  {
     defsite = std::move(o.defsite);
     pi_blocknames = std::move(o.pi_blocknames);
     type = o.type;
-    name = o.name;
+    name = std::move(o.name);
     counterblocks++;
     return *this;
 }
@@ -291,5 +296,10 @@ void basicblock::copy_statements(const basicblock *o) {
 }
 
 void basicblock::set_name(int32_t n) {
+    index = n;
     name = "-b_" + std::to_string(n);
+}
+
+bool basicblock::operator<(const std::shared_ptr<basicblock> &blk) {
+    return index < blk->index;
 }

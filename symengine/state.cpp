@@ -12,16 +12,17 @@ state::state(std::set<std::shared_ptr<basicblock>> cr1, std::set<std::shared_ptr
         std::shared_ptr<basicblock> cn,
         std::map<std::shared_ptr<basicblock>, std::set<basicblock*>> _threadsToFinish,
         std::map<std::string, Value> cv,
-        std::string v1, std::string v2, interpreterData* _interdata)
+        std::set<std::string> v1, std::set<std::string> v2, interpreterData* _interdata)
         : conflictingDefs{}, threadsToFinish{std::move(_threadsToFinish)}, current_values{std::move(cv)}, currents{}
         { conflictsForRun1 = std::move(cr1);
           conflictsForRun2 = std::move(cr2);
           conflictNode = std::move(cn);
           conflictingDefs = {};
-          valForRun1 = std::move(v1);
-          valForRun2 = std::move(v2);
+          valsForRun1 = std::move(v1);
+          valsForRun2 = std::move(v2);
 
           conflict1 = conflict2 = onconflictnode = found = false;
+          valForRun1 = valForRun2 = "";
           conflictIsCoend = conflictNode->type == Coend;
           conflicts = {nullptr, nullptr};
           interdata = _interdata;
@@ -67,19 +68,21 @@ bool state::updateConflict(const std::shared_ptr<basicblock> &b) {
             findassignedconflicts(res->second.val, {b, defsite->second}, &conflicts);
         }
 
-        if (res->second.val == valForRun1) {
+        if (valsForRun1.find(res->second.val) != valsForRun1.end()) {
             if (conflictIsCoend) {
                 update_conflict(true, conflicts.begin()->second);
             }
             conflictingDefs.first = res->second.statement;
             onconflictnode = conflict1 = true;
+            valForRun1 = res->second.val;
             return true;
-        } else if (res->second.val == valForRun2) {
+        } else if (valsForRun2.find(res->second.val) != valsForRun2.end()) {
             if (conflictIsCoend) {
                 update_conflict(false, conflicts.begin()->second);
             }
             conflictingDefs.second = res->second.statement;
             onconflictnode = conflict2 = true;
+            valForRun2 = res->second.val;
             return true;
         }
 

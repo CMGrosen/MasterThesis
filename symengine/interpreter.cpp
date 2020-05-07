@@ -317,7 +317,7 @@ std::string interpreter::exec_expr(expressionNode* expr, const std::map<std::str
     return val;
 }
 
-std::pair<bool, bool> interpreter::exec_stmt(const std::shared_ptr<statementNode> &stmt, std::map<std::string, Value> *current_values, bool conflictIsCoend) {
+std::pair<bool, bool> interpreter::exec_stmt(const std::shared_ptr<statementNode> &stmt, std::map<std::string, Value> *current_values, bool conflictIsCoend, state *s) {
     switch (stmt->getNodeType()) {
         case Assign: {
             auto assNode = reinterpret_cast<assignNode *>(stmt.get());
@@ -371,8 +371,8 @@ std::pair<bool, bool> interpreter::exec_stmt(const std::shared_ptr<statementNode
             if (conflictIsCoend) {
                 current_values->insert({pi->getName(), current_values->find(pi->getVar())->second});
             } else {
-                if (data.valuesFromModel.find(pi->getName() + _run1)->second->value == val ||
-                    data.valuesFromModel.find(pi->getName() + _run2)->second->value == val) {
+                if (s->valsForRun1.find(val) != s->valsForRun1.end() ||
+                    s->valsForRun2.find(val) != s->valsForRun2.end()) {
                     current_values->insert({pi->getName(), current_values->find(pi->getVar())->second});
                 } else {
                     //std::cout << "unexpected value for pi, adding anyway\n";
@@ -409,7 +409,7 @@ bool interpreter::execute(const std::shared_ptr<basicblock>& blk, state *s) {
     std::vector<std::shared_ptr<basicblock>> blksToInsert;
     bool piSuccessfullyExecuted = false;
     for (const auto &stmt : blk->statements) {
-        std::pair<bool, bool> res = exec_stmt(stmt, &s->current_values, s->conflictIsCoend);
+        std::pair<bool, bool> res = exec_stmt(stmt, &s->current_values, s->conflictIsCoend, s);
         if (stmt->getNodeType() == Pi && res.second) {
             piSuccessfullyExecuted = true;
         }
@@ -424,9 +424,9 @@ bool interpreter::execute(const std::shared_ptr<basicblock>& blk, state *s) {
             return false;
         }
         else if (stmt->getNodeType() == If) {
-            if (res.first && data.statementsExecuted.find(blk->nexts[1]->get_name())->second) {
+            if (res.first && s->conflictNode != blk && data.statementsExecuted.find(blk->nexts[1]->get_name())->second) {
                 std::cout << "error occured. If statement should have been false\n";
-            } else if (!res.first && data.statementsExecuted.find(blk->nexts[0]->get_name())->second) {
+            } else if (!res.first && s->conflictNode != blk && data.statementsExecuted.find(blk->nexts[0]->get_name())->second) {
                 std::cout << "error occured. If statement should have been true\n";
             } else {
                 res.first ? blksToInsert.push_back(blk->nexts[0]) : blksToInsert.push_back(blk->nexts[1]);
@@ -504,9 +504,23 @@ bool interpreter::reachable(const std::pair<std::shared_ptr<basicblock>, std::st
     std::set<std::shared_ptr<basicblock>> conflictsForRun2;
     std::shared_ptr<basicblock> conflictNode = blk.first;
     std::pair<std::shared_ptr<basicblock>, std::shared_ptr<basicblock>> conflictingDefs;
-    std::string valForRun1 = data.differences.find(blk.second)->second.run1;
-    std::string valForRun2 = data.differences.find(blk.second)->second.run2;
+    std::set<std::string> valForRun1;
+    std::set<std::string> valForRun2;
 
+    for (const auto &var : *reinterpret_cast<piNode*>(blk.first->defsite[blk.second].get())->get_variables()) {
+        auto member = data.valuesFromModel.find(var.var + _run1);
+        if (member != data.valuesFromModel.end() && member->second->defined) {
+            conflictsForRun1.insert(engine.ccfg->boolnameBlocks[var.var_boolname]);
+            valForRun1.insert(member->second->value);
+        }
+        member = data.valuesFromModel.find(var.var + _run2);
+        if (member != data.valuesFromModel.end() && member->second->defined) {
+            conflictsForRun2.insert(engine.ccfg->boolnameBlocks[var.var_boolname]);
+            valForRun2.insert(member->second->value);
+        }
+    }
+
+    /*
     for (const auto &value : data.variableValues.find(valForRun1)->second) {
         if (origname == value->origName) {
             conflictsForRun1.insert(engine.ccfg->defs.find(value->name)->second);
@@ -516,7 +530,7 @@ bool interpreter::reachable(const std::pair<std::shared_ptr<basicblock>, std::st
         if (origname == value->origName) {
             conflictsForRun2.insert(engine.ccfg->defs.find(value->name)->second);
         }
-    }
+    }*/
 
     std::set<std::shared_ptr<basicblock>> currents = {engine.ccfg->startNode};
 

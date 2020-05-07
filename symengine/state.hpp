@@ -15,6 +15,7 @@ struct state : public statesHandler {
     std::map<std::shared_ptr<basicblock>, std::set<basicblock*>> threadsToFinish;
     std::map<std::string, Value> current_values;
     bool conflict1, conflict2, onconflictnode, found;
+    std::string valForRun1, valForRun2;
     std::set<std::shared_ptr<basicblock>> currents;
     std::set<std::shared_ptr<basicblock>> visited;
 
@@ -23,7 +24,7 @@ struct state : public statesHandler {
           std::shared_ptr<basicblock> cn,
           std::map<std::shared_ptr<basicblock>, std::set<basicblock*>> _threadsToFinish,
           std::map<std::string, Value> cv,
-          std::string v1, std::string v2, interpreterData* _interdata);
+          std::set<std::string> v1, std::set<std::string> v2, interpreterData* _interdata);
 
     bool updateConflict(const std::shared_ptr<basicblock>&);
     bool isConflicting(const std::shared_ptr<basicblock>&);
