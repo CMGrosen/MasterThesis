@@ -231,11 +231,15 @@ bool symEngine::execute(std::string method) {
         constraintset.emplace_back(c.bool_const((name + _run1).c_str()) == c.bool_const((name + _run2).c_str()));
     }*/
     for (const auto &expr : constraintset) s.add(expr);
-
+/*
+    std::string n = "reachable_4";
+    s.add(c.bool_const((n + _run1).c_str()) == c.bool_val(true));
+    s.add(c.bool_const((n + _run2).c_str()) == c.bool_val(true));
+*/
     if (s.check() == z3::sat) {
         auto model = s.get_model();
         std::cout << "sat\n";
-        //std::cout << model << "\n" << std::endl;
+        std::cout << model << "\n" << std::endl;
         return true;
     } else {
         std::cout << "unsat\nProbably no race-conditions" << std::endl;
@@ -286,6 +290,65 @@ bool symEngine::execute(std::string method) {
 
 }
 
+z3::expr encode_unused_edges(z3::context *c, const std::string& blockboolname, const std::string &run, std::vector<option> *options) {
+    z3::expr res = c->bool_const((blockboolname + run).c_str()) == c->bool_val(true);
+    for (const auto &cc : *options) {
+        if (blockboolname != cc.block_boolname) {
+            if (cc.block_boolname.find("-brea") != std::string::npos) {
+                std::cout << "break";
+            }
+            z3::expr inter = c->bool_const((cc.block_boolname + run).c_str()) == c->bool_val(false);
+            res = res && inter;
+        }
+    }
+    return res;
+}
+
+z3::expr possible_var_choices(z3::context *c, const std::shared_ptr<basicblock> &blk, const std::string &var_boolname, const std::string &run, std::shared_ptr<CCFG> ccfg) {
+    std::shared_ptr<basicblock> def = ccfg->boolnameBlocks[var_boolname];
+    std::string assignment_var = reinterpret_cast<assignNode*>(blk->statements.back().get())->getName();
+    z3::expr res = c->bool_val(true);
+    for (const std::shared_ptr<edge> &conflict : ccfg->conflict_edges_from[blk]) {
+        if (!CCFG::concurrent(conflict->to(), def) && def->lessthan(conflict->to())) {
+            for (const auto &stmt : conflict->to()->statements) {
+                if (auto pi = dynamic_cast<piNode*>(stmt.get())) {
+                    for (const auto &option : *pi->get_variables()) {
+                        if (option.var == assignment_var) {
+                            if (option.block_boolname.find("-brea") != std::string::npos) {
+                                std::cout << "break";
+                            }
+                            z3::expr inter = c->bool_const((option.block_boolname + run).c_str()) == c->bool_val(false);
+                            res = res && inter;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return res;
+}
+
+z3::expr encode_possible_outgoing(z3::context *c, const std::shared_ptr<basicblock> &blk, const std::string &run, std::shared_ptr<CCFG> ccfg) {
+    //only called from an assignment node that's concurrent and have multiple statements
+    //meaning the statement prior to this assignment, is a pi-function
+    auto options = reinterpret_cast<piNode*>((blk->statements.rbegin()+1)->get())->get_variables();
+
+    z3::expr res = c->bool_val(true);
+    for (const auto &o : *options) {
+        if (o.block_boolname.find("-brea") != std::string::npos) {
+            std::cout << "break";
+        }
+        z3::expr inter =
+                z3::ite( c->bool_const(o.block_boolname.c_str())
+                       , possible_var_choices(c, blk, o.var_boolname, run, ccfg)
+                       , c->bool_val(true)
+                       );
+        res = res && inter;
+    }
+    return res;
+}
+
 z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, const std::shared_ptr<basicblock> &start, const std::shared_ptr<basicblock> &end, const std::string &run, bool *encountered) {
     auto node = start;
     z3::expr_vector constraints(c);
@@ -300,6 +363,11 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                             : c.bool_const((assnode->getName() + run).c_str());
 
                 constraints.push_back(name == evaluate_expression(&c, assnode->getExpr(), run, &constraints));
+
+                //concurrent and not the only statement in this block, meaning the one before is a pi-function
+                if (start->concurrentBlock.first && node->statements.size() > 1) {
+                    constraints.push_back(encode_possible_outgoing(&c, start, run, ccfg));
+                }
 
                 break;
             }
@@ -450,9 +518,14 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                     case intType: {
                         z3::expr name = c.int_const((pi->getName() + run).c_str());
                         for (const auto &conflict : *vars) {
+                            z3::expr tb = (name == c.int_const((conflict.var + run).c_str()));
+                            if (node->type != Coend) {
+                                z3::expr inter = encode_unused_edges(&c, conflict.block_boolname, run, vars);
+                                tb = tb && inter;
+                            }
                             expressions.push_back(z3::ite
                               ( c.bool_const((conflict.var_boolname + run).c_str())
-                              , name == c.int_const((conflict.var + run).c_str())
+                              , tb
                               , c.bool_val(false) //unsatisfiable
                               ));
                         }
@@ -461,9 +534,14 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                     case boolType: {
                         z3::expr name = c.bool_const((pi->getName() + run).c_str());
                         for (const auto &conflict : *vars) {
+                            z3::expr tb = (name == c.bool_const((conflict.var + run).c_str()));
+                            if (node->type != Coend) {
+                                z3::expr inter = encode_unused_edges(&c, conflict.block_boolname, run, vars);
+                                tb = tb && inter;
+                            }
                             expressions.push_back(z3::ite
                               ( c.bool_const((conflict.var_boolname + run).c_str())
-                              , name == c.bool_const((conflict.var + run).c_str())
+                              , tb
                               , c.bool_val(false) //unsatisfiable. Won't ever pick this option
                               ));
                         }

@@ -141,6 +141,36 @@ struct CCFG {
             }
         }
     }
+
+    static bool concurrent(const std::shared_ptr<basicblock> &a, const std::shared_ptr<basicblock> &b) {
+        if (a == b) return false; //same nodes aren't concurrent
+        if (!a->concurrentBlock.first || !b->concurrentBlock.first) return false; //one of them aren't concurrent, thus they aren't concurrent
+        if (a->type == Coend || b->type == Coend) return false; //these aren't variable assignments, so don't want to consider them as concurrent ever
+        if (a->concurrentBlock.first == b->concurrentBlock.first && a->concurrentBlock.second == b->concurrentBlock.second) {
+            //If they're in the same thread, they're not concurrent
+            return false;
+        }
+        std::unordered_map<basicblock*, int> concurrentNodesForA;
+        auto concblock = a->concurrentBlock;
+        do {
+            concurrentNodesForA.insert(concblock);
+            concblock = concblock.first->concurrentBlock;
+        } while(concblock.first);
+
+        concblock = b->concurrentBlock;
+        while (concblock.first && concurrentNodesForA.find(concblock.first) == concurrentNodesForA.end()) {
+            concblock = concblock.first->concurrentBlock;
+        }
+        if (concblock.first) {
+            if (concurrentNodesForA.find(concblock.first)->second != concblock.second) {
+                //We have found a common ancestor fork node, and the immediate fork statements for block a and b
+                // are not within the same thread
+                return true;
+            }
+        }
+        return false; //if we get here, no conditions were met, thus not concurrent
+    }
+
 private:
     static int get_num(std::string var) {
         int pos = 1;
@@ -325,35 +355,6 @@ private:
         if (sequential) return true;
         visited.clear();
         return is_sequential_helper(b,a,&visited);
-    }
-
-    static bool concurrent(std::shared_ptr<basicblock> &a, std::shared_ptr<basicblock> &b) {
-        if (a == b) return false; //same nodes aren't concurrent
-        if (!a->concurrentBlock.first || !b->concurrentBlock.first) return false; //one of them aren't concurrent, thus they aren't concurrent
-        if (a->type == Coend || b->type == Coend) return false; //these aren't variable assignments, so don't want to consider them as concurrent ever
-        if (a->concurrentBlock.first == b->concurrentBlock.first && a->concurrentBlock.second == b->concurrentBlock.second) {
-            //If they're in the same thread, they're not concurrent
-            return false;
-        }
-        std::unordered_map<basicblock*, int> concurrentNodesForA;
-        auto concblock = a->concurrentBlock;
-        do {
-            concurrentNodesForA.insert(concblock);
-            concblock = concblock.first->concurrentBlock;
-        } while(concblock.first);
-
-        concblock = b->concurrentBlock;
-        while (concblock.first && concurrentNodesForA.find(concblock.first) == concurrentNodesForA.end()) {
-            concblock = concblock.first->concurrentBlock;
-        }
-        if (concblock.first) {
-            if (concurrentNodesForA.find(concblock.first)->second != concblock.second) {
-                //We have found a common ancestor fork node, and the immediate fork statements for block a and b
-                // are not within the same thread
-                return true;
-            }
-        }
-        return false; //if we get here, no conditions were met, thus not concurrent
     }
 };
 

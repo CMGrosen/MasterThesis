@@ -300,6 +300,6 @@ void basicblock::set_name(int32_t n) {
     name = "-b_" + std::to_string(n);
 }
 
-bool basicblock::operator<(const std::shared_ptr<basicblock> &blk) {
+bool basicblock::lessthan(const std::shared_ptr<basicblock> &blk) {
     return index < blk->index;
 }

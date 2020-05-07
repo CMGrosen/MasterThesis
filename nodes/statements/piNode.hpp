@@ -20,7 +20,7 @@ public:
         num = _num;
         int i = 0;
         for (const auto &p : possible_variables) {
-            _possible_variables.emplace_back(option(p.first, p.second, name + "b-" + std::to_string(++i)));
+            _possible_variables.emplace_back(option(p.first, p.second, "-b" + name + std::to_string(++i)));
         }
         setType(t);
         set_linenum(-1);
@@ -32,7 +32,7 @@ public:
         std::string sub = name.substr(_variable.size()+1);
         num = std::stoi(sub);
         int i = 0;
-        for (const auto &v : *phi->get_variables()) _possible_variables.emplace_back(v.var, v.var_boolname, name + "b-" + std::to_string(++i));
+        for (const auto &v : *phi->get_variables()) _possible_variables.emplace_back(v.var, v.var_boolname, "-b" + name + std::to_string(++i));
         setType(phi->getType());
         set_linenum(-1);
         setNodeType(Pi);
@@ -75,7 +75,7 @@ public:
     }
 
     void updateVariablesAtIndex(int index, std::pair<std::string, std::string> p) {_possible_variables[index].var = p.first; _possible_variables[index].var_boolname = p.second;}
-    void addVariable(std::pair<std::string, std::string> var) {_possible_variables.emplace_back(var.first, var.second, name + "b-" + std::to_string(_possible_variables.size()+1));}
+    void addVariable(std::pair<std::string, std::string> var) {_possible_variables.emplace_back(var.first, var.second, "-b" + name + std::to_string(_possible_variables.size()+1));}
     std::string getName() const {return name;}
     std::string getVar() const {return _variable;}
     void setSSA(bool t) override {
