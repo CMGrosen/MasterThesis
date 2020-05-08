@@ -317,7 +317,7 @@ std::string interpreter::exec_expr(expressionNode* expr, const std::map<std::str
     return val;
 }
 
-std::pair<bool, bool> interpreter::exec_stmt(const std::shared_ptr<statementNode> &stmt, std::map<std::string, Value> *current_values, bool conflictIsCoend, state *s) {
+std::pair<bool, bool> interpreter::exec_stmt(const std::shared_ptr<statementNode> &stmt, std::map<std::string, Value> *current_values, bool conflictIsCoend, bool onconflict, state *s) {
     switch (stmt->getNodeType()) {
         case Assign: {
             auto assNode = reinterpret_cast<assignNode *>(stmt.get());
@@ -371,8 +371,13 @@ std::pair<bool, bool> interpreter::exec_stmt(const std::shared_ptr<statementNode
             if (conflictIsCoend) {
                 current_values->insert({pi->getName(), current_values->find(pi->getVar())->second});
             } else {
-                if (s->valsForRun1.find(val) != s->valsForRun1.end() ||
-                    s->valsForRun2.find(val) != s->valsForRun2.end()) {
+                if (onconflict) {
+                    if (s->valsForRun1.find(val) != s->valsForRun1.end() ||
+                        s->valsForRun2.find(val) != s->valsForRun2.end()) {
+                        current_values->insert({pi->getName(), current_values->find(pi->getVar())->second});
+                    }
+                } else if (s->interdata->valuesFromModel[pi->getName() + _run1]->value == val ||
+                           s->interdata->valuesFromModel[pi->getName() + _run2]->value == val) {
                     current_values->insert({pi->getName(), current_values->find(pi->getVar())->second});
                 } else {
                     //std::cout << "unexpected value for pi, adding anyway\n";
@@ -409,7 +414,7 @@ bool interpreter::execute(const std::shared_ptr<basicblock>& blk, state *s) {
     std::vector<std::shared_ptr<basicblock>> blksToInsert;
     bool piSuccessfullyExecuted = false;
     for (const auto &stmt : blk->statements) {
-        std::pair<bool, bool> res = exec_stmt(stmt, &s->current_values, s->conflictIsCoend, s);
+        std::pair<bool, bool> res = exec_stmt(stmt, &s->current_values, s->conflictIsCoend, blk == s->conflictNode, s);
         if (stmt->getNodeType() == Pi && res.second) {
             piSuccessfullyExecuted = true;
         }

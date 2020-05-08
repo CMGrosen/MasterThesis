@@ -20,7 +20,7 @@ class interpreter {
 
     static std::string compute_operator(const std::string&, const std::string&, op);
     std::string exec_expr(expressionNode*, const std::map<std::string, Value> *);
-    std::pair<bool, bool> exec_stmt(const std::shared_ptr<statementNode>&, std::map<std::string, Value> *, bool, state *s);
+    std::pair<bool, bool> exec_stmt(const std::shared_ptr<statementNode>&, std::map<std::string, Value> *, bool, bool, state *s);
     bool execute(const std::shared_ptr<basicblock>& blk, state *s);
 
     bool recursive_read(const std::shared_ptr<basicblock>&, state);
