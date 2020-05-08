@@ -340,7 +340,7 @@ z3::expr encode_possible_outgoing(z3::context *c, const std::shared_ptr<basicblo
             std::cout << "break";
         }
         z3::expr inter =
-                z3::ite( c->bool_const(o.block_boolname.c_str())
+                z3::ite( c->bool_const((o.block_boolname + run).c_str())
                        , possible_var_choices(c, blk, o.var_boolname, run, ccfg)
                        , c->bool_val(true)
                        );
@@ -366,7 +366,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
 
                 //concurrent and not the only statement in this block, meaning the one before is a pi-function
                 if (start->concurrentBlock.first && node->statements.size() > 1) {
-                    constraints.push_back(encode_possible_outgoing(&c, start, run, ccfg));
+                    constraints.push_back(encode_possible_outgoing(&c, node, run, ccfg));
                 }
 
                 break;
@@ -518,13 +518,15 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                     case intType: {
                         z3::expr name = c.int_const((pi->getName() + run).c_str());
                         for (const auto &conflict : *vars) {
+                            z3::expr condition = c.bool_const((conflict.var_boolname + run).c_str()) == c.bool_val(true);
+                            condition = condition && (c.bool_const((conflict.block_boolname + run).c_str()) == c.bool_val(true));
                             z3::expr tb = (name == c.int_const((conflict.var + run).c_str()));
                             if (node->type != Coend) {
                                 z3::expr inter = encode_unused_edges(&c, conflict.block_boolname, run, vars);
                                 tb = tb && inter;
                             }
                             expressions.push_back(z3::ite
-                              ( c.bool_const((conflict.var_boolname + run).c_str())
+                              ( condition
                               , tb
                               , c.bool_val(false) //unsatisfiable
                               ));
@@ -534,13 +536,15 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                     case boolType: {
                         z3::expr name = c.bool_const((pi->getName() + run).c_str());
                         for (const auto &conflict : *vars) {
+                            z3::expr condition = c.bool_const((conflict.var_boolname + run).c_str()) == c.bool_val(true);
+                            condition = condition && (c.bool_const((conflict.block_boolname + run).c_str()) == c.bool_val(true));
                             z3::expr tb = (name == c.bool_const((conflict.var + run).c_str()));
                             if (node->type != Coend) {
                                 z3::expr inter = encode_unused_edges(&c, conflict.block_boolname, run, vars);
                                 tb = tb && inter;
                             }
                             expressions.push_back(z3::ite
-                              ( c.bool_const((conflict.var_boolname + run).c_str())
+                              ( condition
                               , tb
                               , c.bool_val(false) //unsatisfiable. Won't ever pick this option
                               ));
