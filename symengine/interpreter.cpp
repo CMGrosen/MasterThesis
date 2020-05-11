@@ -100,11 +100,9 @@ bool interpreter::run2() {
             if(engine.updateModel(pair.second)) {
                 refresh();
                 std::pair<std::shared_ptr<basicblock>, std::string> blk_and_name = {nullptr, ""};
-                for (const auto &dif : data.differences) {
-                    if (dif.first == pair.first) {
-                        blk_and_name = {engine.ccfg->defs.find(dif.first)->second, dif.first};
-                        break;
-                    }
+                auto found = data.differences.find(pair.first);
+                if (found != data.differences.end()) {
+                    blk_and_name = {engine.ccfg->defs.find(pair.first)->second, pair.first};
                 }
                 if (blk_and_name.first) {
                     std::vector<std::string> foundraces;
