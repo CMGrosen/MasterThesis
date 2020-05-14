@@ -53,9 +53,9 @@ include_directories(
 
 set(visitor_SRC
         ${PROJECT_SOURCE_DIR}/main.cpp
-        ${PROJECT_SOURCE_DIR}/DST.cpp
+        ${PROJECT_SOURCE_DIR}/src/transformers/DST.cpp
         ${visitor-GENERATED_SRC}
-        nodes/nodes.hpp nodes/edge.cpp nodes/edge.hpp nodes/basicblock.cpp nodes/basicblock.hpp symengine/symEngine.cpp symengine/symEngine.hpp symengine/trace.cpp symengine/trace.hpp nodes/expressions/readNode.cpp symengine/interpreter.cpp symengine/interpreter.hpp symengine/VariableValue.hpp symengine/Difference.hpp symengine/state.cpp symengine/state.hpp symengine/statesHandler.cpp symengine/statesHandler.hpp symengine/intepreterData.hpp symengine/value.hpp nodes/statements/option.hpp)
+        src/nodes/nodes.hpp src/nodes/edge.cpp src/nodes/edge.hpp src/nodes/basicblock.cpp src/nodes/basicblock.hpp src/symengine/symEngine.cpp src/symengine/symEngine.hpp src/symengine/trace.cpp src/symengine/trace.hpp src/nodes/expressions/readNode.cpp src/symengine/interpreter.cpp src/symengine/interpreter.hpp src/symengine/VariableValue.hpp src/symengine/Difference.hpp src/symengine/state.cpp src/symengine/state.hpp src/symengine/statesHandler.cpp src/symengine/statesHandler.hpp src/symengine/intepreterData.hpp src/symengine/value.hpp src/nodes/statements/option.hpp src/CFGs/SSA_CCFG.hpp src/CFGs/CSSA_CCFG.hpp src/CFGs/CCFG.hpp)
 
 if (NOT CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     set (flags_1 "-Wno-overloaded-virtual")

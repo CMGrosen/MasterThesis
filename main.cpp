@@ -3,15 +3,15 @@
 
 #include "antlr4-runtime.h"
 #include "SmallLexer.h"
-#include "DST.hpp"
-#include "basicblockTreeConstructor.hpp"
-#include <CCFGIllustrator.hpp>
-#include <symengine/symEngine.hpp>
-#include <CSSA_CFG.hpp>
-#include <SSA_CCFG.hpp>
-#include <statementsTransformer.hpp>
-#include <lengauerTarjan.hpp>
-#include <symengine/interpreter.hpp>
+#include "src/transformers/DST.hpp"
+#include "src/transformers/basicblockTreeConstructor.hpp"
+#include <src/CCFGIllustrator.hpp>
+#include <src/symengine/symEngine.hpp>
+#include <src/transformers/CSSA_CFG.hpp>
+#include <src/transformers/SSA_CCFG.hpp>
+#include <src/transformers/statementsTransformer.hpp>
+#include <src/transformers/lengauerTarjan.hpp>
+#include <src/symengine/interpreter.hpp>
 
 using namespace std;
 using namespace antlr4;
