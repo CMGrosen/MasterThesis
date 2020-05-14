@@ -239,14 +239,11 @@ protected:
 
     virtual void copy_edges(std::map<basicblock*, std::shared_ptr<basicblock>> oldMapsTo, const CCFG& a) {
         for (const auto &ed : a.edges) {
-            std::shared_ptr<edge> e = std::make_shared<edge>(edge(ed->type, oldMapsTo[ed->from().get()], oldMapsTo[ed->to().get()]));
-            edges.insert(e);
-            /*if (ed->type == conflict) {
-                auto res = conflict_edges_from.insert({e->from(), {e}});
-                if (!res.second) res.first->second.push_back(e);
-                res = conflict_edges_to.insert({e->to(), {e}});
-                if (!res.second) res.first->second.push_back(e);
-            }*/
+            edges.insert(std::make_shared<edge>(
+                    edge( ed->type
+                        , oldMapsTo[ed->from().get()]
+                        , oldMapsTo[ed->to().get()]
+                        )));
         }
     }
 };

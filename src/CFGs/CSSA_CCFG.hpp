@@ -114,16 +114,6 @@ private:
 protected:
     std::map<basicblock*, std::shared_ptr<basicblock>> copy_tree(const CSSA_CCFG& a) {
         auto oldMapsTo = SSA_CCFG::copy_tree(static_cast<const SSA_CCFG&>(a));
-        for (const auto &ed : a.edges) {
-            std::shared_ptr<edge> e = std::make_shared<edge>(edge(ed->type, oldMapsTo[ed->from().get()], oldMapsTo[ed->to().get()]));
-            edges.insert(e);
-            if (ed->type == conflict) {
-                auto res = conflict_edges_from.insert({e->from(), {e}});
-                if (!res.second) res.first->second.push_back(e);
-                res = conflict_edges_to.insert({e->to(), {e}});
-                if (!res.second) res.first->second.push_back(e);
-            }
-        }
         for (const auto &pair : a.pis_and_depth) {
             pis_and_depth.emplace_back(oldMapsTo[pair.first.get()], pair.second);
         }
