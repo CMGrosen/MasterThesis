@@ -16,6 +16,7 @@
 *.dylib
 *.dll
 
+
 # Fortran module files
 *.mod
 *.smod
@@ -30,6 +31,11 @@
 *.exe
 *.out
 *.app
+
+
+!thirdparty/antlr/libs/*
+!thirdparty/z3-4.8.7/bin/linux/libz3.so
+!thirdparty/z3-4.8.7/bin/osx/libz3.dylib
 
 .idea
 build
