@@ -2,7 +2,6 @@
 // Created by hu on 23/03/2020.
 //
 
-#include <src/transformers/DST.hpp>
 #include "interpreter.hpp"
 
 interpreter::interpreter(symEngine e) : engine{std::move(e)} {

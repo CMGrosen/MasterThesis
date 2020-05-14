@@ -6,7 +6,7 @@
 #define ANTLR_CPP_TUTORIAL_CCFG_HPP
 
 #include <src/nodes/basicblock.hpp>
-#include <src/nodes/statements/statementNodes.hpp>
+#include <string>
 #include <memory>
 #include <map>
 #include <iostream>

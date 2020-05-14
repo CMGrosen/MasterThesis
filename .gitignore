@@ -35,6 +35,7 @@
 build
 cmake-build*
 tokens.tokens
-antlr4-runtime/Small*
-
+antlr4-runtime
+!thirdparty/antlr/antlr4-runtime
+thirdparty/antlr/antlr4-runtime/Small*
 .DS_Store

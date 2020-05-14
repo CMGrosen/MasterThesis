@@ -5,6 +5,7 @@
 #include "symEngine.hpp"
 #include "VariableValue.hpp"
 #include <limits>
+#include <stack>
 #include <string>
 
 symEngine::symEngine(const std::shared_ptr<CSSA_CCFG>& ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table) :

@@ -24,10 +24,10 @@ endif()
 
 
 set(visitor-GENERATED_SRC
-        ${PROJECT_SOURCE_DIR}/antlr4-runtime/SmallLexer.cpp
-        ${PROJECT_SOURCE_DIR}/antlr4-runtime/SmallParser.cpp
-        ${PROJECT_SOURCE_DIR}/antlr4-runtime/SmallBaseVisitor.cpp
-        ${PROJECT_SOURCE_DIR}/antlr4-runtime/SmallVisitor.cpp
+        ${PROJECT_SOURCE_DIR}/thirdparty/antlr/antlr4-runtime/SmallLexer.cpp
+        ${PROJECT_SOURCE_DIR}/thirdparty/antlr/antlr4-runtime/SmallParser.cpp
+        ${PROJECT_SOURCE_DIR}/thirdparty/antlr/antlr4-runtime/SmallBaseVisitor.cpp
+        ${PROJECT_SOURCE_DIR}/thirdparty/antlr/antlr4-runtime/SmallVisitor.cpp
         )
 
 foreach( src_file ${visitor-GENERATED_SRC} )
@@ -39,23 +39,29 @@ foreach( src_file ${visitor-GENERATED_SRC} )
 endforeach( src_file ${visitor-GENERATED_SRC} )
 
 include_directories(
-        ${PROJECT_SOURCE_DIR}/antlr4-runtime/
-        ${PROJECT_SOURCE_DIR}/antlr4-runtime/misc
-        ${PROJECT_SOURCE_DIR}/antlr4-runtime/atn
-        ${PROJECT_SOURCE_DIR}/antlr4-runtime/dfa
-        ${PROJECT_SOURCE_DIR}/antlr4-runtime/tree
-        ${PROJECT_SOURCE_DIR}/antlr4-runtime/support
+        ${PROJECT_SOURCE_DIR}/thirdparty/antlr/antlr4-runtime/
+        ${PROJECT_SOURCE_DIR}/thirdparty/antlr/antlr4-runtime/misc
+        ${PROJECT_SOURCE_DIR}/thirdparty/antlr/antlr4-runtime/atn
+        ${PROJECT_SOURCE_DIR}/thirdparty/antlr/antlr4-runtime/dfa
+        ${PROJECT_SOURCE_DIR}/thirdparty/antlr/antlr4-runtime/tree
+        ${PROJECT_SOURCE_DIR}/thirdparty/antlr/antlr4-runtime/support
         ${PROJECT_SOURCE_DIR}/
-        ${PROJECT_SOURCE_DIR}/libs/
-        ${PROJECT_SOURCE_DIR}/z3-4.8.7/bin/
-        ${PROJECT_SOURCE_DIR}/z3-4.8.7/include/
+        ${PROJECT_SOURCE_DIR}/thirdparty/antlr/libs/
+        ${PROJECT_SOURCE_DIR}/thirdparty/z3-4.8.7/bin/
+        ${PROJECT_SOURCE_DIR}/thirdparty/z3-4.8.7/include/
 )
 
 set(visitor_SRC
         ${PROJECT_SOURCE_DIR}/main.cpp
         ${PROJECT_SOURCE_DIR}/src/transformers/DST.cpp
         ${visitor-GENERATED_SRC}
-        src/nodes/nodes.hpp src/nodes/edge.cpp src/nodes/edge.hpp src/nodes/basicblock.cpp src/nodes/basicblock.hpp src/symengine/symEngine.cpp src/symengine/symEngine.hpp src/symengine/trace.cpp src/symengine/trace.hpp src/nodes/expressions/readNode.cpp src/symengine/interpreter.cpp src/symengine/interpreter.hpp src/symengine/VariableValue.hpp src/symengine/Difference.hpp src/symengine/state.cpp src/symengine/state.hpp src/symengine/statesHandler.cpp src/symengine/statesHandler.hpp src/symengine/intepreterData.hpp src/symengine/value.hpp src/nodes/statements/option.hpp src/CFGs/SSA_CCFG.hpp src/CFGs/CSSA_CCFG.hpp src/CFGs/CCFG.hpp)
+        src/nodes/nodes.hpp src/nodes/expressions/readNode.cpp
+        src/nodes/edge.cpp src/nodes/edge.hpp src/nodes/basicblock.cpp src/nodes/basicblock.hpp
+        src/symengine/symEngine.cpp src/symengine/symEngine.hpp
+        src/symengine/interpreter.cpp src/symengine/interpreter.hpp
+        src/symengine/VariableValue.hpp src/symengine/Difference.hpp src/symengine/state.cpp src/symengine/state.hpp
+        src/symengine/statesHandler.cpp src/symengine/statesHandler.hpp src/symengine/intepreterData.hpp
+        src/symengine/value.hpp src/nodes/statements/option.hpp src/CFGs/SSA_CCFG.hpp src/CFGs/CSSA_CCFG.hpp src/CFGs/CCFG.hpp)
 
 if (NOT CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     set (flags_1 "-Wno-overloaded-virtual")
@@ -79,15 +85,15 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 endif()
 
 if(WIN32)
-    target_link_libraries(visitor "${PROJECT_SOURCE_DIR}/libs/antlr4-runtime.lib")
+    target_link_libraries(visitor "${PROJECT_SOURCE_DIR}/thirdparty/antlr/libs/antlr4-runtime.lib")
 endif()
 
 if(APPLE)
-    target_link_libraries(visitor "${PROJECT_SOURCE_DIR}/libs/libantlr4-runtime.dylib")
-    target_link_libraries(visitor "${PROJECT_SOURCE_DIR}/z3-4.8.7/bin/osx/libz3.dylib")
+    target_link_libraries(visitor "${PROJECT_SOURCE_DIR}/thirdparty/antlr/libs/libantlr4-runtime.dylib")
+    target_link_libraries(visitor "${PROJECT_SOURCE_DIR}/thirdparty/z3-4.8.7/bin/osx/libz3.dylib")
 elseif(UNIX)
-    target_link_libraries(visitor "${PROJECT_SOURCE_DIR}/libs/libantlr4-runtime.so")
-    target_link_libraries(visitor "${PROJECT_SOURCE_DIR}/z3-4.8.7/bin/linux/libz3.so")
+    target_link_libraries(visitor "${PROJECT_SOURCE_DIR}/thirdparty/antlr/libs/libantlr4-runtime.so")
+    target_link_libraries(visitor "${PROJECT_SOURCE_DIR}/thirdparty/z3-4.8.7/bin/linux/libz3.so")
 endif()
 
 target_link_libraries(visitor ${SYSTEM_LIBS})
@@ -95,21 +101,21 @@ target_link_libraries(visitor ${SYSTEM_LIBS})
 if(CMAKE_SYSTEM_NAME MATCHES "Linux")
     add_custom_command(TARGET visitor POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${PROJECT_SOURCE_DIR}/libs/libantlr4-runtime.so"
+            "${PROJECT_SOURCE_DIR}/thirdparty/antlr/libs/libantlr4-runtime.so"
             $<TARGET_FILE_DIR:visitor>)
 endif()
 
 if(WIN32)
     add_custom_command(TARGET visitor POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${PROJECT_SOURCE_DIR}/libs/antlr4-runtime.dll"
+            "${PROJECT_SOURCE_DIR}/thirdparty/antlr/libs/antlr4-runtime.dll"
             $<TARGET_FILE_DIR:visitor>)
 endif()
 
 if(APPLE)
     add_custom_command(TARGET visitor POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${PROJECT_SOURCE_DIR}/libs/libantlr4-runtime.dylib"
+            "${PROJECT_SOURCE_DIR}/thirdparty/antlr/libs/libantlr4-runtime.dylib"
             $<TARGET_FILE_DIR:visitor>)
 endif()
 
@@ -124,12 +130,6 @@ endif()
 # so we copy the input file twice:
 # one for when you launch the executale in Visual Studio (CTRL+F5)
 # one for when you launch it normally
-if (WIN32)
-    add_custom_command(TARGET visitor POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${PROJECT_SOURCE_DIR}/code.small"
-            $<TARGET_FILE_DIR:visitor>/../)
-endif()
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")

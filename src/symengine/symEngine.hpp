@@ -8,12 +8,10 @@
 #define _run1 "run1-"
 #define _run2 "run2-"
 
-#include <src/transformers/SSA_transformer.hpp>
-#include <src/transformers/CSSA_transformer.hpp>
+#include <src/CFGs/CSSA_CCFG.hpp>
 #include "VariableValue.hpp"
 #include <memory>
 #include <z3++.h>
-#include "trace.hpp"
 
 class symEngine {
     z3::context c;
