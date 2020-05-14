@@ -2,21 +2,33 @@
 // Created by hu on 20/02/2020.
 //
 
-#ifndef ANTLR_CPP_TUTORIAL_SSA_CCFG_HPP
-#define ANTLR_CPP_TUTORIAL_SSA_CCFG_HPP
+#ifndef ANTLR_CPP_TUTORIAL_SSA_TRANSFORMER_HPP
+#define ANTLR_CPP_TUTORIAL_SSA_TRANSFORMER_HPP
 
-#include <src/CFGs/CCFG.hpp>
+#include <src/CFGs/SSA_CCFG.hpp>
 //#include <dominatorTreeConstructor.hpp>
 #include <src/transformers/lengauerTarjan.hpp>
 #include <unordered_map>
 #include <stack>
+#include <list>
 
-struct SSA_CCFG {
-    std::shared_ptr<CCFG> ccfg;
+class SSA_TRANSFORMER {
+public:
+    static std::shared_ptr<SSA_CCFG> transform_CFG_to_SSAForm(const std::shared_ptr<CCFG>& _ccfg, std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<expressionNode>>> _symboltable) {
+        auto form = SSA_TRANSFORMER(_ccfg, std::move(_symboltable));
+        return form.ccfg;
+    }
+
+private:
+    std::shared_ptr<SSA_CCFG> ccfg;
     int counter;
-    SSA_CCFG(std::shared_ptr<CCFG> _ccfg, std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<expressionNode>>> _symboltable, std::shared_ptr<DomTree> _domTree)
-    : ccfg{std::move(_ccfg)}, table{std::move(_symboltable)}, domTree{std::move(_domTree)} {
+
+    SSA_TRANSFORMER(const std::shared_ptr<CCFG>& _ccfg, std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<expressionNode>>> _symboltable)
+    : table{std::move(_symboltable)} {
         Variables.reserve(table->size());
+
+        ccfg = std::make_shared<SSA_CCFG>(SSA_CCFG(*_ccfg));
+        domTree = std::make_shared<DomTree>(DomTree(ccfg));
 
         initialise();
 
@@ -38,7 +50,6 @@ struct SSA_CCFG {
 
     };
 
-private:
     std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<expressionNode>>> table;
     std::vector<std::string> Variables;
     std::shared_ptr<DomTree> domTree;
@@ -330,4 +341,4 @@ private:
     }
 };
 
-#endif //ANTLR_CPP_TUTORIAL_SSA_CCFG_HPP
+#endif //ANTLR_CPP_TUTORIAL_SSA_TRANSFORMER_HPP

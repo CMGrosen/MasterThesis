@@ -5,14 +5,14 @@
 #ifndef ANTLR_CPP_TUTORIAL_STATEMENTSTRANSFORMER_HPP
 #define ANTLR_CPP_TUTORIAL_STATEMENTSTRANSFORMER_HPP
 
-#include <src/transformers/CSSA_CFG.hpp>
+#include <src/transformers/CSSA_transformer.hpp>
 #include <src/nodes/nodes.hpp>
 
 struct statementsTransformer {
     statementsTransformer() = default;
 
-    static std::shared_ptr<CCFG> get_transformedCCFG(const std::shared_ptr<CSSA_CFG> &cssacfg){
-        std::shared_ptr<CCFG> ccfg = std::make_shared<CCFG>(*cssacfg->ccfg);
+    static std::shared_ptr<CCFG> get_transformedCCFG(const std::shared_ptr<CSSA_CCFG> &cssacfg){
+        std::shared_ptr<CSSA_CCFG> ccfg = std::make_shared<CSSA_CCFG>(*cssacfg);
         for (auto &blk : ccfg->nodes) {
             unpackBlock(blk, ccfg.get());
         }

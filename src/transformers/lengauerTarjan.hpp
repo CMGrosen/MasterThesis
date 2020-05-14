@@ -1,7 +1,7 @@
 #ifndef ANTLR_CPP_TUTORIAL_LENGAUERTARJAN_HPP
 #define ANTLR_CPP_TUTORIAL_LENGAUERTARJAN_HPP
 #include <src/nodes/basicblock.hpp>
-#include <src/transformers/basicblockTreeConstructor.hpp>
+#include <src/CFGs/SSA_CCFG.hpp>
 #include <utility>
 
 struct DOMNode {

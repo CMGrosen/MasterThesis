@@ -7,16 +7,15 @@
 #include <limits>
 #include <string>
 
-symEngine::symEngine(const std::shared_ptr<CSSA_CFG>& ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table) :
-    boolname_counter{ccfg->boolname_counter}, c{}, s{z3::solver(c)},
-    constraintset{}, ccfg{ccfg->ccfg}, symboltable(std::move(table)) {}
+symEngine::symEngine(const std::shared_ptr<CSSA_CCFG>& ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table) :
+    c{}, s{z3::solver(c)},
+    constraintset{}, ccfg{ccfg}, symboltable(std::move(table)) {}
 
 symEngine::symEngine(const symEngine &a) :
-    boolname_counter{a.boolname_counter}, c{}, s{z3::solver(c)},
+    c{}, s{z3::solver(c)},
     constraintset{}, ccfg{a.ccfg}, symboltable{a.symboltable} {}
 
 symEngine &symEngine::operator=(const symEngine &a) {
-    boolname_counter = a.boolname_counter;
     s = z3::solver(c);
     constraintset = a.constraintset;
     ccfg = a.ccfg;
@@ -25,11 +24,10 @@ symEngine &symEngine::operator=(const symEngine &a) {
 }
 
 symEngine::symEngine(symEngine &&a) noexcept :
-    boolname_counter{a.boolname_counter}, c{}, s{z3::solver(c)},
+    c{}, s{z3::solver(c)},
     constraintset{std::move(a.constraintset)}, ccfg{std::move(a.ccfg)}, symboltable{std::move(a.symboltable)} {}
 
 symEngine &symEngine::operator=(symEngine &&a) noexcept {
-    boolname_counter = a.boolname_counter;
     s = z3::solver(c);
     constraintset = std::move(a.constraintset);
     ccfg = std::move(a.ccfg);
@@ -304,12 +302,12 @@ z3::expr encode_unused_edges(z3::context *c, const std::string& blockboolname, c
     return res;
 }
 
-z3::expr possible_var_choices(z3::context *c, const std::shared_ptr<basicblock> &blk, const std::string &var_boolname, const std::string &run, std::shared_ptr<CCFG> ccfg) {
+z3::expr possible_var_choices(z3::context *c, const std::shared_ptr<basicblock> &blk, const std::string &var_boolname, const std::string &run, std::shared_ptr<CSSA_CCFG> ccfg) {
     std::shared_ptr<basicblock> def = ccfg->boolnameBlocks[var_boolname];
     std::string assignment_var = reinterpret_cast<assignNode*>(blk->statements.back().get())->getName();
     z3::expr res = c->bool_val(true);
     for (const std::shared_ptr<edge> &conflict : ccfg->conflict_edges_from[blk]) {
-        if (!CCFG::concurrent(conflict->to(), def) && def->lessthan(conflict->to())) {
+        if (!CSSA_CCFG::concurrent(conflict->to(), def) && def->lessthan(conflict->to())) {
             for (const auto &stmt : conflict->to()->statements) {
                 if (auto pi = dynamic_cast<piNode*>(stmt.get())) {
                     for (const auto &option : *pi->get_variables()) {
@@ -329,7 +327,7 @@ z3::expr possible_var_choices(z3::context *c, const std::shared_ptr<basicblock> 
     return res;
 }
 
-z3::expr encode_possible_outgoing(z3::context *c, const std::shared_ptr<basicblock> &blk, const std::string &run, std::shared_ptr<CCFG> ccfg) {
+z3::expr encode_possible_outgoing(z3::context *c, const std::shared_ptr<basicblock> &blk, const std::string &run, std::shared_ptr<CSSA_CCFG> ccfg) {
     //only called from an assignment node that's concurrent and have multiple statements
     //meaning the statement prior to this assignment, is a pi-function
     auto options = reinterpret_cast<piNode*>((blk->statements.rbegin()+1)->get())->get_variables();

@@ -7,8 +7,8 @@
 #include "src/transformers/basicblockTreeConstructor.hpp"
 #include <src/CCFGIllustrator.hpp>
 #include <src/symengine/symEngine.hpp>
-#include <src/transformers/CSSA_CFG.hpp>
-#include <src/transformers/SSA_CCFG.hpp>
+#include <src/transformers/CSSA_transformer.hpp>
+#include <src/transformers/SSA_transformer.hpp>
 #include <src/transformers/statementsTransformer.hpp>
 #include <src/transformers/lengauerTarjan.hpp>
 #include <src/symengine/interpreter.hpp>
@@ -98,7 +98,7 @@ parse_program(int num_args, const std::string& path) {
 SSA_CCFG do_stuff(const std::shared_ptr<statementNode> &tree, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table) {
     auto ccfg = std::make_shared<CCFG>(basicBlockTreeConstructor::get_ccfg(tree));
 
-    std::shared_ptr<DomTree> dominatorTree = std::make_shared<DomTree>(DomTree(ccfg));
+    //std::shared_ptr<DomTree> dominatorTree = std::make_shared<DomTree>(DomTree(ccfg));
 
     std::cout << "got here  " << std::to_string(ccfg->startNode->get_number_of_blocks()) << "\n\n";//a << std::endl;
 
@@ -123,17 +123,17 @@ SSA_CCFG do_stuff(const std::shared_ptr<statementNode> &tree, std::unordered_map
 
     auto symboltable = std::make_shared<std::unordered_map<std::string, std::shared_ptr<expressionNode>>>(table);
 
-    SSA_CCFG ssa_ccfg = SSA_CCFG(ccfg, symboltable, dominatorTree);
+    std::shared_ptr<SSA_CCFG> ssa_ccfg = SSA_TRANSFORMER::transform_CFG_to_SSAForm(ccfg, symboltable);
 
-    auto second = CCFGTree(*ssa_ccfg.ccfg);
+    auto second = CCFGTree(*ssa_ccfg);
     std::cout << "\n\nmade second:  \n" << second.DrawCCFG() << "\n";
 
 
-    std::cout << ssa_ccfg.ccfg->startNode->statements[0]->getNodeType() << "\n";
+    std::cout << ssa_ccfg->startNode->statements[0]->getNodeType() << "\n";
 
-    auto cssaccfg = std::make_shared<CSSA_CFG>(CSSA_CFG(*ssa_ccfg.ccfg, symboltable, ssa_ccfg.counter));
+    auto cssaccfg = CSSA_TRANSFORMER::transform_SSACCFG_to_CSSA(ssa_ccfg, symboltable);
 
-    auto third = CCFGTree(*cssaccfg->ccfg);
+    auto third = CCFGTree(*cssaccfg);
     std::cout << "\nmade third: \n" << third.DrawCCFG() << "\n";
 
     auto newccfg = statementsTransformer::get_transformedCCFG(cssaccfg);
@@ -154,7 +154,7 @@ SSA_CCFG do_stuff(const std::shared_ptr<statementNode> &tree, std::unordered_map
 
     //auto res = engine.execute();
 
-    return ssa_ccfg;
+    return *ssa_ccfg;
 }
 
 void run(int num_args, const std::string& path) {

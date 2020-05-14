@@ -8,15 +8,14 @@
 #define _run1 "run1-"
 #define _run2 "run2-"
 
-#include <src/transformers/SSA_CCFG.hpp>
-#include <src/transformers/CSSA_CFG.hpp>
+#include <src/transformers/SSA_transformer.hpp>
+#include <src/transformers/CSSA_transformer.hpp>
 #include "VariableValue.hpp"
 #include <memory>
 #include <z3++.h>
 #include "trace.hpp"
 
 class symEngine {
-    int boolname_counter;
     z3::context c;
     z3::solver s;
 
@@ -33,7 +32,7 @@ class symEngine {
     std::vector<z3::expr> constraintset;
 
 public:
-    symEngine(const std::shared_ptr<CSSA_CFG>& ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table);
+    symEngine(const std::shared_ptr<CSSA_CCFG>& ccfg, std::unordered_map<std::string, std::shared_ptr<expressionNode>> table);
 
     symEngine(const symEngine& a);
     symEngine& operator=(const symEngine&);
@@ -41,7 +40,7 @@ public:
     symEngine(symEngine&&) noexcept;
     symEngine& operator=(symEngine&&) noexcept;
 
-    std::shared_ptr<CCFG> ccfg;
+    std::shared_ptr<CSSA_CCFG> ccfg;
     std::unordered_map<std::string, std::shared_ptr<expressionNode>> symboltable;
     std::pair<std::map<std::string, std::shared_ptr<VariableValue>>, std::map<std::string, bool>> getModel();
 

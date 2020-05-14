@@ -6,10 +6,10 @@
 #define ANTLR_CPP_TUTORIAL_INTEPRETERDATA_HPP
 
 #include "Difference.hpp"
-#include <src/transformers/basicblockTreeConstructor.hpp>
+#include <src/CFGs/CSSA_CCFG.hpp>
 
 struct interpreterData {
-    CCFG *ccfg;
+    CSSA_CCFG *ccfg;
     std::map<std::string, std::set<std::shared_ptr<VariableValue>>> variableValues;
     std::map<std::string, std::shared_ptr<VariableValue>> valuesFromModel;
     std::map<std::string, bool> statementsExecuted;

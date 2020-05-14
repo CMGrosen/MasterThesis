@@ -2,21 +2,26 @@
 // Created by hu on 17/02/2020.
 //
 
-#ifndef ANTLR_CPP_TUTORIAL_CSSA_CFG_HPP
-#define ANTLR_CPP_TUTORIAL_CSSA_CFG_HPP
+#ifndef ANTLR_CPP_TUTORIAL_CSSA_TRANSFORMER_HPP
+#define ANTLR_CPP_TUTORIAL_CSSA_TRANSFORMER_HPP
 
 #include <cassert>
-#include <src/CFGs/CCFG.hpp>
+#include <src/CFGs/CSSA_CCFG.hpp>
 #include <memory>
 
-struct CSSA_CFG {
-    std::shared_ptr<CCFG> ccfg;
-    std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<expressionNode>>> symboltable;
-    int boolname_counter;
+class CSSA_TRANSFORMER {
+public:
+    static std::shared_ptr<CSSA_CCFG> transform_SSACCFG_to_CSSA(std::shared_ptr<SSA_CCFG> _ccfg, std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<expressionNode>>> table) {
+        auto t = CSSA_TRANSFORMER(_ccfg, std::move(table));
+        return t.ccfg;
+    }
 
-    CSSA_CFG(const CCFG &_ccfg, std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<expressionNode>>> table, int boolname_count)
-    : ccfg{std::make_shared<CCFG>(CCFG(_ccfg))}, symboltable{std::move(table)}, boolname_counter{boolname_count} {
-        update_mapstoMap(_ccfg.startNode, ccfg->startNode);
+private:
+    std::shared_ptr<CSSA_CCFG> ccfg;
+    std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<expressionNode>>> symboltable;
+
+    CSSA_TRANSFORMER(const std::shared_ptr<SSA_CCFG> &_ccfg, std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<expressionNode>>> table)
+    : ccfg{std::make_shared<CSSA_CCFG>(CSSA_CCFG(*_ccfg))}, symboltable{std::move(table)} {
         ccfg->updateConflictEdges();
         std::map<std::string, std::string> var_to_SSAvar;
         for (const auto &s : *symboltable) {
@@ -56,20 +61,10 @@ struct CSSA_CFG {
         update_conflict_edges_names();
     }
 
-private:
     std::map<std::string, int> counter;
-    std::map<std::shared_ptr<basicblock>, std::shared_ptr<basicblock>> oldMapsTo;
     std::vector<std::shared_ptr<piNode>> pinodes;
     std::vector<std::shared_ptr<basicblock>> pinodeblocks;
     std::map<std::string, std::string> origvar_for_pis;
-
-    void update_mapstoMap(const std::shared_ptr<basicblock> &oldNode, const std::shared_ptr<basicblock> &newNode) {
-        if (oldMapsTo.insert({oldNode, newNode}).second) {
-            for (size_t i = 0; i < oldNode->nexts.size(); ++i) {
-                update_mapstoMap(oldNode->nexts[i], newNode->nexts[i]);
-            }
-        }
-    }
 
     static std::pair<size_t, std::vector<std::string*>> find_usages_in_expression(expressionNode *expr, const std::string &var) {
         std::pair<size_t, std::vector<std::string*>> usages;
@@ -431,4 +426,4 @@ private:
     }
 };
 
-#endif //ANTLR_CPP_TUTORIAL_CSSA_CFG_HPP
+#endif //ANTLR_CPP_TUTORIAL_CSSA_TRANSFORMER_HPP
