@@ -39,6 +39,8 @@ private:
         counter = Count["-b"];
         setSSA();
 
+        insert_assignments_that_can_be_undefined(domTree->root);
+
         update_uses_and_defines();
 
         update_coend_nodes();
@@ -115,9 +117,6 @@ private:
                         for(const auto &s : Y->statements) stmts.push_back(s);
                         Y->statements = stmts;
                         auto res = Y->defines.insert({var, std::set<std::string>{}});
-                        if (!res.second) {
-                            std::cout << "here";
-                        }
 
                         bool found = false;
                         for (const auto &i : Worklist) {
@@ -272,7 +271,12 @@ private:
                     auto phi = reinterpret_cast<phiNode*>(stmt.get());
                     std::string a = phi->get_variables()->at(j).var;
                     std::string newname = a + "_" + std::to_string(Stack[a].top());
-                    phi->update_variableindex(j, {newname, ccfg->defs[newname]->get_name()});
+
+                    auto boolnameVarPos = ccfg->defs.find(newname);
+                    if (boolnameVarPos != ccfg->defs.end())
+                        phi->update_variableindex(j, {newname, boolnameVarPos->second->get_name()});
+                    else
+                        phi->update_variableindex(j, {newname, ccfg->startNode->get_name()});
                 }
             }
         }
@@ -334,6 +338,37 @@ private:
                             }
                         }
                         phi->set_variables(res);
+                    }
+                }
+            }
+        }
+    }
+
+    void insert_assignments_that_can_be_undefined(const std::shared_ptr<DOMNode> &n) {
+        for (auto &fi : ccfg->fiNodes) {
+            for (auto &stmt : fi->statements) {
+                if (stmt->getNodeType() == Phi) {
+                    auto phi = reinterpret_cast<phiNode*>(stmt.get());
+                    for (auto &var : *phi->get_variables()) {
+                        if (*var.var.rbegin() == '0' && *(var.var.rbegin()+1) == '_') {
+                            std::string name = var.var.substr(0, var.var.size()-2);
+                            auto ptr = table->find(name);
+                            if (ptr != table->end()) {
+                                Type t = ptr->second->getType();
+                                var.block_boolname = ccfg->startNode->get_name();
+                                var.var_boolname = ccfg->startNode->get_name();
+                                if(ccfg->defs.insert({var.var, ccfg->startNode}).second) {
+                                    std::string tr = "true";
+                                    std::shared_ptr<assignNode> s = std::make_shared<assignNode>(
+                                            assignNode(t, name, std::make_shared<literalNode>(
+                                                    literalNode(t, t == intType ? "0" : tr)), -1
+                                            ));
+                                    s->setSSA(true);
+                                    s->setName(var.var);
+                                    ccfg->startNode->statements.push_back(s);
+                                }
+                            }
+                        }
                     }
                 }
             }
