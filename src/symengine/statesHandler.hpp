@@ -25,6 +25,8 @@ struct statesHandler {
     bool static update_conflict(bool first, const std::shared_ptr<statementNode>&);
 
     std::string static report_racecondition(const std::shared_ptr<statementNode>& def1, const std::shared_ptr<statementNode>& def2);
+
+    static void clear();
 };
 
 

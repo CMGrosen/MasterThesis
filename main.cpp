@@ -10,7 +10,6 @@
 #include <src/transformers/CSSA_transformer.hpp>
 #include <src/transformers/SSA_transformer.hpp>
 #include <src/transformers/statementsTransformer.hpp>
-#include <src/transformers/lengauerTarjan.hpp>
 #include <src/symengine/interpreter.hpp>
 
 using namespace std;

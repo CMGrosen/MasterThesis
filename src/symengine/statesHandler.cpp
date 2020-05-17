@@ -36,3 +36,13 @@ std::string statesHandler::report_racecondition(const std::shared_ptr<statementN
 
     return raceconditionStr;
 }
+
+void statesHandler::clear() {
+    conflictsForRun1.clear();
+    conflictsForRun2.clear();
+    conflictNode = nullptr;
+    valsForRun1.clear();
+    valsForRun2.clear();
+    conflictvar = origname = "";
+    conflicts = {};
+}
