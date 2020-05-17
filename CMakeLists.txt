@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.10)
 
 project("Antlr-cpp-tutorial")
 
@@ -21,7 +21,6 @@ endif()
 if (MSVC)
     set(CMAKE_CXX_FLAGS "/EHsc /wd4127 /wd4311 /wd4312 /wd4512 /wd4571 /wd4640 /wd4706 /wd4710 /wd4800 /wd4804 /wd4820 /wd4996")
 endif()
-
 
 set(visitor-GENERATED_SRC
         ${PROJECT_SOURCE_DIR}/thirdparty/antlr/antlr4-runtime/SmallLexer.cpp
