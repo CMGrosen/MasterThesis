@@ -1,5 +1,4 @@
 #include <iostream>
-#include <filesystem>
 
 #include "antlr4-runtime.h"
 #include "SmallLexer.h"
@@ -11,6 +10,8 @@
 #include <src/transformers/SSA_transformer.hpp>
 #include <src/transformers/statementsTransformer.hpp>
 #include <src/symengine/interpreter.hpp>
+
+#include <unistd.h>
 
 using namespace std;
 using namespace antlr4;
@@ -164,7 +165,12 @@ void run(int num_args, const std::string& path) {
 }
 
 int main(int argc, const char* argv[]) {
-    std::string working_directory = std::filesystem::current_path();
+    char dir[MAX_INPUT];
+    if (!getcwd(dir, sizeof(dir))) {
+        std::cout << "couldn't get current working directory\n";
+        return errno;
+    }
+    std::string working_directory = std::string(dir);
     if (argc > 1) {
         std::string path;
         if (argv[1][0] == '/') { //absolute path
