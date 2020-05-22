@@ -520,8 +520,9 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                                 auto currentOptionsDefBlock = ccfg->defs[it->var];
                                 z3::expr thisEdge(c);
                                 z3::expr thisAssign = (name == c.int_const((it->var + run).c_str()));
-
                                 z3::expr inter = c.bool_val(true);
+
+                                //Make all other options false except this one
                                 for (const std::shared_ptr<edge> &ed : conflicts) {
                                     if (ed->from() != currentOptionsDefBlock) {
                                         z3::expr i = (c.bool_const((ed->name + run).c_str()) == c.bool_val(false));
@@ -529,10 +530,11 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                                     } else {
                                         thisEdge = c.bool_const((ed->name + run).c_str());
                                     }
-                                    for (const std::shared_ptr<edge> &e : ccfg->conflict_edges_from[currentOptionsDefBlock]) {
-                                        if (e->to() != node) {
-                                            inter = inter && (c.bool_const((e->name + run).c_str()) == c.bool_val(false));
-                                        }
+                                }
+                                //Make all other conflict edges false from the option we took
+                                for (const std::shared_ptr<edge> &e : ccfg->conflict_edges_from[currentOptionsDefBlock]) {
+                                    if (e->to() != node) {
+                                        inter = inter && (c.bool_const((e->name + run).c_str()) == c.bool_val(false));
                                     }
                                 }
                                 expressions.push_back(z3::ite(thisEdge, inter && thisAssign, c.bool_val(false)));
@@ -556,16 +558,19 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                                 z3::expr thisEdge(c);
                                 z3::expr thisAssign = (name == c.bool_const((it->var + run).c_str()));
                                 z3::expr inter = thisAssign;
+
+                                //Make all other options false except this one
                                 for (const std::shared_ptr<edge> &ed : conflicts) {
                                     if (ed->from() != currentOptionsDefBlock) {
                                         inter = inter && (c.bool_const((ed->name + run).c_str()) == c.bool_val(false));
                                     } else {
                                         thisEdge = c.bool_const((ed->name + run).c_str());
                                     }
-                                    for (const std::shared_ptr<edge> &e : ccfg->conflict_edges_from[currentOptionsDefBlock]) {
-                                        if (e->to() != node) {
-                                            inter = inter && (c.bool_const((e->name + run).c_str()) == c.bool_val(false));
-                                        }
+                                }
+                                //Make all other conflict edges false from the option we took
+                                for (const std::shared_ptr<edge> &e : ccfg->conflict_edges_from[currentOptionsDefBlock]) {
+                                    if (e->to() != node) {
+                                        inter = inter && (c.bool_const((e->name + run).c_str()) == c.bool_val(false));
                                     }
                                 }
                                 expressions.push_back(z3::ite(thisEdge, inter, c.bool_val(false)));
