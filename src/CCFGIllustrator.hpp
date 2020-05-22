@@ -113,9 +113,9 @@ public:
         std::string result;
         for(const auto& ed : *edges){
             if(ed->type == conflict){
-                result += "\\path[->, red] (";
+                result += "\\path[->, dashed, thick, red] (";
             } else {
-                result += "\\path[->] (" ;
+                result += "\\path[->, thick] (" ;
             }
             result += ed->from()->get_name_as_tikz() + ") edge (" + ed->to()->get_name_as_tikz() + ");\n";
         }
