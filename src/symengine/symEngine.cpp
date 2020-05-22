@@ -91,47 +91,11 @@ z3::expr encode_boolnames_from_block(z3::context *c, const std::shared_ptr<basic
     return conjunction(vec);
 }
 
-static z3::expr encodepi(z3::context *c, Type t, const std::string& boolname, const std::string& name, std::vector<z3::expr> *constraintset) {
-    z3::expr run1use = encode_boolname(c, boolname, true, _run1);
-    z3::expr run2use = encode_boolname(c, boolname, true, _run2);
-    /*constraintset->emplace_back(z3::ite
-      ( !run1use
-      , t == intType //If both are assigned, make this constraint
-            ? c->int_const((name + _run1).c_str()) == c->int_const((name + _run2).c_str())
-            : c->bool_const((name + _run1).c_str()) == c->bool_const((name + _run2).c_str())
-      , c->bool_val(true)
-      ));*/
-    return z3::ite
-      ( run1use || run2use
-      , t == intType //If both are assigned, make this constraint
-          ? c->int_const((name + _run1).c_str()) != c->int_const((name + _run2).c_str())
-          : c->bool_const((name + _run1).c_str()) != c->bool_const((name + _run2).c_str())
-      , c->bool_val(false)
-      /*t == intType //As tracking booleans are false, we just assign the same value
-        ? c->int_const((name + _run1).c_str()) == c->int_const((name + _run2).c_str())
-        : c->bool_const((name + _run1).c_str()) == c->bool_const((name + _run2).c_str())
-        /* z3::ite //If both are false, force Z3 to pick another option
-        ( !run1use && !run2use
-        , c->bool_val(false)
-        , t == intType //Usage in one run but not the other. Force them to have same value
-          ? c->int_const((name + _run1).c_str()) == c->int_const((name + _run2).c_str())
-          : c->bool_const((name + _run1).c_str()) == c->bool_const((name + _run2).c_str())
-        )*/
-      );
-}
-
 static z3::expr encodepi2(z3::context *c, Type t, const std::string& boolname, const std::string& name) {
     z3::expr run1use = encode_boolname(c, boolname, true, _run1);
     z3::expr run2use = encode_boolname(c, boolname, true, _run2);
     z3::expr res = run1use && run2use;
 
-    /*constraintset->emplace_back(z3::ite
-      ( !run1use
-      , t == intType //If both are assigned, make this constraint
-            ? c->int_const((name + _run1).c_str()) == c->int_const((name + _run2).c_str())
-            : c->bool_const((name + _run1).c_str()) == c->bool_const((name + _run2).c_str())
-      , c->bool_val(true)
-      ));*/
     z3::expr constraint(*c);
 
     if (t == intType) {
@@ -142,35 +106,13 @@ static z3::expr encodepi2(z3::context *c, Type t, const std::string& boolname, c
     return res && constraint;
 }
 
-void find_events_between_blocks(const std::shared_ptr<basicblock> &first, const std::shared_ptr<basicblock> &last, std::set<std::shared_ptr<basicblock>> *encountered, std::vector<std::pair<std::shared_ptr<statementNode>, std::shared_ptr<basicblock>>> *res) {
-    if (first != last) {
-        if (encountered->insert(first).second) {
-            if (first->statements.back()->getNodeType() == Event) {
-                res->push_back({first->statements.back(), first});
-            }
-            for (const auto &nxt : first->nexts) find_events_between_blocks(nxt, last, encountered, res);
-        }
-    }
-}
-
-std::vector<std::pair<std::shared_ptr<statementNode>, std::shared_ptr<basicblock>>> find_events_between_blocks(const std::shared_ptr<basicblock> &first, const std::shared_ptr<basicblock> &last) {
-    std::vector<std::pair<std::shared_ptr<statementNode>, std::shared_ptr<basicblock>>> vec;
-    std::set<std::shared_ptr<basicblock>> set;
-    for (const auto &nxt : first->nexts) find_events_between_blocks(nxt, last, &set, &vec);
-    return vec;
-}
-
-bool symEngine::execute(std::string method) {
+bool symEngine::execute() {
     add_reads();
     std::cout << constraintset.size() << std::endl;
-    //z3::expr encoded = encoded_pis(&c, ccfg->pis_and_depth, {});
-
-    //std::cout << "\n\n\n\n\nencoded:\n" << encoded.to_string() << std::endl;
 
     auto run1 = get_run(nullptr, ccfg->startNode, ccfg->exitNode, _run1);
     auto run2 = get_run(nullptr, ccfg->startNode, ccfg->exitNode, _run2);
 
-    //std::cout << "\n" << t.to_string() << "\n\n" << std::endl;
 
     z3::expr inter = conjunction(run1);
     std::cout << inter.to_string() << std::endl;
@@ -178,55 +120,20 @@ bool symEngine::execute(std::string method) {
     //std::cout << exp.to_string() << std::endl;
     constraintset.push_back(exp);
     std::cout << constraintset.size() << std::endl;
-/*
-    z3::goal g(c);
-    g.add(get_run(&c, ccfg->exitNode->parents[0].lock().get(), ccfg->exitNode, ccfg->exitNode));
 
-    auto tt = z3::tactic(c, "simplify")(g)[0];
-    for (size_t i = 0; i < tt.size(); ++i) s.add(tt[i]);
-
-    */
-
-
-    if (method == "old") {
-        std::vector<z3::expr> vec;
-        for (const auto &p : ccfg->pis_and_depth) {
-            //Don't want to add these pi-functions if used in an event,
-            // as race-conditions cannot occur here
-            if (p.first->statements.back()->getNodeType() != Event) {
-                for (const auto &stmt : p.first->statements) {
-                    if (auto pi = dynamic_cast<piNode *>(stmt.get())) {
-                        if (pi->getName().front() == '-') //don't encode endconc pis this way
-                            vec.push_back(
-                                    encodepi(&c, pi->getType(), p.first->get_name(), pi->getName(), &constraintset));
-                    }
-                }
-            }
-        }
-        z3::expr dis = disjunction(&c, vec);
-        std::cout << "debug:\n" << dis.to_string() << std::endl;
-        std::cout << constraintset.size() << std::endl;
-        constraintset.push_back(dis);
-    } else {
-        for (const auto &p : ccfg->pis_and_depth) {
-            //Don't want to add these pi-functions if used in an event,
-            // as race-conditions cannot occur here
-            if (p.first->statements.back()->getNodeType() != Event) {
-                for (const auto &stmt : p.first->statements) {
-                    if (auto pi = dynamic_cast<piNode*>(stmt.get())) {
-                        if (pi->getName().front() == '-') //don't encode endconc pis this way
-                            possible_raceconditions.insert({pi->getName(), encodepi2(&c, pi->getType(), p.first->get_name(), pi->getName())});
-                    }
+    for (const auto &p : ccfg->pis_and_depth) {
+        //Don't want to add these pi-functions if used in an event,
+        // as race-conditions cannot occur here
+        if (p.first->statements.back()->getNodeType() != Event) {
+            for (const auto &stmt : p.first->statements) {
+                if (auto pi = dynamic_cast<piNode*>(stmt.get())) {
+                    if (pi->getName().front() == '-') //don't encode endconc pis this way
+                        possible_raceconditions.insert({pi->getName(), encodepi2(&c, pi->getType(), p.first->get_name(), pi->getName())});
                 }
             }
         }
     }
 
-/*
-    for (int i = 1; i < boolname_counter; ++i) {
-        std::string name = "-b_" + std::to_string(i);
-        constraintset.emplace_back(c.bool_const((name + _run1).c_str()) == c.bool_const((name + _run2).c_str()));
-    }*/
     for (const auto &expr : constraintset) s.add(expr);
 
     /*
@@ -310,12 +217,14 @@ z3::expr encode_invalid_edges
             thisEdge = c.bool_const((ed->name + run).c_str());
         }
     }
+
     //Make all other conflict edges false from the option we took
     for (const std::shared_ptr<edge> &e : ccfg->conflict_edges_from[currentOptionsDefBlock]) {
         if (e->to() != node) {
             inter = inter && (c.bool_const((e->name + run).c_str()) == c.bool_val(false));
         }
     }
+
     /*In case there is an outgoing conflict edge from this block to the chosen option's block
     * add a constraint stating this edge cannot be taken.
     * If the last statement is an assignment to the same variable used in this pi-function,
@@ -326,11 +235,25 @@ z3::expr encode_invalid_edges
             for (const std::shared_ptr<edge> &cf : ccfg->conflict_edges_from[node]) {
                 if (cf->to() == currentOptionsDefBlock) {
                     inter = inter && (c.bool_const((cf->name + run).c_str()) == c.bool_val(false));
-                    break;
                 }
             }
         }
     }
+    /* For the other options, if that definition is earlier than the picked option,
+     * invalidate all of them from this block and below
+     */
+    for (const std::shared_ptr<edge> &cf : ccfg->conflict_edges_to[node]) {
+        if (cf->from() != currentOptionsDefBlock) {
+            if (!CSSA_CCFG::concurrent(cf->from(), currentOptionsDefBlock) && cf->from()->lessthan(currentOptionsDefBlock)) {
+                for (const std::shared_ptr<edge> &ToseqNode : ccfg->conflict_edges_from[cf->from()]) {
+                    if (!CSSA_CCFG::concurrent(node, ToseqNode->to()) && node->lessthan(ToseqNode->to())) {
+                        inter = inter && (c.bool_const((ToseqNode->name + run).c_str()) == c.bool_val(false));
+                    }
+                }
+            }
+        }
+    }
+
     return z3::ite(thisEdge && blockname, inter && thisAssign, c.bool_val(false));
 }
 
@@ -530,7 +453,6 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                     default:
                         break;
                 }
-
                 constraints.push_back(disjunction(&c, expressions));
                 break;
             }
@@ -657,239 +579,6 @@ std::shared_ptr<basicblock> symEngine::get_end_of_concurrent_node(const std::sha
     return nullptr;
 }
 
-bool contains(const std::vector<std::string> &vars, const std::string &var) {
-    for (const auto &v : vars) if (v == var) return true;
-    return false;
-}
-
-std::vector<std::string> symEngine::includable_vars(const std::shared_ptr<statementNode> &stmt, std::unordered_map<std::string, std::vector<std::string>> constraints) {
-    std::vector<std::string> possiblevars;
-    if (auto pin = dynamic_cast<piNode*>(stmt.get())) {
-        std::string name = pin->getVar();
-        for (const auto &var : *pin->get_variables()) {
-            if (constraints.find(name) == constraints.end()) {
-                possiblevars.push_back(var.var);
-            } else {
-                auto blk = ccfg->defs.find(var.var)->second;
-                auto vec = constraints.find(name)->second;
-                if (vec.back() != var.var
-                    && contains(vec, var.var)) {
-                    //This variable was previously defined and has since been replaced. Cannot use it
-                } else {
-                    bool toinclude = true;
-                    for (const auto &o : vec) {
-                        std::shared_ptr<basicblock> otherdefsite = ccfg->defs.find(o)->second;
-                        if (blk->concurrentBlock == otherdefsite->concurrentBlock && blk->depth < otherdefsite->depth) {
-                            //Variable is defined in a thread that defines a new version of said variable.
-                            //Since the new variable has already been used, "var" cannot possibly be used again
-                            toinclude = false;
-                            break;
-                        }
-                    }
-                    if (toinclude) possiblevars.push_back(var.var);
-                }
-            }
-        }
-        std::vector<std::string> varsToRemove;
-        for (const auto &v : possiblevars) {
-            auto blk = ccfg->defs.find(v)->second;
-            for (const auto &s : blk->statements) {
-                if (s->getNodeType() == Phi) {
-                    auto phin = reinterpret_cast<phiNode*>(s.get());
-                    if (phin->getName() == v) {
-                        bool possiblevarsContainsOptions = false;
-                        for (const auto &vv : possiblevars) {
-                            std::vector<std::string> tmpvec;
-                            tmpvec.reserve(phin->get_variables()->size());
-                            for (const auto &vvv : *phin->get_variables()) {
-                                tmpvec.push_back(vvv.var);
-                            }
-                            if (contains(tmpvec, vv)) {
-                                possiblevarsContainsOptions = true;
-                                break;
-                            }
-                        }
-                        if (!possiblevarsContainsOptions) varsToRemove.push_back(v);
-                    }
-                }
-            }
-        }
-        std::vector<std::string> final;
-
-        for (const auto &v : possiblevars) {
-            bool remove = false;
-            for (const auto &vv : varsToRemove) {
-                if (v == vv) {
-                    remove = true;
-                    break;
-                }
-            }
-            if (!remove) final.push_back(v);
-        }
-        return final;
-    } else if (auto phi = dynamic_cast<phiNode*>(stmt.get())) {
-        std::string name = phi->getOriginalName();
-        std::vector<std::string> vars;
-        vars.reserve(phi->get_variables()->size());
-        for (const auto &vvv : *phi->get_variables()) {
-            vars.push_back(vvv.var);
-        }
-        if (constraints.find(name) == constraints.end()) {
-            return vars;
-        } else {
-            std::vector<std::string> consts = constraints.find(name)->second;
-            if (contains(vars, consts.back())) {
-                return {consts.back()};
-            } else {
-                std::unordered_set<std::string> impossible_vars;
-                for (auto it = consts.rbegin(); it != consts.rend(); ++it) {
-                    if (contains(vars, *it)) {
-                        impossible_vars.insert(*it);
-                    }
-                }
-                std::vector<std::string> final;
-                for (const auto &v : vars) {
-                    if (impossible_vars.find(v) == impossible_vars.end()) {
-                        final.push_back(v);
-                    }
-                }
-                return final;
-            }
-        }
-    } else {
-        return {};
-    }
-}
-
-z3::expr symEngine::encoded_pis(const std::vector<std::pair<std::shared_ptr<basicblock>, int32_t>> &remaining, const std::unordered_map<std::string, std::vector<std::string>> &constraints) {
-    auto pin = reinterpret_cast<piNode*>(remaining.front().first->statements.front().get());
-
-    if (pin->getName() == "-T_a_2") {
-        std::cout << "test";
-    }
-    if (pin->getName() == "-T_a_3") {
-        std::cout << "test";
-    }
-    if (pin->getName() == "-T_a_1") {
-        std::cout << "test";
-    }
-    if (pin->getName() == "-T_a_0") {
-        std::cout << "test";
-    }
-
-    if (remaining.size() == 1) {
-        std::vector<std::string> possiblevars = includable_vars(remaining.front().first->statements.front(), constraints);
-        std::shared_ptr<basicblock> endconc;
-        for (const auto &blk : ccfg->nodes) {
-            if (blk->type == Coend && reinterpret_cast<endConcNode*>(blk->statements.back().get())->getConcNode().get() == remaining.front().first->concurrentBlock.first) {
-                endconc = blk;
-                break;
-            }
-        }
-        if (possiblevars.empty()) return c.bool_val(false);
-        else {
-            std::vector<std::string> posvarsforendnode;
-            std::stack<z3::expr> end;
-            std::vector<z3::expr> finals;
-            for (const auto &stmt : endconc->statements) {
-                if (auto phi = dynamic_cast<phiNode*>(stmt.get())) {
-                    for (const auto &str : includable_vars(stmt, constraints)) {
-                        posvarsforendnode.push_back(str);
-                    }
-                    for (const auto &str : posvarsforendnode) {
-                        end.push(phi->getType() == intType
-                                 ? c.int_const(phi->getName().c_str()) == c.int_const(str.c_str())
-                                 : c.bool_const(phi->getName().c_str()) == c.bool_const(str.c_str()));
-                    }
-
-                    if (!end.empty()) {
-                        z3::expr final = end.top();
-                        end.pop();
-                        while (!end.empty()) {
-                            final = final || end.top();
-                            end.pop();
-                        }
-                        finals.push_back(final);
-                    }
-                    posvarsforendnode.clear();
-                }
-            }
-
-            for (const auto &f : finals) {
-                end.push(f);
-            }
-            z3::expr inter = end.top();
-            end.pop();
-            while(!end.empty()) {
-                inter = inter && end.top();
-                end.pop();
-            }
-
-            z3::expr final = pin->getType() == intType
-                ? c.int_const(pin->getName().c_str()) == c.int_const(possiblevars[0].c_str())
-                : c.bool_const(pin->getName().c_str()) == c.bool_const(possiblevars[0].c_str());
-
-
-
-            for (size_t i = 1; i < possiblevars.size(); ++i) {
-                final = final
-                        || pin->getType() == intType
-                        ? c.int_const(pin->getName().c_str()) == c.int_const(possiblevars[i].c_str())
-                        : c.bool_const(pin->getName().c_str()) == c.bool_const(possiblevars[i].c_str());
-            }
-
-            final = final && inter;
-            return final;
-        }
-    } else {//same depth. order probably matters
-        size_t i = 0;
-        /*for (i = 0; i < remaining.size()-1; ++i) {
-            if (remaining[i].second != remaining[i+1].second) {
-                break;
-            }
-        }*/
-//        if (i > 0){
-
-//        } else {
-        std::vector<std::string> possiblevars = includable_vars(remaining.front().first->statements.front(), constraints);
-        std::vector<std::pair<std::shared_ptr<basicblock>, int32_t>> newremains;
-        for (i = 1; i < remaining.size(); ++i) newremains.push_back(remaining[i]);
-        if (possiblevars.empty()) return c.bool_val(false);
-        std::unordered_map<std::string, std::vector<std::string>> newconsts = constraints;
-        auto res = newconsts.insert({pin->getVar(), {possiblevars[0]}});
-        if (!res.second) res.first->second.push_back(possiblevars[0]);
-
-        if (auto assn = dynamic_cast<assignNode*>(remaining.front().first->statements.back().get())) {
-            res = newconsts.insert({assn->getOriginalName(), {assn->getName()}});
-            if (!res.second) res.first->second.push_back(assn->getName());
-        }
-
-        z3::expr final = (pin->getType() == intType
-                         ? c.int_const(pin->getName().c_str()) == c.int_const(possiblevars[0].c_str())
-                         : c.bool_const(pin->getName().c_str()) == c.bool_const(possiblevars[0].c_str()));
-        z3::expr inter = encoded_pis(newremains, newconsts);
-        final = final && inter;
-        for (i = 1; i < possiblevars.size(); ++i) {
-            newconsts = constraints;
-            res = newconsts.insert({pin->getVar(), {possiblevars[i]}});
-            if (!res.second) res.first->second.push_back(possiblevars[i]);
-
-            if (auto assn = dynamic_cast<assignNode*>(remaining.front().first->statements.back().get())) {
-                res = newconsts.insert({assn->getOriginalName(), {assn->getName()}});
-                if (!res.second) res.first->second.push_back(assn->getName());
-            }
-
-            inter = (pin->getType() == intType
-                              ? c.int_const(pin->getName().c_str()) == c.int_const(possiblevars[i].c_str())
-                              : c.bool_const(pin->getName().c_str()) == c.bool_const(possiblevars[i].c_str()));
-            inter = inter && encoded_pis(newremains, newconsts);
-            final = final || (inter);
-            //std::cout << "final: " << final.to_string() << std::endl;
-        }
-        return final;
-
-    }
-}
 
 std::pair<std::map<std::string, std::shared_ptr<VariableValue>>, std::map<std::string, bool>> symEngine::getModel() {
     std::map<std::string, std::shared_ptr<VariableValue>> values;
@@ -972,14 +661,3 @@ bool symEngine::updateModel(const z3::expr& expr) {
     return s.check() == z3::sat;
 }
 
-z3::expr symEngine::encode_event_conditions_between_blocks(z3::context *c, const std::shared_ptr<basicblock> &first, const std::shared_ptr<basicblock> &last, const std::string &run) {
-    std::vector<std::pair<std::shared_ptr<statementNode>, std::shared_ptr<basicblock>>> eventsAndBlks = find_events_between_blocks(first, last);
-    z3::expr_vector vec(*c);
-    for (const auto &eventBlk : eventsAndBlks) {
-        vec.push_back(z3::ite( encode_boolname(c, eventBlk.second->get_name(), true, run)
-                             , evaluate_expression(c, reinterpret_cast<eventNode*>(eventBlk.first.get())->getCondition(), run, &vec)
-                             , c->bool_val(true)
-                             ));
-    }
-    return conjunction(vec);
-}

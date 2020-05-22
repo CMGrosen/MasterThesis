@@ -30,7 +30,6 @@ class interpreter {
 public:
     explicit interpreter(symEngine);
     bool run();
-    bool run2();
 
     virtual ~interpreter();
 };
