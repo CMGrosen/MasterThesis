@@ -230,6 +230,7 @@ bool symEngine::execute(std::string method) {
         constraintset.emplace_back(c.bool_const((name + _run1).c_str()) == c.bool_const((name + _run2).c_str()));
     }*/
     for (const auto &expr : constraintset) s.add(expr);
+
 /*
     std::string n = "reachable_4";
     s.add(c.bool_const((n + _run1).c_str()) == c.bool_val(true));
@@ -308,7 +309,7 @@ z3::expr possible_var_choices(z3::context *c, const std::shared_ptr<basicblock> 
     std::string assignment_var = reinterpret_cast<assignNode*>(blk->statements.back().get())->getName();
     z3::expr res = c->bool_val(true);
     for (const std::shared_ptr<edge> &conflict : ccfg->conflict_edges_from[blk]) {
-        if (!CSSA_CCFG::concurrent(conflict->to(), def) && def->lessthan(conflict->to())) {
+        if (!CSSA_CCFG::concurrent(conflict->to(), def) && conflict->to()->lessthan(def)) {
             for (const auto &stmt : conflict->to()->statements) {
                 if (auto pi = dynamic_cast<piNode*>(stmt.get())) {
                     for (const auto &option : *pi->get_variables()) {
