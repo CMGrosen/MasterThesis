@@ -167,10 +167,8 @@ bool symEngine::execute(std::string method) {
 
     //std::cout << "\n\n\n\n\nencoded:\n" << encoded.to_string() << std::endl;
 
-    bool event_encountered = false;
-    auto run1 = get_run(nullptr, ccfg->startNode, ccfg->exitNode, _run1, &event_encountered);
-    event_encountered = false;
-    auto run2 = get_run(nullptr, ccfg->startNode, ccfg->exitNode, _run2, &event_encountered);
+    auto run1 = get_run(nullptr, ccfg->startNode, ccfg->exitNode, _run1);
+    auto run2 = get_run(nullptr, ccfg->startNode, ccfg->exitNode, _run2);
 
     //std::cout << "\n" << t.to_string() << "\n\n" << std::endl;
 
@@ -248,8 +246,7 @@ bool symEngine::execute(std::string method) {
         std::vector<std::pair<std::string, std::string>> names;
         s.reset();
         add_reads();
-        event_encountered = false;
-        s.add(conjunction(get_run(nullptr, ccfg->startNode, ccfg->exitNode, _run1, &event_encountered)));
+        s.add(conjunction(get_run(nullptr, ccfg->startNode, ccfg->exitNode, _run1)));
         for (const auto &blk : ccfg->fiNodes) {
             for (const auto &stmt : blk->statements) {
                 if (auto phi = dynamic_cast<phiNode*>(stmt.get())) {
@@ -291,66 +288,53 @@ bool symEngine::execute(std::string method) {
 
 }
 
-z3::expr encode_unused_edges(z3::context *c, const std::string& blockboolname, const std::string &run, std::vector<option> *options) {
-    z3::expr res = c->bool_const((blockboolname + run).c_str()) == c->bool_val(true);
-    for (const auto &cc : *options) {
-        if (blockboolname != cc.block_boolname) {
-            if (cc.block_boolname.find("-brea") != std::string::npos) {
-                std::cout << "break";
-            }
-            z3::expr inter = c->bool_const((cc.block_boolname + run).c_str()) == c->bool_val(false);
-            res = res && inter;
+z3::expr encode_invalid_edges
+(z3::context &c, const std::shared_ptr<basicblock> &node, z3::expr &name, const std::string &varOrigname,
+ const std::string &varOptionName, const std::string &run, Type type,
+ const std::vector<std::shared_ptr<edge>> &conflicts, CSSA_CCFG *ccfg)
+ {
+    auto currentOptionsDefBlock = ccfg->defs[varOptionName];
+    z3::expr blockname = c.bool_const((currentOptionsDefBlock->get_name() + run).c_str());
+    z3::expr thisEdge(c);
+    z3::expr thisAssign(c);
+    if (type == intType) thisAssign = (name == c.int_const((varOptionName + run).c_str()));
+    else thisAssign = (name == c.bool_const((varOptionName + run).c_str()));
+    z3::expr inter = c.bool_val(true);
+
+    //Make all other options false except this one
+    for (const std::shared_ptr<edge> &ed : conflicts) {
+        if (ed->from() != currentOptionsDefBlock) {
+            z3::expr i = (c.bool_const((ed->name + run).c_str()) == c.bool_val(false));
+            inter = inter && i;
+        } else {
+            thisEdge = c.bool_const((ed->name + run).c_str());
         }
     }
-    return res;
-}
-
-z3::expr possible_var_choices(z3::context *c, const std::shared_ptr<basicblock> &blk, const std::string &var_boolname, const std::string &run, std::shared_ptr<CSSA_CCFG> ccfg) {
-    std::shared_ptr<basicblock> def = ccfg->boolnameBlocks[var_boolname];
-    std::string assignment_var = reinterpret_cast<assignNode*>(blk->statements.back().get())->getName();
-    z3::expr res = c->bool_val(true);
-    for (const std::shared_ptr<edge> &conflict : ccfg->conflict_edges_from[blk]) {
-        if (!CSSA_CCFG::concurrent(conflict->to(), def) && conflict->to()->lessthan(def)) {
-            for (const auto &stmt : conflict->to()->statements) {
-                if (auto pi = dynamic_cast<piNode*>(stmt.get())) {
-                    for (const auto &option : *pi->get_variables()) {
-                        if (option.var == assignment_var) {
-                            if (option.block_boolname.find("-brea") != std::string::npos) {
-                                std::cout << "break";
-                            }
-                            z3::expr inter = c->bool_const((option.block_boolname + run).c_str()) == c->bool_val(false);
-                            res = res && inter;
-                            break;
-                        }
-                    }
+    //Make all other conflict edges false from the option we took
+    for (const std::shared_ptr<edge> &e : ccfg->conflict_edges_from[currentOptionsDefBlock]) {
+        if (e->to() != node) {
+            inter = inter && (c.bool_const((e->name + run).c_str()) == c.bool_val(false));
+        }
+    }
+    /*In case there is an outgoing conflict edge from this block to the chosen option's block
+    * add a constraint stating this edge cannot be taken.
+    * If the last statement is an assignment to the same variable used in this pi-function,
+    * then there is a conflict
+    */
+    if (node->statements.back()->getNodeType() == Assign) {
+        if (reinterpret_cast<assignNode*>(node->statements.back().get())->getOriginalName() == varOrigname) {
+            for (const std::shared_ptr<edge> &cf : ccfg->conflict_edges_from[node]) {
+                if (cf->to() == currentOptionsDefBlock) {
+                    inter = inter && (c.bool_const((cf->name + run).c_str()) == c.bool_val(false));
+                    break;
                 }
             }
         }
     }
-    return res;
+    return z3::ite(thisEdge && blockname, inter && thisAssign, c.bool_val(false));
 }
 
-z3::expr encode_possible_outgoing(z3::context *c, const std::shared_ptr<basicblock> &blk, const std::string &run, std::shared_ptr<CSSA_CCFG> ccfg) {
-    //only called from an assignment node that's concurrent and have multiple statements
-    //meaning the statement prior to this assignment, is a pi-function
-    auto options = reinterpret_cast<piNode*>((blk->statements.rbegin()+1)->get())->get_variables();
-
-    z3::expr res = c->bool_val(true);
-    for (const auto &o : *options) {
-        if (o.block_boolname.find("-brea") != std::string::npos) {
-            std::cout << "break";
-        }
-        z3::expr inter =
-                z3::ite( c->bool_const((o.block_boolname + run).c_str())
-                       , possible_var_choices(c, blk, o.var_boolname, run, ccfg)
-                       , c->bool_val(true)
-                       );
-        res = res && inter;
-    }
-    return res;
-}
-
-z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, const std::shared_ptr<basicblock> &start, const std::shared_ptr<basicblock> &end, const std::string &run, bool *encountered) {
+z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, const std::shared_ptr<basicblock> &start, const std::shared_ptr<basicblock> &end, const std::string &run) {
     auto node = start;
     z3::expr_vector constraints(c);
 
@@ -371,13 +355,8 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                 z3::expr_vector vec(c);
                 //std::stack<z3::expr> expressions;
                 int i = 0;
-                bool event_encountered = false;
                 for (const auto &nxt : node->nexts) {
-                    bool event_found = false;
-                    vec.push_back(conjunction(get_run(node, nxt, endConc->parents[i++].lock(), run, &event_found)));
-                    if (event_found) {
-                        event_encountered = true;
-                    }
+                    vec.push_back(conjunction(get_run(node, nxt, endConc->parents[i++].lock(), run)));
                 }
                 constraints.push_back(conjunction(vec));
 
@@ -392,7 +371,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                 }
                 constraints.push_back(
                         z3::ite( condition
-                               , conjunction(get_run(endConc->parents[0].lock(), endConc, end, run, encountered))
+                               , conjunction(get_run(endConc->parents[0].lock(), endConc, end, run))
                                , encode_boolnames_from_block(&c, endConc->parents[0].lock(), end, false, run)
                                )
                         );
@@ -402,12 +381,10 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
             case If: {
                 std::shared_ptr<basicblock> firstCommonChild = find_common_child(node);
                 auto *ifNode = reinterpret_cast<ifElseNode*>(stmt.get());
-                bool event_found_for_true = false;
-                bool event_found_for_false = false;
 
-                z3::expr truebranch = conjunction(get_run(node, node->nexts[0], firstCommonChild, run, &event_found_for_true))
+                z3::expr truebranch = conjunction(get_run(node, node->nexts[0], firstCommonChild, run))
                         && conjunction(&c, ifNode->boolnamesForFalseBranch, false, run);
-                z3::expr falsebranch = conjunction(get_run(node, node->nexts[1], firstCommonChild, run, &event_found_for_false))
+                z3::expr falsebranch = conjunction(get_run(node, node->nexts[1], firstCommonChild, run))
                         && conjunction(&c, ifNode->boolnamesForTrueBranch, false, run);
 
 
@@ -423,7 +400,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
 
                 constraints.push_back(
                         z3::ite( condition
-                               , conjunction(get_run(firstCommonChild, firstCommonChild->nexts[0], end, run, encountered))
+                               , conjunction(get_run(firstCommonChild, firstCommonChild->nexts[0], end, run))
                                , encode_boolnames_from_block(&c, firstCommonChild, end, false, run)
                                ));
                 node = end;
@@ -431,9 +408,8 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
             }
             case Event: {
                 auto event = reinterpret_cast<eventNode*>(stmt.get());
-                bool event_encountered = false;
                 z3::expr condition = evaluate_expression(&c, event->getCondition(), run, &constraints);
-                z3::expr truebranch = conjunction(get_run( node, node->nexts[0], end, run, &event_encountered));
+                z3::expr truebranch = conjunction(get_run( node, node->nexts[0], end, run));
 
                 constraints.push_back(z3::ite( condition
                                              , truebranch
@@ -449,7 +425,6 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                  *   truebranch:  rest of the program following the Coend
                  *   falsebranch: false
                  */
-                *encountered = true;
                 node = end;
                 break;
             }
@@ -517,27 +492,8 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                         const auto &conflicts = ccfg->conflict_edges_to[node];
                         if (node->type != Coend) {
                             for (auto it = vars->begin() + 1; it != vars->end(); ++it) {
-                                auto currentOptionsDefBlock = ccfg->defs[it->var];
-                                z3::expr thisEdge(c);
-                                z3::expr thisAssign = (name == c.int_const((it->var + run).c_str()));
-                                z3::expr inter = c.bool_val(true);
-
-                                //Make all other options false except this one
-                                for (const std::shared_ptr<edge> &ed : conflicts) {
-                                    if (ed->from() != currentOptionsDefBlock) {
-                                        z3::expr i = (c.bool_const((ed->name + run).c_str()) == c.bool_val(false));
-                                        inter = inter && i;
-                                    } else {
-                                        thisEdge = c.bool_const((ed->name + run).c_str());
-                                    }
-                                }
-                                //Make all other conflict edges false from the option we took
-                                for (const std::shared_ptr<edge> &e : ccfg->conflict_edges_from[currentOptionsDefBlock]) {
-                                    if (e->to() != node) {
-                                        inter = inter && (c.bool_const((e->name + run).c_str()) == c.bool_val(false));
-                                    }
-                                }
-                                expressions.push_back(z3::ite(thisEdge, inter && thisAssign, c.bool_val(false)));
+                                z3::expr inter = encode_invalid_edges(c, node, name, pi->getVar(), it->var, run, intType, conflicts, ccfg.get());
+                                expressions.push_back(inter);
                             }
                         } else {
                             for (auto it = vars->begin() + 1; it != vars->end(); ++it) {
@@ -554,26 +510,8 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                         const auto &conflicts = ccfg->conflict_edges_to[node];
                         if (node->type != Coend) {
                             for (auto it = vars->begin() + 1; it != vars->end(); ++it) {
-                                auto currentOptionsDefBlock = ccfg->defs[it->var];
-                                z3::expr thisEdge(c);
-                                z3::expr thisAssign = (name == c.bool_const((it->var + run).c_str()));
-                                z3::expr inter = thisAssign;
-
-                                //Make all other options false except this one
-                                for (const std::shared_ptr<edge> &ed : conflicts) {
-                                    if (ed->from() != currentOptionsDefBlock) {
-                                        inter = inter && (c.bool_const((ed->name + run).c_str()) == c.bool_val(false));
-                                    } else {
-                                        thisEdge = c.bool_const((ed->name + run).c_str());
-                                    }
-                                }
-                                //Make all other conflict edges false from the option we took
-                                for (const std::shared_ptr<edge> &e : ccfg->conflict_edges_from[currentOptionsDefBlock]) {
-                                    if (e->to() != node) {
-                                        inter = inter && (c.bool_const((e->name + run).c_str()) == c.bool_val(false));
-                                    }
-                                }
-                                expressions.push_back(z3::ite(thisEdge, inter, c.bool_val(false)));
+                                z3::expr inter = encode_invalid_edges(c, node, name, pi->getVar(), it->var, run, boolType, conflicts, ccfg.get());
+                                expressions.push_back(inter);
                             }
                         } else {
                             for (auto it = vars->begin() + 1; it != vars->end(); ++it) {
@@ -592,6 +530,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                     default:
                         break;
                 }
+
                 constraints.push_back(disjunction(&c, expressions));
                 break;
             }
@@ -600,7 +539,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
     if (node == end || node->nexts.empty()) {
         return constraints;
     } else {
-        constraints.push_back(conjunction(get_run(node, node->nexts[0], end, run, encountered)));
+        constraints.push_back(conjunction(get_run(node, node->nexts[0], end, run)));
         return constraints;
     }
 }
