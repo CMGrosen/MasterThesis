@@ -231,11 +231,12 @@ bool symEngine::execute(std::string method) {
     }*/
     for (const auto &expr : constraintset) s.add(expr);
 
-/*
+    /*
     std::string n = "reachable_4";
     s.add(c.bool_const((n + _run1).c_str()) == c.bool_val(true));
     s.add(c.bool_const((n + _run2).c_str()) == c.bool_val(true));
-*/
+    */
+
     if (s.check() == z3::sat) {
         auto model = s.get_model();
         std::cout << "sat\n";
@@ -363,12 +364,6 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                             : c.bool_const((assnode->getName() + run).c_str());
 
                 constraints.push_back(name == evaluate_expression(&c, assnode->getExpr(), run, &constraints));
-
-                //concurrent and not the only statement in this block, meaning the one before is a pi-function
-                if (start->concurrentBlock.first && node->statements.size() > 1) {
-                    constraints.push_back(encode_possible_outgoing(&c, node, run, ccfg));
-                }
-
                 break;
             }
             case Concurrent: {
@@ -517,37 +512,69 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                 switch (pi->getType()) {
                     case intType: {
                         z3::expr name = c.int_const((pi->getName() + run).c_str());
-                        for (const auto &conflict : *vars) {
-                            z3::expr condition = c.bool_const((conflict.var_boolname + run).c_str()) == c.bool_val(true);
-                            condition = condition && (c.bool_const((conflict.block_boolname + run).c_str()) == c.bool_val(true));
-                            z3::expr tb = (name == c.int_const((conflict.var + run).c_str()));
-                            if (node->type != Coend) {
-                                z3::expr inter = encode_unused_edges(&c, conflict.block_boolname, run, vars);
-                                tb = tb && inter;
+                        z3::expr condition = (name == c.int_const((vars->begin()->var + run).c_str()));
+                        expressions.push_back(condition);
+                        const auto &conflicts = ccfg->conflict_edges_to[node];
+                        if (node->type != Coend) {
+                            for (auto it = vars->begin() + 1; it != vars->end(); ++it) {
+                                auto currentOptionsDefBlock = ccfg->defs[it->var];
+                                z3::expr thisEdge(c);
+                                z3::expr thisAssign = (name == c.int_const((it->var + run).c_str()));
+
+                                z3::expr inter = c.bool_val(true);
+                                for (const std::shared_ptr<edge> &ed : conflicts) {
+                                    if (ed->from() != currentOptionsDefBlock) {
+                                        z3::expr i = (c.bool_const((ed->name + run).c_str()) == c.bool_val(false));
+                                        inter = inter && i;
+                                    } else {
+                                        thisEdge = c.bool_const((ed->name + run).c_str());
+                                    }
+                                    for (const std::shared_ptr<edge> &e : ccfg->conflict_edges_from[currentOptionsDefBlock]) {
+                                        if (e->to() != node) {
+                                            inter = inter && (c.bool_const((e->name + run).c_str()) == c.bool_val(false));
+                                        }
+                                    }
+                                }
+                                expressions.push_back(z3::ite(thisEdge, inter && thisAssign, c.bool_val(false)));
                             }
-                            expressions.push_back(z3::ite
-                              ( condition
-                              , tb
-                              , c.bool_val(false) //unsatisfiable
-                              ));
+                        } else {
+                            for (auto it = vars->begin() + 1; it != vars->end(); ++it) {
+                                z3::expr inter = (name == (c.int_const((it->var + run).c_str())));
+                                expressions.push_back(inter);
+                            }
                         }
                         break;
                     }
                     case boolType: {
                         z3::expr name = c.bool_const((pi->getName() + run).c_str());
-                        for (const auto &conflict : *vars) {
-                            z3::expr condition = c.bool_const((conflict.var_boolname + run).c_str()) == c.bool_val(true);
-                            condition = condition && (c.bool_const((conflict.block_boolname + run).c_str()) == c.bool_val(true));
-                            z3::expr tb = (name == c.bool_const((conflict.var + run).c_str()));
-                            if (node->type != Coend) {
-                                z3::expr inter = encode_unused_edges(&c, conflict.block_boolname, run, vars);
-                                tb = tb && inter;
+                        z3::expr condition = (name == c.bool_const((vars->begin()->var + run).c_str()));
+                        expressions.push_back(condition);
+                        const auto &conflicts = ccfg->conflict_edges_to[node];
+                        if (node->type != Coend) {
+                            for (auto it = vars->begin() + 1; it != vars->end(); ++it) {
+                                auto currentOptionsDefBlock = ccfg->defs[it->var];
+                                z3::expr thisEdge(c);
+                                z3::expr thisAssign = (name == c.bool_const((it->var + run).c_str()));
+                                z3::expr inter = thisAssign;
+                                for (const std::shared_ptr<edge> &ed : conflicts) {
+                                    if (ed->from() != currentOptionsDefBlock) {
+                                        inter = inter && (c.bool_const((ed->name + run).c_str()) == c.bool_val(false));
+                                    } else {
+                                        thisEdge = c.bool_const((ed->name + run).c_str());
+                                    }
+                                    for (const std::shared_ptr<edge> &e : ccfg->conflict_edges_from[currentOptionsDefBlock]) {
+                                        if (e->to() != node) {
+                                            inter = inter && (c.bool_const((e->name + run).c_str()) == c.bool_val(false));
+                                        }
+                                    }
+                                }
+                                expressions.push_back(z3::ite(thisEdge, inter, c.bool_val(false)));
                             }
-                            expressions.push_back(z3::ite
-                              ( condition
-                              , tb
-                              , c.bool_val(false) //unsatisfiable. Won't ever pick this option
-                              ));
+                        } else {
+                            for (auto it = vars->begin() + 1; it != vars->end(); ++it) {
+                                z3::expr inter = (name == (c.bool_const((it->var + run).c_str())));
+                                expressions.push_back(inter);
+                            }
                         }
                         break;
                     }
@@ -939,7 +966,8 @@ std::pair<std::map<std::string, std::shared_ptr<VariableValue>>, std::map<std::s
         assert(v.arity() == 0);
         std::string value = m.get_const_interp(v).to_string();
         Type t;
-        if (!(v.name().str().front() == '-' && v.name().str()[1] == 'b')) { // Don't include implication-tracking boolean constants from model
+        // Don't include implication-tracking boolean constants from model, or conflict edges
+        if (!(v.name().str().front() == '-' && v.name().str()[1] == 'b') && v.name().str().front() != '&') {
             if (value == "true" || value == "false") t = boolType; else t = intType;
             if (value.front() == '(') //the number is negative. Remove z3 formatting ( "(- 2)" => "-2" )
                 value = "-" + value.substr(3, value.size() - 4); //remove "(- " from the front and ")" from the back

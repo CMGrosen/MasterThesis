@@ -416,11 +416,10 @@ private:
 
     void update_conflict_edges_names() {
         for (auto &pair : ccfg->conflict_edges_from) {
-            std::string num_conflicts = std::to_string(pair.second.size());
-            std::string dcl = reinterpret_cast<assignNode*>(pair.first->statements.back().get())->getName() + "-";
+           auto dcl = reinterpret_cast<assignNode*>(pair.first->statements.back().get());
             for (std::shared_ptr<edge> &ed : pair.second) {
-                std::string blkThreadName = ed->to()->concurrentBlock.first->get_name() + "_" + std::to_string(ed->to()->concurrentBlock.second) + "-";
-                ed->name.assign(blkThreadName + dcl + num_conflicts);
+                std::string use = *ed->to()->defines[dcl->getOriginalName()].begin();
+                ed->name.assign("&" + dcl->getName() + "-to" + use);
             }
         }
     }
