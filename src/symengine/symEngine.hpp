@@ -9,9 +9,21 @@
 #define _run2 "run2-"
 
 #include <src/CFGs/CSSA_CCFG.hpp>
-#include "VariableValue.hpp"
 #include <memory>
 #include <z3++.h>
+
+struct Model {
+    std::map<std::string, literalNode> values;
+    std::map<std::string, std::pair<std::string, bool>> paths;
+    std::map<std::string, std::pair<std::string, bool>> interleavings;
+    std::map<std::string, std::pair<std::string, int32_t>> piOptionChoices;
+
+    Model( std::map<std::string, literalNode> _values
+         , std::map<std::string, std::pair<std::string, bool>> _paths
+         , std::map<std::string, std::pair<std::string, bool>> _interleavings
+         , std::map<std::string, std::pair<std::string, int32_t>> _piOption
+         ) : values{std::move(_values)}, paths{std::move(_paths)}, interleavings{std::move(_interleavings)}, piOptionChoices{std::move(_piOption)} {}
+};
 
 class symEngine {
     z3::context c;
@@ -37,7 +49,7 @@ public:
 
     std::shared_ptr<CSSA_CCFG> ccfg;
     std::unordered_map<std::string, std::shared_ptr<expressionNode>> symboltable;
-    std::pair<std::map<std::string, std::shared_ptr<VariableValue>>, std::map<std::string, bool>> getModel();
+    Model getModel();
 
     bool execute();
     bool updateModel(const std::vector<std::pair<std::string, Type>>&, const std::vector<std::string>&);

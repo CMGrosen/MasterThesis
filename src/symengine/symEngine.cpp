@@ -3,7 +3,6 @@
 //
 
 #include "symEngine.hpp"
-#include "VariableValue.hpp"
 #include <limits>
 #include <stack>
 #include <string>
@@ -197,16 +196,16 @@ bool symEngine::execute() {
 
 z3::expr encode_invalid_edges
 (z3::context &c, const std::shared_ptr<basicblock> &node, z3::expr &name, const std::string &varOrigname,
- const std::string &varOptionName, const std::string &run, Type type,
+ const option &varOption, const std::string &run, Type type,
  const std::vector<std::shared_ptr<edge>> &conflicts, CSSA_CCFG *ccfg)
  {
-    auto currentOptionsDefBlock = ccfg->defs[varOptionName];
+    auto currentOptionsDefBlock = ccfg->defs[varOption.var];
     z3::expr blockname = c.bool_const((currentOptionsDefBlock->get_name() + run).c_str());
     z3::expr thisEdge(c);
     z3::expr thisAssign(c);
-    if (type == intType) thisAssign = (name == c.int_const((varOptionName + run).c_str()));
-    else thisAssign = (name == c.bool_const((varOptionName + run).c_str()));
-    z3::expr inter = c.bool_val(true);
+    if (type == intType) thisAssign = (name == c.int_const((varOption.var + run).c_str()));
+    else thisAssign = (name == c.bool_const((varOption.var + run).c_str()));
+    z3::expr inter = encode_boolname(&c, varOption.block_boolname, true, run);
 
     //Make all other options false except this one
     for (const std::shared_ptr<edge> &ed : conflicts) {
@@ -254,7 +253,7 @@ z3::expr encode_invalid_edges
         }
     }
 
-    return z3::ite(thisEdge && blockname, inter && thisAssign, c.bool_val(false));
+    return z3::ite(thisEdge && blockname, thisAssign && inter, c.bool_val(false));
 }
 
 z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, const std::shared_ptr<basicblock> &start, const std::shared_ptr<basicblock> &end, const std::string &run) {
@@ -411,11 +410,19 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                     case intType: {
                         z3::expr name = c.int_const((pi->getName() + run).c_str());
                         z3::expr condition = (name == c.int_const((vars->begin()->var + run).c_str()));
+                        condition = condition && encode_boolname(&c, vars->begin()->block_boolname, true, run);
+                        for (auto it = vars->begin()+1; it != vars->end(); ++it)
+                            condition = condition && encode_boolname(&c, it->block_boolname, false, run);
                         expressions.push_back(condition);
                         const auto &conflicts = ccfg->conflict_edges_to[node];
                         if (node->type != Coend) {
                             for (auto it = vars->begin() + 1; it != vars->end(); ++it) {
-                                z3::expr inter = encode_invalid_edges(c, node, name, pi->getVar(), it->var, run, intType, conflicts, ccfg.get());
+                                z3::expr inter = encode_invalid_edges(c, node, name, pi->getVar(), *it, run, intType, conflicts, ccfg.get());
+                                for (auto other = vars->begin(); other != vars->end(); ++other) {
+                                    if (other != it) {
+                                        inter = inter && encode_boolname(&c, other->block_boolname, false, run);
+                                    }
+                                }
                                 expressions.push_back(inter);
                             }
                         } else {
@@ -429,16 +436,30 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                     case boolType: {
                         z3::expr name = c.bool_const((pi->getName() + run).c_str());
                         z3::expr condition = (name == c.bool_const((vars->begin()->var + run).c_str()));
+                        condition = condition && encode_boolname(&c, vars->begin()->block_boolname, true, run);
+                        for (auto it = vars->begin()+1; it != vars->end(); ++it)
+                            condition = condition && encode_boolname(&c, it->block_boolname, false, run);
                         expressions.push_back(condition);
                         const auto &conflicts = ccfg->conflict_edges_to[node];
                         if (node->type != Coend) {
                             for (auto it = vars->begin() + 1; it != vars->end(); ++it) {
-                                z3::expr inter = encode_invalid_edges(c, node, name, pi->getVar(), it->var, run, boolType, conflicts, ccfg.get());
+                                z3::expr inter = encode_invalid_edges(c, node, name, pi->getVar(), *it, run, boolType, conflicts, ccfg.get());
+                                for (auto other = vars->begin(); other != vars->end(); ++other) {
+                                    if (other != it) {
+                                        inter = inter && encode_boolname(&c, other->block_boolname, false, run);
+                                    }
+                                }
                                 expressions.push_back(inter);
                             }
                         } else {
                             for (auto it = vars->begin() + 1; it != vars->end(); ++it) {
                                 z3::expr inter = (name == (c.bool_const((it->var + run).c_str())));
+                                inter = inter && encode_boolname(&c, it->block_boolname, true, run);
+                                for (auto other = vars->begin(); other != vars->end(); ++other) {
+                                    if (other != it) {
+                                        inter = inter && encode_boolname(&c, other->block_boolname, false, run);
+                                    }
+                                }
                                 expressions.push_back(inter);
                             }
                         }
@@ -452,6 +473,9 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                     }
                     default:
                         break;
+                }
+                if (pi->getName() == "-T_a_1" && run == _run1) {
+                    std::cout << disjunction(&c, expressions) << std::endl;
                 }
                 constraints.push_back(disjunction(&c, expressions));
                 break;
@@ -580,51 +604,70 @@ std::shared_ptr<basicblock> symEngine::get_end_of_concurrent_node(const std::sha
 }
 
 
-std::pair<std::map<std::string, std::shared_ptr<VariableValue>>, std::map<std::string, bool>> symEngine::getModel() {
-    std::map<std::string, std::shared_ptr<VariableValue>> values;
-    std::map<std::string, bool> paths;
-    std::map<std::string, bool> booltrackconstants;
+Model symEngine::getModel() {
+    std::map<std::string, literalNode> values;
+    std::map<std::string, std::pair<std::string, bool>> paths;
+    std::map<std::string, std::pair<std::string, bool>> interleavings;
+    std::map<std::string, std::pair<std::string, int32_t>> piOptionChoices;
+
     z3::model m = s.get_model();
     //std::cout << m << std::endl;
     for (unsigned i = 0; i < m.size(); i++) {
         z3::func_decl v = m[i];
         std::string value = m.get_const_interp(v).to_string();
-        if (v.name().str().front() == '-' && v.name().str()[1] == 'b') {
-            booltrackconstants.insert({v.name().str(), value == "true"});
+        std::string name = v.name().str();
+        if (name.front() == '-' && name[1] == 'b') { //Executed Blocks
+            paths.insert({name, {name.find(_run1) != std::string::npos ? _run1 : _run2, value == "true"}});
+        } else if (name.front() == '&') { //Interleavings
+            interleavings.insert({name, {name.find(_run1) != std::string::npos ? _run1 : _run2, value == "true"}});
+        } else if (name.find("-option-") != std::string::npos) { //piOption
+            if (value == "true") {
+                int32_t index = std::stoi(name.substr(8)); //INDEX in "-option-INDEX-NAME
+                std::string piOption = name.substr(name.find('-', 8)); //character following "-option-INDEX-..."
+                piOptionChoices.insert({piOption, {piOption.find(_run1) != std::string::npos ? _run1 : _run2, index}});
+            }
+        } else { //readValues and other variables
+            Type t = (value == "true" || value == "false") ? boolType : intType;
+            if (value.front() == '(') { //The number is negative. Remove z3 formatting ( "(- 2)" => "-2" )
+                value = "-" + value.substr(3, value.size() - 4); //remove "(- " from front, and ")" from back;
+            }
+            values.insert({name, literalNode(t, value)});
         }
     }
-    for (unsigned i = 0; i < m.size(); i++) {
-        z3::func_decl v = m[i];
-        // this problem contains only constants
-        assert(v.arity() == 0);
-        std::string value = m.get_const_interp(v).to_string();
-        Type t;
-        // Don't include implication-tracking boolean constants from model, or conflict edges
-        if (!(v.name().str().front() == '-' && v.name().str()[1] == 'b') && v.name().str().front() != '&') {
-            if (value == "true" || value == "false") t = boolType; else t = intType;
-            if (value.front() == '(') //the number is negative. Remove z3 formatting ( "(- 2)" => "-2" )
-                value = "-" + value.substr(3, value.size() - 4); //remove "(- " from the front and ")" from the back
 
-            bool defined;
-            std::string run;
-            std::string name; //remove run1 and run2 from names
-            if (*v.name().str().rbegin() != '-') { name = v.name().str(); run = "";} //readVal
-            else { name = v.name().str().substr(0, v.name().str().size()-5); run = v.name().str().substr(name.size());}
-            std::string origname = ccfg->defs[name]->defmapping[name];
+    std::vector<std::string> invalidInterleavings;
+    for (auto &interleaving : interleavings) {
+        if (interleaving.second.second) {
+            std::string name;
+            std::shared_ptr<basicblock> from;
+            std::shared_ptr<basicblock> to;
+            auto it = interleaving.first.begin()+1;
+            //check from
+            for (; *it != '-'; ++it) {
+                name += *it;
+            }
+            from = ccfg->defs.find(name)->second;
+            auto found = paths.find(from->get_name() + interleaving.second.first);
+            if (found != paths.end()) {
+                if (!found->second.second)
+                    interleaving.second.second = found->second.second;
+            }
 
-            if (run.empty()) defined = true; //readVal
-            else defined = booltrackconstants.find(ccfg->defs[name]->get_name() + run)->second;
-
-            values.insert({v.name().str(), std::make_shared<VariableValue>(VariableValue(t, name, origname, value, defined))});
-            //std::cout << v.name() << " = " << value << "\n";
-        } else if (*(v.name().str().rbegin()+1) == '1') { //boolean tracking constant for run1-
-            std::string name = v.name().str().substr(0, v.name().str().size()-5);
-            paths.insert({name, value == "true"});
+            //check to (add 3 to move onto next name)
+            name.clear();
+            for (it+=3; it < interleaving.first.end(); ++it) {
+                name += *it;
+            }
+            name = name.substr(0, name.size() - interleaving.second.first.size());
+            to = ccfg->defs.find(name)->second;
+            found = paths.find(to->get_name() + interleaving.second.first);
+            if (found != paths.end()) {
+                if (!found->second.second)
+                    interleaving.second.second = found->second.second;
+            }
         }
-        //std::cout << v.name().str() << " = " << value << std::endl;
     }
-    //std::cout << m << std::endl;
-    return {values, paths};
+    return Model(values, paths, interleavings, piOptionChoices);
 }
 
 bool symEngine::updateModel(const std::vector<std::pair<std::string, Type>>& conflicts, const std::vector<std::string>& boolnames) {

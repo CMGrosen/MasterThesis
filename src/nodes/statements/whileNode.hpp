@@ -36,6 +36,14 @@ public:
         condition->setSSA(t);
         //body->setSSA(t);
     }
+    bool replacePiWithLit(const std::string &piname, Type t, std::string val) override {
+        if (condition->getNodeType() == Variable && reinterpret_cast<variableNode*>(condition.get())->name == piname) {
+            condition = std::make_shared<literalNode>(literalNode(t, val));
+            return true;
+        } else {
+            return condition->replacePiWithLit(piname, t, val);
+        }
+    }
 private:
     std::shared_ptr<expressionNode> condition;
     std::shared_ptr<statementNode> body;

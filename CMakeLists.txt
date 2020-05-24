@@ -58,9 +58,8 @@ set(visitor_SRC
         src/nodes/edge.cpp src/nodes/edge.hpp src/nodes/basicblock.cpp src/nodes/basicblock.hpp
         src/symengine/symEngine.cpp src/symengine/symEngine.hpp
         src/symengine/interpreter.cpp src/symengine/interpreter.hpp
-        src/symengine/VariableValue.hpp src/symengine/Difference.hpp src/symengine/state.cpp src/symengine/state.hpp
-        src/symengine/statesHandler.cpp src/symengine/statesHandler.hpp src/symengine/intepreterData.hpp
-        src/symengine/value.hpp src/nodes/statements/option.hpp src/CFGs/SSA_CCFG.hpp src/CFGs/CSSA_CCFG.hpp src/CFGs/CCFG.hpp)
+        src/symengine/intepreterData.hpp
+        src/nodes/statements/option.hpp src/CFGs/SSA_CCFG.hpp src/CFGs/CSSA_CCFG.hpp src/CFGs/CCFG.hpp)
 
 if (NOT CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     set (flags_1 "-Wno-overloaded-virtual")

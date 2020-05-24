@@ -80,6 +80,16 @@ struct CSSA_CCFG : public SSA_CCFG {
         return false; //if we get here, no conditions were met, thus not concurrent
     }
 
+    void update_conflict_edges_names() {
+        for (auto &pair : conflict_edges_from) {
+            auto dcl = reinterpret_cast<assignNode*>(pair.first->statements.back().get());
+            for (std::shared_ptr<edge> &ed : pair.second) {
+                std::string use = *ed->to()->defines[dcl->getOriginalName()].begin();
+                ed->name.assign("&" + dcl->getName() + "-to" + use);
+            }
+        }
+    }
+
 private:
     void add_conflict_edges() {
         for (auto blk : nodes) {
@@ -132,6 +142,7 @@ protected:
                 if (!res.second) res.first->second.push_back(e);
             }
         }
+        update_conflict_edges_names();
     }
 };
 

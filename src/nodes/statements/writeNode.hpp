@@ -20,6 +20,7 @@ public:
 
     int16_t getPin() const {return _pin;};
     expressionNode *getExpr() const {return _e.get();};
+    void setExpr(std::shared_ptr<expressionNode> e) {_e = std::move(e);};
 
     std::string to_string() const override {
         return "write(" + std::to_string(_pin) + ", " + _e->to_string() + ")";
@@ -35,6 +36,16 @@ public:
         _this->setSSA(onSSA);
         return _this;
     }
+
+    bool replacePiWithLit(const std::string &piname, Type t, std::string val) override {
+        if (_e->getNodeType() == Variable && reinterpret_cast<variableNode*>(_e.get())->name == piname) {
+            _e = std::make_shared<literalNode>(literalNode(t, val));
+            return true;
+        } else {
+           return _e->replacePiWithLit(piname, t, val);
+        }
+    }
+
     void setSSA(bool t) override {
         onSSA = t;
         _e->setSSA(t);

@@ -12,6 +12,7 @@ public:
     arrayAccessNode(Type t, std::shared_ptr<expressionNode> a, std::shared_ptr<variableNode> n) : value{std::move(a)}, var{std::move(n)} {type = t; setNodeType(ArrayAccess);};
 
     expressionNode *getAccessor() const {return value.get();};
+    void setAccessor(std::shared_ptr<expressionNode>e) {value = std::move(e);}
     std::string getName() const { return var->name;}
     std::string *getNameAsRef() {return &var->name;}
     void setName(std::string _name) {var->name = std::move(_name);}
