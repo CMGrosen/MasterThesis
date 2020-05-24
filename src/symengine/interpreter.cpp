@@ -196,22 +196,22 @@ interpreter::applied_semantics(std::shared_ptr<basicblock> &blk, runInformation 
             if (ass->getExpr()->getNodeType() == Literal) {
                 std::string newVal = reinterpret_cast<literalNode*>(ass->getExpr())->value;
 
-                /*
-                for (const std::shared_ptr<edge> &interleaving : run.ccfg->conflict_edges_from[blk]) {
-                    if (run.interleavingsTaken.find(interleaving->name) != run.interleavingsTaken.end()) {
-                        for (auto it = current_blocks.begin(); it != current_blocks.end(); it++) {
-                            if (interleaving->to() == (*it)) { //Already found this block in the deque, visit this next time
-                                checked_deque = true;
-                                return {false, {}};
+                if (blk->concurrentBlock.first) {
+                    for (const std::shared_ptr<edge> &interleaving : run.ccfg->conflict_edges_from[blk]) {
+                        if (run.interleavingsTaken.find(interleaving->name) != run.interleavingsTaken.end()) {
+                            //Found an interleaving, check if the block in question is in deque
+                            for (const auto &o : current_blocks) {
+                                if (o == interleaving->to()) { //it is in the deque, just do assignmment
+                                    run.varValuesDuringExecution[ass->getOriginalName()] = newVal;
+                                    run.lastAssignmentToKey[ass->getOriginalName()] = engine.ccfg->defs[ass->getName()]->defsite[ass->getName()];
+                                    blk->statements.front() = stmt = nullptr;
+                                    return {true, blk->nexts};
+                                }
                             }
-                        }
-                        //This block is further out in the future
-                        auto found = run.frontier.find(interleaving->to());
-                        if (found != run.frontier.end()) {
                             return {false, {}};
                         }
                     }
-                }*/
+                }
 
                 if (run.variableValues.find(ass->getName())->second.value != newVal) {
                     return {false, {}};
