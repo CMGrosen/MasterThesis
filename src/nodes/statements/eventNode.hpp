@@ -13,6 +13,8 @@ public:
         setNodeType(Event);
     }
     expressionNode *getCondition() {return _condition.get();}
+    void setCondition(std::shared_ptr<expressionNode>e) {_condition = std::move(e);}
+
     std::string to_string() const override {
         return "event(" + _condition->to_string() + ")";
     }

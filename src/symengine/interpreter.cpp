@@ -268,6 +268,12 @@ interpreter::applied_semantics(std::shared_ptr<basicblock> &blk, runInformation 
                     std::cout << "Event is false, future execution here is not possible\n";
                     return {true, {nullptr}};
                 }
+            } else {
+                auto res = exec_expr(event->getCondition(), run);
+                success = res.first;
+                if (res.first) {
+                    event->setCondition(res.second);
+                }
             }
             break;
         }
