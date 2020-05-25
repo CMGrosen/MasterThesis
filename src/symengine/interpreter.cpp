@@ -209,6 +209,21 @@ interpreter::applied_semantics(std::shared_ptr<basicblock> &blk, runInformation 
                                 }
                             }
                             return {false, {}};
+                        } else if (run.blocksVisited.find(interleaving->to()->get_name()) != run.blocksVisited.end()) {
+                            for (const auto &o : current_blocks) {
+                                if (o == interleaving->to()) { //An interleaving from this assignment to another block is present in the deque
+                                    //check if assignment invalidates it
+                                    if (auto pi = dynamic_cast<piNode*>(o->statements.front().get())) {
+                                        if (pi->getVar() == ass->getOriginalName()
+                                          && run.variableValues.find(pi->getName())->second.value != newVal
+                                          && run.variableValues.find(pi->getName())->second.value == run.varValuesDuringExecution[ass->getOriginalName()]
+                                          ) { //Invalid due to current value being a match, and this assignment invalidates the current value
+                                            return {false, {}};
+                                        }
+                                    }
+
+                                }
+                            }
                         }
                     }
                 }

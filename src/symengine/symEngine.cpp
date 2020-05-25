@@ -142,9 +142,9 @@ bool symEngine::execute() {
     */
 
     if (s.check() == z3::sat) {
-        auto model = s.get_model();
+        //auto model = s.get_model();
         std::cout << "sat\n";
-        std::cout << model << "\n" << std::endl;
+        //std::cout << model << "\n" << std::endl;
         return true;
     } else {
         std::cout << "unsat\nProbably no race-conditions" << std::endl;
@@ -614,8 +614,9 @@ Model symEngine::getModel() {
     //std::cout << m << std::endl;
     for (unsigned i = 0; i < m.size(); i++) {
         z3::func_decl v = m[i];
-        std::string value = m.get_const_interp(v).to_string();
         std::string name = v.name().str();
+        std::string value = m.get_const_interp(v).to_string();
+
         if (name.front() == '-' && name[1] == 'b') { //Executed Blocks
             paths.insert({name, {name.find(_run1) != std::string::npos ? _run1 : _run2, value == "true"}});
         } else if (name.front() == '&') { //Interleavings
@@ -628,9 +629,11 @@ Model symEngine::getModel() {
             }
         } else { //readValues and other variables
             Type t = (value == "true" || value == "false") ? boolType : intType;
+
             if (value.front() == '(') { //The number is negative. Remove z3 formatting ( "(- 2)" => "-2" )
                 value = "-" + value.substr(3, value.size() - 4); //remove "(- " from front, and ")" from back;
             }
+
             values.insert({name, literalNode(t, value)});
         }
     }
