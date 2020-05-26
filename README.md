@@ -1,2 +1,2 @@
-# SW09
-9th semester project
+# SW10
+Master Thesis project
