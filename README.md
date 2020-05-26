@@ -1,2 +1,7 @@
-# SW09
-9th semester project
+# MasterThesis
+
+To build the project, run the following commands
+- java -jar thirdparty/antlr/antlr-4.7.2-complete.jar -Dlanguage=Cpp -no-listener -visitor -o antlr4-runtime Small.g4
+- mkdir build
+- cmake CMakeLists.txt -B build
+- cd build && make
