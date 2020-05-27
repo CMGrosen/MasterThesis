@@ -224,20 +224,22 @@ z3::expr encode_invalid_edges
         }
     }
 
-    /*In case there is an outgoing conflict edge from this block to the chosen option's block
-    * add a constraint stating this edge cannot be taken.
-    * If the last statement is an assignment to the same variable used in this pi-function,
-    * then there is a conflict
-    */
+    /*In case there are outgoing conflict edges from this block,
+     * invalidate all edges from the chosen option's block, and to all earlier blocks
+     */
+
     if (node->statements.back()->getNodeType() == Assign) {
-        if (reinterpret_cast<assignNode*>(node->statements.back().get())->getOriginalName() == varOrigname) {
-            for (const std::shared_ptr<edge> &cf : ccfg->conflict_edges_from[node]) {
-                if (cf->to() == currentOptionsDefBlock) {
-                    inter = inter && (c.bool_const((cf->name + run).c_str()) == c.bool_val(false));
-                }
+        for (const std::shared_ptr<edge> &cf : ccfg->conflict_edges_from[node]) {
+            if (cf->to() == currentOptionsDefBlock ||
+                (!CSSA_CCFG::concurrent(cf->to(), currentOptionsDefBlock) &&
+                 cf->to()->lessthan(currentOptionsDefBlock)
+                )
+                    ) {
+                inter = inter && encode_boolname(&c, cf->name, false, run);
             }
         }
     }
+
     /* For the other options, if that definition is earlier than the picked option,
      * invalidate all of them from this block and below
      */
@@ -246,7 +248,7 @@ z3::expr encode_invalid_edges
             if (!CSSA_CCFG::concurrent(cf->from(), currentOptionsDefBlock) && cf->from()->lessthan(currentOptionsDefBlock)) {
                 for (const std::shared_ptr<edge> &ToseqNode : ccfg->conflict_edges_from[cf->from()]) {
                     if (!CSSA_CCFG::concurrent(node, ToseqNode->to()) && node->lessthan(ToseqNode->to())) {
-                        inter = inter && (c.bool_const((ToseqNode->name + run).c_str()) == c.bool_val(false));
+                        inter = inter && encode_boolname(&c, ToseqNode->name, false, run);
                     }
                 }
             }
@@ -291,6 +293,7 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
                     z3::expr inter = c.bool_const((it->lock()->get_name() + run).c_str()) == c.bool_val(true);
                     condition = condition && inter;
                 }
+
                 constraints.push_back(
                         z3::ite( condition
                                , conjunction(get_run(endConc->parents[0].lock(), endConc, end, run))
@@ -318,13 +321,14 @@ z3::expr_vector symEngine::get_run(const std::shared_ptr<basicblock>& previous, 
 
                 constraints.push_back(final);
 
-                z3::expr condition = c.bool_const((firstCommonChild->get_name() + run).c_str()) == c.bool_val(true);
-
-                constraints.push_back(
-                        z3::ite( condition
-                               , conjunction(get_run(firstCommonChild, firstCommonChild->nexts[0], end, run))
-                               , encode_boolnames_from_block(&c, firstCommonChild, end, false, run)
-                               ));
+                if (firstCommonChild != end) {
+                    z3::expr condition = c.bool_const((firstCommonChild->get_name() + run).c_str()) == c.bool_val(true);
+                    constraints.push_back(
+                            z3::ite(condition,
+                                    conjunction(get_run(firstCommonChild, firstCommonChild->nexts[0], end, run)),
+                                    encode_boolnames_from_block(&c, firstCommonChild, end, false, run)
+                            ));
+                }
                 node = end;
                 break;
             }
