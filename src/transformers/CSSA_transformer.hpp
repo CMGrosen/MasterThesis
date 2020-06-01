@@ -58,7 +58,7 @@ private:
 
         update_if_statements_boolname_branches();
 
-        update_conflict_edges_names();
+        ccfg->update_conflict_edges_names();
     }
 
     std::map<std::string, int> counter;
@@ -410,17 +410,6 @@ private:
 
             for (const auto &nxt : node->nexts) {
                 update_if_statement_boolname_branches_helper(ifstatement, nxt, goal, branch, set);
-            }
-        }
-    }
-
-    void update_conflict_edges_names() {
-        for (auto &pair : ccfg->conflict_edges_from) {
-            std::string num_conflicts = std::to_string(pair.second.size());
-            std::string dcl = reinterpret_cast<assignNode*>(pair.first->statements.back().get())->getName() + "-";
-            for (std::shared_ptr<edge> &ed : pair.second) {
-                std::string blkThreadName = ed->to()->concurrentBlock.first->get_name() + "_" + std::to_string(ed->to()->concurrentBlock.second) + "-";
-                ed->name.assign(blkThreadName + dcl + num_conflicts);
             }
         }
     }

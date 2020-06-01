@@ -24,6 +24,7 @@ public:
     void setSSA(bool t) override {
         onSSA = t;
     }
+
 };
 
 #endif //ANTLR_CPP_TUTORIAL_SKIPNODE_HPP

@@ -18,6 +18,7 @@ public:
         isWhile = w;
     }
     expressionNode *getCondition() {return condition.get();}
+    void setCondition(std::shared_ptr<expressionNode> n) {condition = std::move(n);}
     const std::shared_ptr<statementNode> getTrueBranch() const {return trueBranch;}
     const std::shared_ptr<statementNode> getFalseBranch() const {return falseBranch;}
 
@@ -47,6 +48,15 @@ public:
         condition->setSSA(t);
         /*trueBranch->setSSA(t);
         falseBranch->setSSA(t);*/
+    }
+
+    bool replacePiWithLit(const std::string &piname, Type t, std::string val) override {
+        if (condition->getNodeType() == Variable && reinterpret_cast<variableNode*>(condition.get())->name == piname) {
+            condition = std::make_shared<literalNode>(literalNode(t, val));
+            return true;
+        } else {
+            return condition->replacePiWithLit(piname, t, val);
+        }
     }
 
     std::vector<std::string> boolnamesForTrueBranch;

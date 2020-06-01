@@ -9,24 +9,33 @@
 #define _run2 "run2-"
 
 #include <src/CFGs/CSSA_CCFG.hpp>
-#include "VariableValue.hpp"
 #include <memory>
 #include <z3++.h>
+
+struct Model {
+    std::map<std::string, literalNode> values;
+    std::map<std::string, std::pair<std::string, bool>> paths;
+    std::map<std::string, std::pair<std::string, bool>> interleavings;
+    std::map<std::string, std::pair<std::string, int32_t>> piOptionChoices;
+
+    Model( std::map<std::string, literalNode> _values
+         , std::map<std::string, std::pair<std::string, bool>> _paths
+         , std::map<std::string, std::pair<std::string, bool>> _interleavings
+         , std::map<std::string, std::pair<std::string, int32_t>> _piOption
+         ) : values{std::move(_values)}, paths{std::move(_paths)}, interleavings{std::move(_interleavings)}, piOptionChoices{std::move(_piOption)} {}
+};
 
 class symEngine {
     z3::context c;
     z3::solver s;
 
     void add_reads();
-    z3::expr_vector get_run(const std::shared_ptr<basicblock>&, const std::shared_ptr<basicblock>&, const std::shared_ptr<basicblock>&, const std::string&, bool *);
+    z3::expr_vector get_run(const std::shared_ptr<basicblock>&, const std::shared_ptr<basicblock>&, const std::shared_ptr<basicblock>&, const std::string&);
     std::shared_ptr<basicblock> find_common_child(const std::shared_ptr<basicblock>&);
     static z3::expr evaluate_operator(z3::context *, const z3::expr&, const z3::expr&, op, z3::expr_vector *);
     static z3::expr evaluate_expression(z3::context *, const expressionNode*, const std::string&, z3::expr_vector *);
 
     std::shared_ptr<basicblock> get_end_of_concurrent_node(const std::shared_ptr<basicblock>&);
-    z3::expr encoded_pis(const std::vector<std::pair<std::shared_ptr<basicblock>, int32_t>>&, const std::unordered_map<std::string, std::vector<std::string>>&);
-    std::vector<std::string> includable_vars(const std::shared_ptr<statementNode>&, std::unordered_map<std::string, std::vector<std::string>>);
-    static z3::expr encode_event_conditions_between_blocks(z3::context *, const std::shared_ptr<basicblock>&, const std::shared_ptr<basicblock>&, const std::string &run);
     std::vector<z3::expr> constraintset;
 
 public:
@@ -40,9 +49,9 @@ public:
 
     std::shared_ptr<CSSA_CCFG> ccfg;
     std::unordered_map<std::string, std::shared_ptr<expressionNode>> symboltable;
-    std::pair<std::map<std::string, std::shared_ptr<VariableValue>>, std::map<std::string, bool>> getModel();
+    Model getModel();
 
-    bool execute(std::string method);
+    bool execute();
     bool updateModel(const std::vector<std::pair<std::string, Type>>&, const std::vector<std::string>&);
     bool updateModel(const z3::expr&);
     std::map<std::string, z3::expr> possible_raceconditions;

@@ -5,6 +5,9 @@
 #ifndef ANTLR_CPP_TUTORIAL_UNARYEXPRESSIONNODE_HPP
 #define ANTLR_CPP_TUTORIAL_UNARYEXPRESSIONNODE_HPP
 
+#include "literalNode.hpp"
+#include "variableNode.hpp"
+
 class unaryExpressionNode : public expressionNode {
 public:
     unaryExpressionNode(Type _type, op _op, std::shared_ptr<expressionNode> _expr) : _operator{_op}, expr{std::move(_expr)} {
@@ -22,6 +25,7 @@ public:
     }
 
     expressionNode *getExpr() const {return expr.get();}
+    void setExpr(std::shared_ptr<expressionNode>e) {expr = std::move(e);}
 
     std::shared_ptr<expressionNode> copy_expression() const override {
         std::shared_ptr<expressionNode> _this = std::make_shared<unaryExpressionNode>(unaryExpressionNode(type, _operator, expr->copy_expression()));
@@ -43,6 +47,15 @@ public:
             }
         }
         return false;
+    }
+
+    bool replacePiWithLit(const std::string &piname, Type t, std::string val) override {
+        if (expr->getNodeType() == Variable && reinterpret_cast<variableNode*>(expr.get())->name == piname) {
+            expr = std::make_shared<literalNode>(literalNode(t, val));
+            return true;
+        } else {
+            return expr->replacePiWithLit(piname, t, val);
+        }
     }
 
 private:

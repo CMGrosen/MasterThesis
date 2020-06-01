@@ -47,12 +47,14 @@ class node {
 public:
     virtual std::string to_string() const = 0;
     virtual std::string strOnSourceForm() const = 0;
+    virtual bool replacePiWithLit(const std::string&, Type t, std::string val) {return false;};
     virtual Type getType() const {return type;};
     virtual void setType(Type t) {type = t;};
     virtual NodeType getNodeType() const {return nodetype;};
     virtual void setNodeType(NodeType t) {nodetype = t;};
     virtual void setSSA(bool t) {onSSA = t;};
     virtual bool isSSAForm() const {return onSSA;};
+
 
     static std::string nameToTikzName(std::string name, bool SSAForm) {
         std::string newName = name[0] == '-' ? name.substr(1) : name;

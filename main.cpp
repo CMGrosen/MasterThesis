@@ -145,7 +145,7 @@ SSA_CCFG do_stuff(const std::shared_ptr<statementNode> &tree, std::unordered_map
     //symEngine engine = symEngine(cssaccfg, treeAndSymbolTable->second);
 
     interpreter checker = interpreter(engine);
-    if (checker.run2()) {
+    if (checker.run()) {
         std::cout << "all good\n";
     } else {
         std::cout << "error\n";

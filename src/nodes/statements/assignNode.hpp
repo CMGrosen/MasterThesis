@@ -20,6 +20,7 @@ public:
     std::string getName() const {return name;}
     std::string getOriginalName() const {return origName;}
     expressionNode* getExpr() const {return expr.get();}
+    void setExpr(std::shared_ptr<expressionNode>ex) {expr = std::move(ex);}
     std::string to_string() const override {
         return nameToTikzName(name, onSSA) + " = " + expr->to_string();
     }
@@ -36,6 +37,14 @@ public:
     void setSSA(bool t) override {
         onSSA = t;
         expr->setSSA(t);
+    }
+    bool replacePiWithLit(const std::string &piname, Type t, std::string val) override {
+        if (expr->getNodeType() == Variable && reinterpret_cast<variableNode*>(expr.get())->name == piname) {
+            expr = std::make_shared<literalNode>(literalNode(t, val));
+            return true;
+        } else {
+            return expr->replacePiWithLit(piname, t, val);
+        }
     }
 private:
     std::string origName;
